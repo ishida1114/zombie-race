@@ -3,7 +3,7 @@ const ctx = canvas.getContext('2d');
 
 let isGameRunning = false;
 let raceState = 'INIT'; // INIT, COUNTDOWN, RACING, FINISHED
-let startCountdown = 3.0; // スタート前の3秒カウントダウン
+let startCountdown = 3.0;
 let shakeTime = 0;
 let scrollY = 0;
 let globalTime = 0;
@@ -13,24 +13,22 @@ const totalDistance = 1000;
 let startTime = 0;
 let lastGoalCountdownValue = null;
 
-// 🧬 1. カラーとサイズの適正化（真っ黒にならないよう調整）
 const ZOMBIE_COLORS = [
   { name: '標準', filter: 'none' },
-  { name: '猛毒', filter: 'hue-rotate(90deg) saturate(120%)' }, // 青紫
-  { name: '深淵', filter: 'hue-rotate(210deg) saturate(100%) brightness(0.9)' }, // 青系
-  { name: '狂暴', filter: 'hue-rotate(-50deg) saturate(150%) brightness(1.1)' }, // 赤系
-  { name: '蒼白', filter: 'grayscale(70%) brightness(1.2) hue-rotate(180deg)' }, // 白系
-  { name: '黒曜', filter: 'grayscale(60%) brightness(0.6) contrast(1.3)' }, // 暗めだが潰れない
+  { name: '猛毒', filter: 'hue-rotate(90deg) saturate(120%)' },
+  { name: '深淵', filter: 'hue-rotate(210deg) saturate(100%) brightness(0.9)' },
+  { name: '狂暴', filter: 'hue-rotate(-50deg) saturate(150%) brightness(1.1)' },
+  { name: '蒼白', filter: 'grayscale(70%) brightness(1.2) hue-rotate(180deg)' },
+  { name: '黒曜', filter: 'grayscale(60%) brightness(0.6) contrast(1.3)' },
 ];
 
+// 🧬 小柄を削除し、魅力的な3タイプに絞る
 const ZOMBIE_SIZES = [
   { name: '標準', scaleX: 1.0, scaleY: 1.0 },
   { name: '巨漢', scaleX: 1.25, scaleY: 1.3 },
-  { name: '肥満', scaleX: 1.3, scaleY: 0.95 },
-  { name: '小柄', scaleX: 0.75, scaleY: 0.75 },
+  { name: '肥満', scaleX: 1.3, scaleY: 0.95 }
 ];
 
-// 🎥 2. 動画の読み込みを「1つ」に統合し、四角バグを解消
 const zombieVideo = document.createElement('video');
 zombieVideo.src = '/zombie1.mp4';
 zombieVideo.loop = true;
@@ -39,7 +37,6 @@ zombieVideo.playsInline = true;
 zombieVideo.autoplay = true;
 zombieVideo.addEventListener('canplay', () => zombieVideo.play().catch(() => {}));
 
-// 🎨 3. 共通のクロマキー処理用Canvas
 const offCanvas = document.createElement('canvas');
 const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
@@ -59,9 +56,8 @@ function updateChromaKeyFrame(targetW, targetH) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
-    // グリーンバック判定
     if (g > 80 && g > r * 1.2 && g > b * 1.2) {
-      data[i + 3] = 0; // 緑を透明に
+      data[i + 3] = 0;
     }
   }
   offCtx.putImageData(imgData, 0, 0);
@@ -77,7 +73,6 @@ let currentZombie = {
 
 let remainingTurns = 5;
 
-// 🏃 4人の走者
 const runners = [
   { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[0], boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
   { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, colorInfo: ZOMBIE_COLORS[1], sizeInfo: ZOMBIE_SIZES[1], boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
@@ -88,7 +83,6 @@ const runners = [
 const particles = [];
 const effects = [];
 
-// 🧪 スキルのチャージ速度を大幅に低下（1レースで1〜2回しか100%にならない）
 const ALL_SKILLS = [
   { id: 'meteor', name: '細胞活性', icon: '🧪', desc: '前方妨害', speed: 0.045 },
   { id: 'mach', name: '神経加速', icon: '⚡', desc: '一時加速', speed: 0.055 },
@@ -100,7 +94,26 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🎨 ゾンビ描画
+// 🛡️ 防御システム（パワーをノックバック耐性に変換）
+function applyKnockback(runner, baseKnockback) {
+  if (runner.isBarrier) {
+    effects.push({ text: `BLOCK!`, x: runner.x + 24, y: runner.y - 12, color: '#a855f7' });
+    return;
+  }
+  // 筋力(パワー)の80%を防御力として差し引く
+  const defense = Math.floor(runner.powAttr * 0.8);
+  const finalKnockback = baseKnockback - defense;
+  
+  if (finalKnockback <= 0) {
+    // 防御力が上回った場合は硬直ゼロ＆GUARD表示
+    runner.knockback = 0;
+    effects.push({ text: `GUARD!`, x: runner.x + 24, y: runner.y - 12, color: '#facc15' });
+  } else {
+    // 防御しきれなかった分だけノックバック
+    runner.knockback = Math.max(runner.knockback, finalKnockback);
+  }
+}
+
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCanvas, isExhausted) {
   targetCtx.save();
   const isKnockback = zData.knockback > 0;
@@ -123,8 +136,6 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     targetCtx.filter = filterStr;
     targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height);
     targetCtx.filter = 'none';
-  } else {
-    // 動画読み込み待ちの時は透明（灰色の四角を廃止）
   }
 
   if (isExhausted && !isKnockback) {
@@ -229,7 +240,6 @@ function startRace() {
   globalTime = 0;
   lastGoalCountdownValue = null;
   
-  // 🏁 3秒間のスタートカウントダウン開始
   raceState = 'COUNTDOWN';
   startCountdown = 3.0;
   document.getElementById('countdown-overlay').classList.remove('hidden');
@@ -278,7 +288,6 @@ function triggerSkill(index, power) {
   const isMax = power >= 100;
   const playerRunner = runners[0];
 
-  // ★100%溜まりきる前に使うと、効果が最大60%以下に大きく減衰するペナルティ
   const effectivePower = isMax ? 100 : power * 0.6;
 
   if (flask.id === 'meteor' || flask.id === 'volcano') {
@@ -294,16 +303,15 @@ function triggerSkill(index, power) {
   } else if (flask.id === 'meat') {
     effects.push({ text: `組織妨害`, x: canvas.width / 2, y: 150, color: '#ef4444' });
     for (let i = 1; i < 4; i++) {
-      const powResistance = Math.floor(runners[i].powAttr * 0.4);
-      // 効果減衰を反映
-      runners[i].knockback = Math.max(10, Math.floor(60 * (effectivePower / 100)) - powResistance);
+      // 妨害力を計算し、各キャラのパワーで防御判定
+      applyKnockback(runners[i], Math.floor(60 * (effectivePower / 100)));
     }
   } else if (flask.id === 'heal') {
     playerRunner.stm = Math.min(playerRunner.maxStm, playerRunner.stm + Math.floor(50 * (effectivePower / 100)));
     playerRunner.boostTimer = Math.floor(70 * (effectivePower / 100));
     effects.push({ text: `強心刺激`, x: playerRunner.x + 24, y: playerRunner.y - 12, color: '#22c55e' });
   }
-  flask.charge = 0; // 使ったら0に戻る
+  flask.charge = 0;
 }
 
 function aiTriggerSkill(runner) {
@@ -320,15 +328,15 @@ function aiTriggerSkill(runner) {
   } else if (skill === 'meat') {
     effects.push({ text: `妨害！`, x: runner.x + 24, y: runner.y - 12, color: '#ef4444' });
     runners.forEach(r => {
-      if (r.id !== runner.id && !r.isBarrier) {
-        r.knockback = Math.max(15, 50 - Math.floor(r.powAttr * 0.3));
+      if (r.id !== runner.id) {
+        applyKnockback(r, 50);
       }
     });
   } else if (skill === 'heal') {
     runner.stm = Math.min(runner.maxStm, runner.stm + 40);
     effects.push({ text: `回復`, x: runner.x + 24, y: runner.y - 12, color: '#22c55e' });
   }
-  runner.skillCd = Math.floor(Math.random() * 400) + 600; // CPUの頻度も下げる
+  runner.skillCd = Math.floor(Math.random() * 400) + 600;
 }
 
 function finishRace() {
@@ -358,7 +366,6 @@ function update() {
 
   const cdEl = document.getElementById('countdown-overlay');
 
-  // 🏁 スタート前のカウントダウン処理
   if (raceState === 'COUNTDOWN') {
     startCountdown -= 1 / 60;
     if (startCountdown > 0) {
@@ -371,7 +378,6 @@ function update() {
     }
   }
 
-  // 🏃 レース中の進行処理
   if (raceState === 'RACING') {
     currentFlasks.forEach((flask, index) => {
       if (flask.charge < flask.max) flask.charge = Math.min(flask.max, flask.charge + flask.speed);
@@ -417,7 +423,6 @@ function update() {
     const leadingDist = Math.max(...runners.map(r => r.dist));
     remainingDistance = Math.max(0, totalDistance - leadingDist);
 
-    // ゴール手前のカウントダウン
     if (remainingDistance <= 200 && remainingDistance > 0 && startCountdown <= 0) {
       const countVal = Math.min(5, Math.max(1, Math.ceil(remainingDistance / 40)));
       cdEl.textContent = countVal;
@@ -427,7 +432,6 @@ function update() {
     if (remainingDistance <= 0) { finishRace(); return; }
   }
 
-  // カメラ計算
   const avgDist = runners.reduce((acc, r) => acc + r.dist, 0) / 4;
   for (let i = 0; i < 4; i++) {
     const r = runners[i];
@@ -449,17 +453,14 @@ function update() {
     if (markerEl) markerEl.style.left = `${ratio * 100}%`;
   }
 
-  // 描画開始
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6); shakeTime--; }
 
-  // カウントダウン中以外は背景をスクロール
   if (raceState === 'RACING') {
     scrollY = (scrollY + 0.25) % 60;
   }
   drawJapaneseStreetBackground();
 
-  // ★ 毎フレーム1回だけクロマキー処理を実行（激重バグと四角バグを解消）
   const processedCanvas = updateChromaKeyFrame(54, 64);
 
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
@@ -475,7 +476,6 @@ function update() {
     }
   });
 
-  // パーティクル（カウントダウン中は止める）
   if (raceState === 'RACING') {
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
@@ -484,8 +484,8 @@ function update() {
         if (p.y >= p.targetY) {
           shakeTime = 8;
           for (let j = 1; j < 4; j++) {
-            const powResist = Math.floor(runners[j].powAttr * 0.3);
-            runners[j].knockback = Math.max(15, Math.floor(60 * (p.power / 100)) - powResist);
+            // 衝撃波の威力でノックバック判定
+            applyKnockback(runners[j], Math.floor(60 * (p.power / 100)));
           }
           effects.push({ text: `衝撃波`, x: p.x, y: p.y, color: '#ef4444' });
           particles.splice(i, 1);
@@ -498,7 +498,6 @@ function update() {
       ctx.fillText(eff.text, eff.x, eff.y); eff.y -= 0.8; if (eff.y < 120) effects.splice(i, 1);
     }
   } else {
-    // 停止中も表示は残す
     for (let i = effects.length - 1; i >= 0; i--) {
       const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText(eff.text, eff.x, eff.y);
