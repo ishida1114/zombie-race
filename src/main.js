@@ -79,12 +79,6 @@ function drawSpeechBalloon(targetCtx, text, x, y, bgColor='#ffffff', textColor='
   targetCtx.restore();
 }
 
-function resizeCanvas() {
-  const cw = document.querySelector('.canvas-wrapper');
-  canvas.width = cw.clientWidth; canvas.height = cw.clientHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-
 function createExplosion(x, y, color, count, speedMax, sizeBase, type = 'spark') {
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2; const speed = Math.random() * speedMax;
@@ -93,8 +87,8 @@ function createExplosion(x, y, color, count, speedMax, sizeBase, type = 'spark')
 }
 
 function applyKnockback(runner, baseKnockback) {
-  if (runner.isHard) { effects.push({ text: `硬化!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#94a3b8', 10, 2, 3); return; }
-  if (runner.barrierPower > 0) { baseKnockback -= Math.floor(baseKnockback * (runner.barrierPower / 100)); effects.push({ text: `弾いた!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#a855f7', 15, 3, 4); }
+  if (runner.isHard) { effects.push({ text: `硬化!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#94a3b8', 10, 2, 3, 'spark'); return; }
+  if (runner.barrierPower > 0) { baseKnockback -= Math.floor(baseKnockback * (runner.barrierPower / 100)); effects.push({ text: `弾いた!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#a855f7', 15, 3, 4, 'spark'); }
   const defense = Math.floor(runner.powAttr * 0.8); const finalKnockback = baseKnockback - defense;
   if (finalKnockback <= 0) { runner.knockback = 0; effects.push({ text: `GUARD!`, x: runner.x, y: runner.y, isBalloon: true }); }
   else { runner.knockback = Math.max(runner.knockback, finalKnockback); runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); effects.push({ text: `ギャッ!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); }
@@ -115,7 +109,6 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     if (isExhausted && !isKnockback && !zData.isHard) drawSpeechBalloon(targetCtx, 'ニク…', 0, -height - 10, '#fff', '#000');
     else if (zData.isSlacking) drawSpeechBalloon(targetCtx, '？', 0, -height - 10, '#facc15', '#000');
     
-    // 足元の名前（長い場合は省略）
     let dispName = zData.name; if(dispName.length > 5) dispName = dispName.substring(0,4) + '…';
     targetCtx.fillStyle = zData.id === 0 ? '#38bdf8' : '#cbd5e1'; targetCtx.font = 'bold 11px sans-serif';
     targetCtx.fillText(dispName, 0, -5);
@@ -222,7 +215,6 @@ function showNurtureResult(type) {
 document.getElementById('send-to-garage-btn').onclick = () => {
   document.getElementById('nurture-screen').classList.add('hidden');
   if (myZombies.length > 3) {
-    // 入れ替えUI
     const list = document.getElementById('release-list'); list.innerHTML = '';
     myZombies.forEach((z, idx) => {
       const card = document.createElement('div'); card.className = 'zombie-card';
@@ -238,35 +230,47 @@ function renderCitySelect() {
   const container = document.getElementById('city-list'); container.innerHTML = '';
   CITIES.forEach(city => {
     const btn = document.createElement('div'); btn.className = 'city-btn';
+    // 🌟 色とデザインを元に戻しました
     btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)</span><span class="city-desc">${city.desc}</span>`;
     btn.onclick = () => { currentCity = city; document.getElementById('city-select-screen').classList.add('hidden'); showPaddock(); };
     container.appendChild(btn);
   });
 }
 
-// 🐎 パドック演出
+// 🐎 パドック演出（手動で進むように変更）
 function showPaddock() {
   const z = myZombies[activeZombieIndex]; if(!z) return;
   const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
   
-  // 出走データの事前作成
-  runners.length = 0;
-  const laneW = canvas.width / 4;
+  runners.length = 0; const laneW = canvas.width / 4;
   runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 15, maxStm: z.stamina * 15, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false });
   for (let i = 1; i < 4; i++) {
     let mntBase = z.mentality; let powBase = z.power; if (currentCity.id === 'osaka') mntBase -= 30; if (currentCity.id === 'nagoya') powBase += 30;
-    const cpuZ = { id: i, name: CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)], title: '名もなき', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 15, maxStm: 0, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false };
+    const cpuName = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
+    const cpuZ = { id: i, name: cpuName, title: '名もなき', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 15, maxStm: 0, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false };
     cpuZ.maxStm = cpuZ.stm; runners.push(cpuZ);
   }
 
   runners.forEach((r, i) => {
-    const card = document.createElement('div'); card.className = `pd-card c-${i}`; card.style.animationDelay = `${i * 0.3}s`;
+    const card = document.createElement('div'); card.className = `pd-card c-${i}`; card.style.animationDelay = `${i * 0.2}s`;
     card.innerHTML = `<div class="pd-name"><span class="pd-title">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/15) + r.mntAttr + r.magAttr}</div>`;
     grid.appendChild(card);
   });
   
+  // 🌟 ここで「レースへ向かう」ボタンを追加（じっくり読めるように）
+  const btnWrapper = document.createElement('div');
+  btnWrapper.style.marginTop = '24px';
+  btnWrapper.style.animation = 'fadeIn 0.5s 1.2s forwards';
+  btnWrapper.style.opacity = '0'; 
+  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう</span></button>`;
+  grid.appendChild(btnWrapper);
+  
   document.getElementById('paddock-screen').classList.remove('hidden');
-  setTimeout(() => { document.getElementById('paddock-screen').classList.add('hidden'); startRaceCutin(); }, 3000);
+  
+  document.getElementById('start-cutin-btn').onclick = () => {
+    document.getElementById('paddock-screen').classList.add('hidden');
+    startRaceCutin();
+  };
 }
 
 function startRaceCutin() {
@@ -278,12 +282,11 @@ function startRaceCutin() {
 }
 
 function setupRaceState() {
-  resizeCanvas();
+  // 🌟 キャンバスリサイズ処理を撤廃し、真っ暗バグを完全解消
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
   document.getElementById('countdown-overlay').classList.remove('hidden'); document.getElementById('finish-overlay').classList.add('hidden'); document.getElementById('slime-overlay').classList.remove('active');
   particles.length = 0; effects.length = 0; syringeUsed = false;
   
-  // スキルセットアップ
   const shuffledAuto = [...ALL_SKILLS].sort(() => 0.5 - Math.random());
   currentAutoFlasks = shuffledAuto.slice(0, 2).map(s => ({ ...s, charge: 0, max: 100 }));
   document.getElementById('flask-name-0').textContent = currentAutoFlasks[0].name; document.getElementById('flask-name-1').textContent = currentAutoFlasks[1].name;
@@ -295,12 +298,10 @@ function setupRaceState() {
   isGameRunning = true; requestAnimationFrame(update);
 }
 
-// 💥 スキル実行 (手動/自動 共通)
+// 💥 スキル実行
 function triggerSkill(skillData, userRunner) {
-  if (raceState !== 'RACING') return;
-  const isPlayer = userRunner.id === 0;
+  if (raceState !== 'RACING') return; const isPlayer = userRunner.id === 0;
   const magBonus = userRunner.magAttr > 50 ? (userRunner.magAttr - 50) * 0.5 : 0; const effectivePower = 100 + magBonus;
-  
   if (isPlayer) effects.push({ text: `${skillData.name}!!`, x: userRunner.x, y: userRunner.y, isBalloon: true });
 
   if (skillData.id === 'meteor') { particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 300, radius: 60, power: effectivePower, user: userRunner }); if(isPlayer) { createExplosion(userRunner.x, userRunner.y, '#38bdf8', 15, 3, 3); effects.push({ text: `SAFE`, x: userRunner.x, y: userRunner.y, isBalloon: true }); } } 
@@ -317,37 +318,21 @@ function triggerSkill(skillData, userRunner) {
   else if (skillData.id === 'meat') { createExplosion(canvas.width/2, 200, '#dc2626', 60, 7, 5, 'blood'); runners.forEach(r => { if (r.id !== userRunner.id) r.knockback = Math.random() * effectivePower; }); } 
 }
 
-// 手動注射器ボタン
 document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  if (raceState !== 'RACING' || syringeUsed || !currentSyringe) return;
-  syringeUsed = true;
-  document.getElementById('syringe-btn').classList.add('used');
-  flashEffect.alpha = 0.8; flashEffect.color = '#ffffff';
-  triggerSkill(currentSyringe, runners[0]);
+  e.preventDefault(); if (raceState !== 'RACING' || syringeUsed || !currentSyringe) return;
+  syringeUsed = true; document.getElementById('syringe-btn').classList.add('used');
+  flashEffect.alpha = 0.8; flashEffect.color = '#ffffff'; triggerSkill(currentSyringe, runners[0]);
 });
 
 function doFinish() {
-  raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active');
-  document.getElementById('finish-overlay').classList.remove('hidden');
+  raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  
   setTimeout(() => {
-    raceState = 'FINISHED';
-    const sorted = [...runners].sort((a, b) => b.dist - a.dist);
-    const playerRank = sorted.findIndex(r => r.id === 0) + 1;
-    
-    // データ更新と賞金
-    const z = myZombies[activeZombieIndex];
-    z.matches++;
-    let prize = 0;
-    if (playerRank === 1) { z.wins++; prize = 500; if (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime)) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; } }
-    else if (playerRank === 2) prize = 300; else if (playerRank === 3) prize = 100; else prize = 50;
-    zombieMoney += prize; saveGame();
-    document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
-
-    renderPodium(sorted, elapsedSec);
-    document.getElementById('result-screen').classList.remove('hidden');
+    raceState = 'FINISHED'; const sorted = [...runners].sort((a, b) => b.dist - a.dist); const playerRank = sorted.findIndex(r => r.id === 0) + 1;
+    const z = myZombies[activeZombieIndex]; z.matches++; let prize = 0;
+    if (playerRank === 1) { z.wins++; prize = 500; if (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime)) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; } } else if (playerRank === 2) prize = 300; else if (playerRank === 3) prize = 100; else prize = 50;
+    zombieMoney += prize; saveGame(); document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
+    renderPodium(sorted, elapsedSec); document.getElementById('result-screen').classList.remove('hidden');
   }, 2500);
 }
 
@@ -383,37 +368,22 @@ function update() {
 
   if (raceState === 'RACING' || raceState === 'FINISH_SLOW') {
     const player = runners[0]; const magBonusSpeed = player.magAttr > 50 ? (player.magAttr - 50) * 0.001 : 0;
-    
-    // オートフラスコのチャージと発動
     currentAutoFlasks.forEach((flask, index) => {
       if (flask.charge < flask.max) flask.charge = Math.min(flask.max, flask.charge + (flask.speed + magBonusSpeed) * dt);
-      if (flask.charge >= flask.max && raceState === 'RACING') {
-        triggerSkill(flask, player); flask.charge = 0; // 自動発動してリセット
-      }
-      const fillEl = document.getElementById(`flask-fill-${index}`);
-      if (fillEl) fillEl.style.height = `${flask.charge}%`;
+      if (flask.charge >= flask.max && raceState === 'RACING') { triggerSkill(flask, player); flask.charge = 0; }
+      const fillEl = document.getElementById(`flask-fill-${index}`); if (fillEl) fillEl.style.height = `${flask.charge}%`;
     });
 
-    // CPUのオートスキル
     runners.forEach((r, i) => {
       if (i !== 0 && remainingDistance < 350) {
-        r.skillCd -= dt; 
-        if (r.skillCd <= 0) {
-           const s = ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)];
-           triggerSkill(s, r);
-           r.skillCd = Math.floor(Math.random() * 400) + 600;
-        }
+        r.skillCd -= dt; if (r.skillCd <= 0) { triggerSkill(ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)], r); r.skillCd = Math.floor(Math.random() * 400) + 600; }
       }
     });
 
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
-      if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) {
-        if (Math.random() < (70 - r.mntAttr) * 0.01) { r.isSlacking = true; r.knockback = 60; setTimeout(() => { r.isSlacking = false; }, 1000); }
-      }
-      let baseSpeed = 0.08 + (r.spdAttr - 50) * 0.001; 
-      const progress = r.dist / totalDistance; 
-      let stmDrain = currentCity.bgType === 'snow' ? 0.025 : 0.018; 
+      if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) { if (Math.random() < (70 - r.mntAttr) * 0.01) { r.isSlacking = true; r.knockback = 60; setTimeout(() => { r.isSlacking = false; }, 1000); } }
+      let baseSpeed = 0.08 + (r.spdAttr - 50) * 0.001; const progress = r.dist / totalDistance; let stmDrain = currentCity.bgType === 'snow' ? 0.025 : 0.018; 
       if (r.style === '逃げ') { if (progress < 0.4) { baseSpeed *= 1.5; stmDrain *= 1.8; } else if (progress > 0.7) { baseSpeed *= 0.8; } } 
       else if (r.style === '先行') { if (progress > 0.2 && progress < 0.6) { baseSpeed *= 1.2; stmDrain *= 1.2; } } 
       else if (r.style === '差し') { if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.3; stmDrain *= 1.1; } } 
@@ -431,21 +401,16 @@ function update() {
       if (remainingDistance <= 0) { doFinish(); }
     }
     
-    // UI更新
     document.getElementById('hud-dist').textContent = `${Math.floor(remainingDistance)}m`;
     const sortedRunners = [...runners].sort((a, b) => b.dist - a.dist);
     document.getElementById('hud-rank').textContent = `${sortedRunners.findIndex(r => r.id === 0) + 1}位`;
     for (let i = 0; i < 4; i++) { document.getElementById(`runner-marker-${i}`).style.left = `${Math.min(1, Math.max(0, runners[i].dist / totalDistance)) * 100}%`; }
-    const pStmBar = document.getElementById('p-stm-bar');
-    const pStmRatio = player.stm / player.maxStm;
-    pStmBar.style.width = `${pStmRatio * 100}%`;
-    if (pStmRatio < 0.2) pStmBar.classList.add('danger'); else pStmBar.classList.remove('danger');
+    const pStmBar = document.getElementById('p-stm-bar'); const pStmRatio = player.stm / player.maxStm;
+    pStmBar.style.width = `${pStmRatio * 100}%`; if (pStmRatio < 0.2) pStmBar.classList.add('danger'); else pStmBar.classList.remove('danger');
   }
 
   const avgDist = runners.reduce((acc, r) => acc + r.dist, 0) / 4;
-  for (let i = 0; i < 4; i++) {
-    const r = runners[i]; const diffFromAvg = r.dist - avgDist; r.y = (canvas.height/2) - diffFromAvg * 6.0;
-  }
+  for (let i = 0; i < 4; i++) { const r = runners[i]; const diffFromAvg = r.dist - avgDist; r.y = (canvas.height/2) - diffFromAvg * 6.0; }
 
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime -= dt; }

@@ -58,7 +58,13 @@
         <button class="cmd-btn" data-cmd="stm"><span class="cmd-icon">🧪</span><span class="cmd-text">防腐処理（体↑ / 速↓）</span></button>
       </div>
       <button id="send-to-garage-btn" class="retro-btn hidden" style="margin-top: 10px;"><span>完了</span></button>
-      <div id="nurture-result-overlay" class="hidden"><div id="drumroll-text" class="drumroll-text">調整中...</div><div id="result-label" class="result-label hidden">成功</div><div id="result-status-changes" class="result-status-changes hidden"></div></div>
+      
+      <!-- ドラムロール演出 -->
+      <div id="nurture-result-overlay" class="hidden">
+        <div id="drumroll-text" class="drumroll-text">調整中...</div>
+        <div id="result-label" class="result-label hidden">成功</div>
+        <div id="result-status-changes" class="result-status-changes hidden"></div>
+      </div>
     </div>
 
     <!-- 🗑️ 牧場入れ替え -->
@@ -93,7 +99,8 @@
 
     <!-- 🏙️ 都市選択 -->
     <div id="city-select-screen" class="hidden">
-      <div class="screen-title">遠征先を選択</div><div id="city-list" class="city-container"></div>
+      <div class="screen-title">遠征先を選択</div>
+      <div id="city-list" class="city-container"></div>
       <button id="back-to-garage-1" class="retro-btn-small" style="margin-top: 20px;">戻る</button>
     </div>
 
@@ -103,7 +110,16 @@
       <div id="paddock-grid" class="paddock-grid"></div>
     </div>
 
-    <!-- 🏁 レース -->
+    <!-- ⚡ 都市カットイン画面 -->
+    <div id="cutin-screen" class="hidden">
+      <div class="cutin-bg"></div>
+      <div class="cutin-content">
+        <div id="cutin-en" class="cutin-en">TOKYO</div>
+        <div id="cutin-ja" class="cutin-ja">東京</div>
+      </div>
+    </div>
+
+    <!-- 🏁 レース画面 -->
     <div id="race-screen" class="hidden">
       <div id="progress-bar-container">
         <div class="progress-start">S</div>
@@ -113,12 +129,14 @@
         <div class="progress-goal">G</div>
       </div>
       <div id="race-hud"><div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位</span></div><div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">400m</span></div></div>
+      
       <div class="canvas-wrapper">
-        <canvas id="gameCanvas"></canvas>
+        <!-- 🌟 真っ暗回避：Canvasの解像度を固定 -->
+        <canvas id="gameCanvas" width="480" height="600"></canvas>
         <div id="countdown-overlay" class="hidden">5</div><div id="finish-overlay" class="hidden">FINISH!!</div><div id="slime-overlay" class="hidden"></div>
       </div>
       
-      <!-- 下部UI: プレイヤーステータス ＆ スキル -->
+      <!-- 下部UI -->
       <div id="player-hud-container">
         <div class="player-info-bar">
           <div class="p-name" id="p-name-disp">名前</div>
