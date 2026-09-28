@@ -18,13 +18,12 @@ html, body {
   overflow: hidden;
 }
 
-/* ボタンやインプットの文字色を強制的に白系に */
 button, input, select {
   font-family: inherit;
   color: #f8fafc;
 }
 
-/* 🌟 画面大型化 */
+/* 🌟 ゲーム画面の枠（PCでもスマホでもはみ出さない） */
 #game-container {
   position: relative;
   width: 100%;
@@ -36,6 +35,7 @@ button, input, select {
   overflow: hidden;
   box-shadow: 0 0 20px rgba(0,0,0,1);
 }
+
 .hidden { display: none !important; }
 
 /* 汎用ボタン */
@@ -50,27 +50,11 @@ button, input, select {
   transition: 0.1s;
   color: #f1f5f9;
 }
-.retro-btn:active {
-  transform: translateY(4px);
-  box-shadow: 0 0 0 #0f172a;
-}
-.retro-btn span {
-  font-size: 18px;
-  letter-spacing: 2px;
-  font-weight: bold;
-}
-.retro-btn-small {
-  background: transparent;
-  border: 1px solid #475569;
-  border-radius: 4px;
-  padding: 10px;
-  cursor: pointer;
-  color: #94a3b8;
-  font-size: 14px;
-  width: 100%;
-}
+.retro-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #0f172a; }
+.retro-btn span { font-size: 18px; letter-spacing: 2px; font-weight: bold; }
+.retro-btn-small { background: transparent; border: 1px solid #475569; border-radius: 4px; padding: 10px; cursor: pointer; color: #94a3b8; font-size: 14px; width: 100%; }
 
-/* 🏠 タイトル */
+/* --- 🏠 タイトル --- */
 #title-screen {
   flex: 1;
   background: radial-gradient(circle at center, #1a202c 0%, #050608 100%);
@@ -85,34 +69,14 @@ button, input, select {
 .money-display { font-size: 24px; font-weight: bold; color: #facc15; text-shadow: 2px 2px 0 #000; }
 .title-btn-group { width: 100%; display: flex; flex-direction: column; gap: 16px; }
 
-/* 汎用コンテナ（スカウト・牧場・都市選択・ショップ） */
+/* 汎用コンテナ（スカウト・牧場・ショップ） */
 #scout-screen, #garage-screen, #city-select-screen, #release-screen, #shop-screen {
-  flex: 1;
-  background: #0d1117;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  overflow-y: auto;
+  flex: 1; background: #0d1117; display: flex; flex-direction: column; padding: 20px; overflow-y: auto;
 }
-.screen-title {
-  font-size: 22px;
-  color: #f8fafc;
-  font-weight: bold;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #334155;
-  padding-bottom: 10px;
-}
+.screen-title { font-size: 22px; color: #f8fafc; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
 .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .form-group label { font-size: 14px; color: #94a3b8; }
-.form-group select, .form-group input {
-  background: #161b22;
-  border: 1px solid #475569;
-  color: #f8fafc;
-  padding: 14px;
-  border-radius: 6px;
-  font-size: 16px;
-  outline: none;
-}
+.form-group select, .form-group input { background: #161b22; border: 1px solid #475569; color: #f8fafc; padding: 14px; border-radius: 6px; font-size: 16px; outline: none; }
 
 /* 発見演出 */
 #found-overlay { position: absolute; inset: 0; background: #000; z-index: 50; display: flex; align-items: center; justify-content: center; }
@@ -140,11 +104,10 @@ button, input, select {
 .shop-btn { display: flex; align-items: center; background: #161b22; border: 1px solid #475569; padding: 12px; border-radius: 8px; color: #f1f5f9; text-align: left; cursor: pointer; }
 .shop-btn:active { background: #334155; }
 .s-icon { font-size: 24px; margin-right: 12px; }
-.s-desc { flex: 1; font-size: 12px; color: #94a3b8; }
-.s-desc strong { font-size: 14px; color: #f1f5f9; }
+.s-desc { flex: 1; font-size: 12px; color: #94a3b8; } .s-desc strong { font-size: 14px; color: #f1f5f9; }
 .s-price { font-size: 14px; font-weight: bold; color: #facc15; }
 
-/* 🌟 都市選択のデザイン復活 */
+/* 都市選択 */
 .city-container { width: 100%; display: flex; flex-direction: column; gap: 12px; }
 .city-btn { background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 16px 20px; display: flex; flex-direction: column; text-align: left; cursor: pointer; transition: 0.1s; }
 .city-btn:active { background: #334155; }
@@ -152,7 +115,7 @@ button, input, select {
 .city-desc { font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.4; }
 
 /* 🧪 育成画面 */
-#nurture-screen { flex: 1; background: #0d1117; display: flex; flex-direction: column; align-items: center; padding: 16px; }
+#nurture-screen { flex: 1; background: #0d1117; display: flex; flex-direction: column; align-items: center; padding: 16px; overflow-y: auto; }
 .nurture-header { width: 100%; display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding-bottom: 8px; font-weight: bold; }
 .zombie-preview-box { width: 180px; height: 180px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; display: flex; justify-content: center; align-items: center; margin: 16px 0; }
 .status-box { width: 100%; background: #161b22; border: 1px solid #21262d; padding: 12px; display: flex; flex-direction: column; gap: 8px; border-radius: 6px; }
@@ -160,58 +123,33 @@ button, input, select {
 .stat-row span:last-child { color: #38bdf8; font-weight: bold; }
 
 .command-container { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-.cmd-btn {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  color: #c9d1d9; /* 🌟 黒文字対策 */
-}
+.cmd-btn { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; color: #c9d1d9; }
 .cmd-text { color: #c9d1d9 !important; font-size: 14px; font-weight: bold; }
 
-/* 🌟 ドラムロール演出の完全復元 */
-#nurture-result-overlay {
-  position: absolute; inset: 0; background: rgba(13, 17, 23, 0.95);
-  display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20;
-}
+/* 育成ドラムロール */
+#nurture-result-overlay { position: absolute; inset: 0; background: rgba(13, 17, 23, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
 .drumroll-text { font-size: 28px; font-weight: bold; color: #facc15; margin-bottom: 24px; font-family: monospace; }
 .result-label { font-size: 40px; font-weight: 900; margin-bottom: 20px; animation: popIn 0.3s forwards; }
 .lbl-great { color: #facc15; text-shadow: 0 0 15px rgba(250, 204, 21, 0.8), 2px 2px 0 #000; }
 .lbl-good { color: #38bdf8; } .lbl-bad { color: #94a3b8; }
-.result-status-changes {
-  font-size: 18px; color: #e2e8f0; text-align: center; line-height: 2.0;
-  background: #161b22; border: 1px solid #30363d; padding: 16px 32px; border-radius: 8px;
-  animation: popIn 0.4s forwards;
-}
+.result-status-changes { font-size: 18px; color: #e2e8f0; text-align: center; line-height: 2.0; background: #161b22; border: 1px solid #30363d; padding: 16px 32px; border-radius: 8px; animation: popIn 0.4s forwards; }
 .change-up { color: #4ade80; font-weight: bold; font-size: 22px; margin-left: 12px; }
 .change-down { color: #f87171; font-weight: bold; font-size: 22px; margin-left: 12px; }
 @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
 /* 🐎 パドック (出馬表) */
-#paddock-screen {
-  position: absolute; inset: 0; background: #0f131a; z-index: 40;
-  display: flex; flex-direction: column; justify-content: center; padding: 20px;
-}
+#paddock-screen { position: absolute; inset: 0; background: #0f131a; z-index: 40; display: flex; flex-direction: column; justify-content: center; padding: 20px; }
 .paddock-title { font-size: 28px; color: #facc15; text-align: center; font-weight: 900; margin-bottom: 20px; text-shadow: 2px 2px 0 #000; animation: flashTitle 1s infinite alternate; }
 .paddock-grid { display: flex; flex-direction: column; gap: 12px; }
-.pd-card {
-  background: linear-gradient(90deg, #1e293b, transparent);
-  border-left: 6px solid #38bdf8; padding: 12px; border-radius: 4px;
-  transform: translateX(100%); opacity: 0; animation: slideIn 0.5s forwards;
-}
+.pd-card { background: linear-gradient(90deg, #1e293b, transparent); border-left: 6px solid #38bdf8; padding: 12px; border-radius: 4px; transform: translateX(100%); opacity: 0; animation: slideIn 0.5s forwards; }
 .pd-card.c-0 { border-color: #38bdf8; } .pd-card.c-1 { border-color: #f87171; } .pd-card.c-2 { border-color: #a855f7; } .pd-card.c-3 { border-color: #facc15; }
-.pd-name { font-size: 18px; font-weight: bold; color: #fff; }
-.pd-title { font-size: 12px; color: #facc15; margin-right: 8px; }
+.pd-name { font-size: 18px; font-weight: bold; color: #fff; } .pd-title { font-size: 12px; color: #facc15; margin-right: 8px; }
 .pd-stats { font-size: 12px; color: #cbd5e1; margin-top: 4px; }
 @keyframes slideIn { to { transform: translateX(0); opacity: 1; } }
 @keyframes flashTitle { to { text-shadow: 0 0 10px #facc15; } }
 @keyframes fadeIn { to { opacity: 1; } }
 
-/* ⚡ カットイン画面 */
+/* ⚡ カットイン */
 #cutin-screen { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; overflow: hidden; background: transparent; }
 .cutin-bg { position: absolute; inset: -20%; background: #e11d48; transform: skewY(-15deg) translateY(-100%); animation: cutinSlide 1.8s forwards; }
 .cutin-content { position: relative; z-index: 2; text-align: center; transform: scale(1.5); opacity: 0; animation: cutinText 1.8s forwards; }
@@ -220,20 +158,27 @@ button, input, select {
 @keyframes cutinSlide { 0% { transform: skewY(-15deg) translateY(-100%); } 20%, 80% { transform: skewY(-15deg) translateY(0); } 100% { transform: skewY(-15deg) translateY(100%); } }
 @keyframes cutinText { 0% { transform: scale(1.5); opacity: 0; } 20%, 80% { transform: scale(1.0); opacity: 1; filter: blur(0); } 100% { transform: scale(0.8); opacity: 0; filter: blur(10px); } }
 
-/* 🏁 レース画面 */
-#race-screen { flex: 1; display: flex; flex-direction: column; }
-#progress-bar-container { height: 32px; background: #0d1117; border-bottom: 1px solid #30363d; display: flex; align-items: center; padding: 0 16px; gap: 10px; }
+/* 🏁 レース画面 (🌟 押し出しバグ修正エリア) */
+#race-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 全体がはみ出さないように */
+}
+
+/* 上部メーター */
+#progress-bar-container { height: 32px; flex-shrink: 0; background: #0d1117; border-bottom: 1px solid #30363d; display: flex; align-items: center; padding: 0 16px; gap: 10px; }
 .progress-track { position: relative; flex: 1; height: 8px; background: #21262d; border-radius: 4px; }
 .runner-marker { position: absolute; top: -6px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #0d1117; transform: translateX(-50%); transition: left 0.1s linear; }
 .runner-marker.p-you { background: #38bdf8; z-index: 4; } .runner-marker.p-r1 { background: #f87171; z-index: 3; } .runner-marker.p-r2 { background: #a855f7; z-index: 2; } .runner-marker.p-r3 { background: #facc15; z-index: 1; }
-#race-hud { height: 36px; background: #161b22; display: flex; justify-content: space-around; align-items: center; border-bottom: 1px solid #000; }
+#race-hud { height: 36px; flex-shrink: 0; background: #161b22; display: flex; justify-content: space-around; align-items: center; border-bottom: 1px solid #000; }
 .hud-val { font-size: 16px; color: #facc15; font-weight: bold; margin-left: 8px; }
 
-/* 🌟 Canvasのサイズ固定による黒幕バグ回避 */
+/* 🌟 真ん中のCanvas（自動縮小して枠に収まるように） */
 .canvas-wrapper {
+  flex: 1; /* 残りの高さをすべて使う */
   position: relative;
   width: 100%;
-  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -243,21 +188,31 @@ button, input, select {
 canvas#gameCanvas {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* アスペクト比を維持しつつ画面にフィット */
+  object-fit: cover; /* 黒幕を出さずに枠いっぱいに描画 */
   background: #1a1e28;
 }
 
 #countdown-overlay { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; font-weight: 900; color: #ef4444; text-shadow: 0 0 30px rgba(239, 68, 68, 0.9), 5px 5px 0 #000; z-index: 10; }
 #finish-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(2); font-size: 60px; font-weight: 900; color: #facc15; text-shadow: 0 0 40px #ca8a04, 5px 5px 0 #000; z-index: 20; animation: finishSlam 0.5s forwards; }
 @keyframes finishSlam { 0% { transform: translate(-50%, -50%) scale(5); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+#slime-overlay { position: absolute; inset: 0; z-index: 8; background: radial-gradient(circle at center, transparent 20%, #166534 80%), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.3"><circle cx="50" cy="50" r="40" fill="%2322c55e" filter="blur(10px)"/></svg>'); background-size: cover; mix-blend-mode: multiply; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+#slime-overlay.active { opacity: 0.9; }
 
-/* 下部UI（スタミナ＆スキル） */
-#player-hud-container { height: 140px; background: #050608; border-top: 2px solid #334155; display: flex; flex-direction: column; }
+/* 🌟 下部UI（絶対に高さが潰れないように固定） */
+#player-hud-container {
+  height: 150px;
+  flex-shrink: 0; /* 絶対に縮まない */
+  background: #050608;
+  border-top: 2px solid #334155;
+  display: flex;
+  flex-direction: column;
+}
 .player-info-bar { height: 36px; background: #161b22; display: flex; align-items: center; padding: 0 16px; gap: 12px; }
 .p-name { font-size: 16px; font-weight: bold; color: #f8fafc; white-space: nowrap; }
 .p-stm-wrap { flex: 1; height: 16px; background: #334155; border-radius: 8px; overflow: hidden; border: 1px solid #000; }
 .p-stm-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #22c55e, #4ade80); transition: width 0.1s linear, background 0.3s; }
 .p-stm-fill.danger { background: #ef4444; }
+
 #skill-container { flex: 1; display: flex; justify-content: space-around; align-items: center; padding: 10px; gap: 8px; }
 .syringe-card { flex: 2; height: 100%; background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #ef4444; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); transition: 0.1s; }
 .syringe-card:active { transform: scale(0.95); }
