@@ -12,6 +12,7 @@ let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
 
+// ユーザーが置いてくれた4枚の歩行画像だけを使用
 const assets = {
   zombieWalk: [new Image(), new Image(), new Image(), new Image()]
 };
@@ -23,16 +24,18 @@ assets.zombieWalk[3].src = '/zombie_walk4.png';
 let currentZombie = {
   name: '検体 No.101',
   hue: 0,
+  head: 'none',   // none, cap(赤い帽子), worker(ヘルメット)
+  eye: 'none',    // none, sunglasses(サングラス), bandage(目隠し包帯)
   speed: 50, power: 50, stamina: 50
 };
 
 let remainingTurns = 5;
 
 const runners = [
-  { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 0, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
-  { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 90, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
-  { id: 2, name: 'No.204', x: 180, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 180, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
-  { id: 3, name: 'No.305', x: 260, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 270, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
+  { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 0, head: 'none', eye: 'none', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
+  { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 90, head: 'worker', eye: 'none', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
+  { id: 2, name: 'No.204', x: 180, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 180, head: 'none', eye: 'bandage', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
+  { id: 3, name: 'No.305', x: 260, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 270, head: 'cap', eye: 'sunglasses', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
 ];
 
 const particles = [];
@@ -49,26 +52,21 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🎨 本物画像によるアニメーション描画（ドット絵最適化版）
+// 🎨 ドット絵画像 ＋ プログラムによる変形・合成処理
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted, distPhase) {
   targetCtx.save();
+  targetCtx.imageSmoothingEnabled = false; // ドット絵くっきり化
 
-  // ★重要：ドット絵の「ぼやけ」を完全にオフにする（くっきり表示）
-  targetCtx.imageSmoothingEnabled = false;
-
-  // 🏃 歩行アニメーションのフレーム（コマ）計算とバウンド補正
   let frameIndex = 0;
   let bounce = 0;
+  const isKnockback = zData.knockback > 0; // ★ダメージ中かどうか判定
 
-  if (!isExhausted) {
-    // 距離に対してコマ切り替え速度を少し落とし、パラパラ感を軽減
+  if (!isExhausted && !isKnockback) {
     const animSpeed = distPhase * 0.8; 
     frameIndex = Math.floor(animSpeed) % 4;
-    // コマの切り替えに合わせて体を滑らかに上下させる（歩く反動）
     bounce = Math.abs(Math.sin(animSpeed * Math.PI / 2)) * 3;
   } else {
     frameIndex = Math.floor(globalTime * 0.04) % 4;
-    bounce = 0; // バテると足を引きずるためバウンドしない
   }
 
   // 影
@@ -81,26 +79,66 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted,
 
   if (img.complete && img.naturalWidth > 0) {
     let filterStr = `hue-rotate(${zData.hue}deg)`;
-    if (isExhausted) filterStr += ' grayscale(80%) brightness(0.6)';
+
+    // ★プログラムによる「のけぞり・ダメージ表現」
+    if (isKnockback) {
+      filterStr = 'brightness(150%) sepia(100%) hue-rotate(-50deg) saturate(300%)'; // ダメージで赤くフラッシュ
+      targetCtx.translate(x + width / 2, y + height);
+      targetCtx.rotate(-0.4); // 重心を軸に大きく後ろへ反けぞる（回転）
+      targetCtx.translate(-(x + width / 2), -(y + height));
+    } else if (isExhausted) {
+      filterStr += ' grayscale(80%) brightness(0.6)';
+      targetCtx.translate(x + width / 2, y + height);
+      targetCtx.rotate(0.15); // バテると前に倒れ込む
+      targetCtx.translate(-(x + width / 2), -(y + height));
+    }
+
     targetCtx.filter = filterStr;
 
-    // バウンドと前傾姿勢の適用
-    targetCtx.translate(x + width / 2, y + height - bounce);
-    targetCtx.rotate(isExhausted ? 0.15 : 0); 
-    targetCtx.translate(-(x + width / 2), -(y + height));
-
-    // 画像描画
-    targetCtx.drawImage(img, x, y, width, height);
+    // バウンド位置の計算
+    const drawY = y - bounce;
     
-    targetCtx.filter = 'none';
+    // ① 基本画像の描画
+    targetCtx.drawImage(img, x, drawY, width, height);
+    targetCtx.filter = 'none'; // フィルターリセット
+
+    // ② ★画像を使わないプログラム着せ替え（Canvas APIで画像の上に図形を合成）
+    
+    // --- 頭の装飾 ---
+    if (zData.head === 'cap') {
+      targetCtx.fillStyle = '#dc2626'; // 赤いキャップ
+      targetCtx.fillRect(x + 12, drawY - 2, width - 20, 8); // 帽子本体
+      targetCtx.fillRect(x + 4, drawY + 4, width - 16, 3); // つば
+    } else if (zData.head === 'worker') {
+      targetCtx.fillStyle = '#facc15'; // 工事用ヘルメット（黄）
+      targetCtx.beginPath();
+      targetCtx.arc(x + width / 2 - 2, drawY + 6, width / 2 - 6, Math.PI, 0);
+      targetCtx.fill();
+      targetCtx.fillRect(x + 6, drawY + 6, width - 12, 3); // つば
+    }
+
+    // --- 目の装飾 ---
+    if (zData.eye === 'sunglasses') {
+      targetCtx.fillStyle = '#020617'; // サングラス（黒）
+      targetCtx.fillRect(x + 10, drawY + 12, width - 18, 6); // レンズ
+      targetCtx.fillStyle = '#f8fafc'; // レンズの反射光
+      targetCtx.fillRect(x + 12, drawY + 13, 3, 2);
+    } else if (zData.eye === 'bandage') {
+      targetCtx.fillStyle = '#e2e8f0'; // 目隠し包帯
+      targetCtx.fillRect(x + 8, drawY + 10, width - 12, 8);
+      targetCtx.fillStyle = '#94a3b8'; // 包帯の影線
+      targetCtx.fillRect(x + 8, drawY + 14, width - 12, 1);
+    }
+
   } else {
-    // フォールバック
+    // フォールバック（画像がない場合）
     targetCtx.fillStyle = isExhausted ? '#64748b' : `hsl(${120 + zData.hue}, 60%, 50%)`;
     targetCtx.fillRect(x + 4, y + 10, width - 8, height - 14);
     targetCtx.fillRect(x + 2, y, width - 4, 16);
   }
 
-  if (isExhausted) {
+  // 汗エフェクト
+  if (isExhausted && !isKnockback) {
     targetCtx.fillStyle = '#38bdf8';
     targetCtx.fillRect(x + width - 6, y + 4, 3, 5);
   }
@@ -110,9 +148,14 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted,
 
 function generateRandomZombie() {
   const num = Math.floor(Math.random() * 900) + 100;
+  const headList = ['none', 'cap', 'worker'];
+  const eyeList = ['none', 'sunglasses', 'bandage'];
+
   currentZombie = {
     name: `検体 No.${num}`,
     hue: Math.floor(Math.random() * 360),
+    head: headList[Math.floor(Math.random() * headList.length)],
+    eye: eyeList[Math.floor(Math.random() * eyeList.length)],
     speed: Math.floor(Math.random() * 20) + 40,
     power: Math.floor(Math.random() * 20) + 40,
     stamina: Math.floor(Math.random() * 20) + 40
@@ -131,10 +174,10 @@ function updateNurtureUI() {
   const previewCanvas = document.getElementById('zombieCanvas');
   const pCtx = previewCanvas.getContext('2d');
   
-  // ★育成画面もドットくっきり表示
   pCtx.imageSmoothingEnabled = false;
   pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
   
+  // 育成画面でもプログラム着せ替えを反映
   drawZombieCharacter(pCtx, 20, 10, 80, 100, currentZombie, false, globalTime * 0.1);
 
   const cmdBox = document.querySelector('.command-container');
@@ -172,12 +215,18 @@ function startRace() {
   runners[0] = { 
     ...runners[0], 
     spdAttr: currentZombie.speed, powAttr: currentZombie.power, hue: currentZombie.hue,
+    head: currentZombie.head, eye: currentZombie.eye,
     maxStm: currentZombie.stamina * 2.2, stm: currentZombie.stamina * 2.2, dist: 0, boostTimer: 0, knockback: 0 
   };
+
+  const headList = ['none', 'cap', 'worker'];
+  const eyeList = ['none', 'sunglasses', 'bandage'];
 
   for (let i = 1; i < 4; i++) {
     runners[i].dist = 0;
     runners[i].hue = Math.floor(Math.random() * 360);
+    runners[i].head = headList[Math.floor(Math.random() * headList.length)];
+    runners[i].eye = eyeList[Math.floor(Math.random() * eyeList.length)];
     runners[i].spdAttr = currentZombie.speed + (Math.floor(Math.random() * 30) - 15);
     runners[i].powAttr = currentZombie.power + (Math.floor(Math.random() * 30) - 15);
     runners[i].maxStm = (currentZombie.stamina + (Math.floor(Math.random() * 30) - 15)) * 2.2;
@@ -225,7 +274,7 @@ function triggerSkill(index, power) {
     effects.push({ text: `組織妨害`, x: canvas.width / 2, y: 150, color: '#da3633' });
     for (let i = 1; i < 4; i++) {
       const powResistance = Math.floor(runners[i].powAttr * 0.4);
-      runners[i].knockback = Math.max(10, 45 - powResistance);
+      runners[i].knockback = Math.max(15, 60 - powResistance); // ノックバック時間を少し長めに
     }
   } else if (flask.id === 'heal') {
     playerRunner.stm = Math.min(playerRunner.maxStm, playerRunner.stm + 50);
@@ -250,7 +299,7 @@ function aiTriggerSkill(runner) {
     effects.push({ text: `妨害！`, x: runner.x + 24, y: runner.y - 12, color: '#da3633' });
     runners.forEach(r => {
       if (r.id !== runner.id && !r.isBarrier) {
-        r.knockback = Math.max(10, 35 - Math.floor(r.powAttr * 0.3));
+        r.knockback = Math.max(15, 50 - Math.floor(r.powAttr * 0.3));
       }
     });
   } else if (skill === 'heal') {
@@ -274,7 +323,6 @@ function finishRace() {
 }
 
 function update() {
-  // ★全体に対するぼやけ防止
   ctx.imageSmoothingEnabled = false;
 
   if (!isGameRunning) {
@@ -307,7 +355,7 @@ function update() {
     else baseSpeed *= 0.3;
 
     if (r.boostTimer > 0) { r.boostTimer--; baseSpeed *= 1.7; }
-    if (r.knockback > 0) { r.knockback--; baseSpeed *= 0.25; }
+    if (r.knockback > 0) { r.knockback--; baseSpeed *= 0; } // ★ダメージ中は完全に足が止まる
 
     r.dist += baseSpeed;
 
@@ -377,7 +425,6 @@ function update() {
   }
   ctx.setLineDash([]);
 
-  // 描画（Y座標順）
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
     drawZombieCharacter(ctx, r.x - 4, r.y - 12, 48, 56, r, r.stm <= 0, r.dist);
@@ -399,7 +446,7 @@ function update() {
         shakeTime = 8;
         for (let j = 1; j < 4; j++) {
           const powResist = Math.floor(runners[j].powAttr * 0.3);
-          runners[j].knockback = Math.max(8, 35 - powResist);
+          runners[j].knockback = Math.max(15, 60 - powResist);
         }
         effects.push({ text: `衝撃波`, x: p.x, y: p.y, color: '#f87171' });
         particles.splice(i, 1);
