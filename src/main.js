@@ -12,6 +12,19 @@ let totalDistance = 1000;
 let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
+// 📦 牧場（ローカルストレージ）データ管理とエラー復旧
+let myZombies = JSON.parse(localStorage.getItem('myZombies')) || [];
+myZombies.forEach(z => {
+  if (!z.colorInfo) z.colorInfo = { name: '標準', filter: 'none' };
+  if (!z.sizeInfo) z.sizeInfo = { name: '標準', scaleX: 1.0, scaleY: 1.0 };
+  if (!z.style) z.style = '先行';
+  if (z.mentality === undefined) z.mentality = 50;
+  if (z.magic === undefined) z.magic = 50;
+  if (z.remainingTurns === undefined) z.remainingTurns = 0;
+});
+let activeZombieIndex = null;
+let isNurturing = false;
+
 const CITIES = [
   { id: 'tokyo', name: '東京', distance: 1000, color: '#e11d48', bgType: 'normal', desc: '【標準】平均的な基本コース。' },
   { id: 'osaka', name: '大阪', distance: 1000, color: '#ca8a04', bgType: 'normal', desc: '【乱戦】ライバル達の気性が荒い。' },
@@ -29,21 +42,7 @@ const ZOMBIE_COLORS = [
 const ZOMBIE_SIZES = [
   { name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨漢', scaleX: 1.25, scaleY: 1.3 }, { name: '肥満', scaleX: 1.3, scaleY: 0.95 }
 ];
-
 const RUNNING_STYLES = ['逃げ', '先行', '差し', '追込'];
-
-// 📦 牧場（ローカルストレージ）データ管理と【古いデータのエラー復旧処理】
-let myZombies = JSON.parse(localStorage.getItem('myZombies')) || [];
-myZombies.forEach(z => {
-  if (!z.colorInfo) z.colorInfo = ZOMBIE_COLORS[0];
-  if (!z.sizeInfo) z.sizeInfo = ZOMBIE_SIZES[0];
-  if (!z.style) z.style = '先行';
-  if (z.mentality === undefined) z.mentality = 50;
-  if (z.magic === undefined) z.magic = 50;
-  if (z.remainingTurns === undefined) z.remainingTurns = 0;
-});
-let activeZombieIndex = null;
-let isNurturing = false;
 
 const zombieVideo = document.createElement('video');
 zombieVideo.src = '/zombie1.mp4';
@@ -70,14 +69,15 @@ function createExplosion(x, y, color, count, speedMax, sizeBase, type = 'spark')
   }
 }
 
+// 🧪 チャージ速度も適正化（約30〜40秒で100%溜まるバランス）
 const ALL_SKILLS = [
-  { id: 'meteor', name: 'メテオ', icon: '☄️', desc: '全体大ダメージ', speed: 0.035 }, { id: 'volcano', name: 'ボルケーノ', icon: '🌋', desc: '全体停止', speed: 0.038 },
-  { id: 'tornado', name: 'トルネード', icon: '🌪️', desc: '全体後退', speed: 0.040 }, { id: 'frog', name: 'カエルの雨', icon: '🐸', desc: '視界ジャック', speed: 0.060 },
-  { id: 'psycho', name: '追尾サイコガン', icon: '🔫', desc: '最寄り確殺', speed: 0.045 }, { id: 'poison', name: '口から毒液', icon: '🤮', desc: '前方直線レーザー', speed: 0.050 },
-  { id: 'stone', name: '小石投げ', icon: '🪨', desc: '一瞬怯ませる', speed: 0.080 }, { id: 'hard', name: '硬化', icon: '🪨', desc: '無敵(停止)', speed: 0.050 },
-  { id: 'barrier', name: 'バリア', icon: '🛡️', desc: '走りつつ防ぐ', speed: 0.045 }, { id: 'slip', name: 'コケ避け', icon: '🤸', desc: '運ゲー回避', speed: 0.065 },
-  { id: 'heal', name: '体力回復', icon: '💉', desc: 'スタミナ回復', speed: 0.040 }, { id: 'mach', name: 'マッハ', icon: '⚡', desc: '超加速ワープ', speed: 0.035 },
-  { id: 'meat', name: '生肉ばらまき', icon: '🥩', desc: 'ライバル停止', speed: 0.030 }, { id: 'curse', name: '呪い', icon: '👻', desc: '敵ゲージ減少', speed: 0.045 }
+  { id: 'meteor', name: 'メテオ', icon: '☄️', desc: '全体大ダメージ', speed: 0.045 }, { id: 'volcano', name: 'ボルケーノ', icon: '🌋', desc: '全体停止', speed: 0.048 },
+  { id: 'tornado', name: 'トルネード', icon: '🌪️', desc: '全体後退', speed: 0.050 }, { id: 'frog', name: 'カエルの雨', icon: '🐸', desc: '視界ジャック', speed: 0.070 },
+  { id: 'psycho', name: '追尾サイコガン', icon: '🔫', desc: '最寄り確殺', speed: 0.055 }, { id: 'poison', name: '口から毒液', icon: '🤮', desc: '前方ロックオン', speed: 0.060 },
+  { id: 'stone', name: '小石投げ', icon: '🪨', desc: '一瞬怯ませる', speed: 0.090 }, { id: 'hard', name: '硬化', icon: '🪨', desc: '無敵(停止)', speed: 0.060 },
+  { id: 'barrier', name: 'バリア', icon: '🛡️', desc: '走りつつ防ぐ', speed: 0.055 }, { id: 'slip', name: 'コケ避け', icon: '🤸', desc: '運ゲー回避', speed: 0.075 },
+  { id: 'heal', name: '体力回復', icon: '💉', desc: 'スタミナ回復', speed: 0.050 }, { id: 'mach', name: 'マッハ', icon: '⚡', desc: '超加速ワープ', speed: 0.045 },
+  { id: 'meat', name: '生肉ばらまき', icon: '🥩', desc: 'ライバル停止', speed: 0.040 }, { id: 'curse', name: '呪い', icon: '👻', desc: '敵ゲージ減少', speed: 0.055 }
 ];
 let currentFlasks = [];
 
@@ -115,8 +115,7 @@ function drawJapaneseStreetBackground() {
 }
 
 function renderGarage() {
-  const list = document.getElementById('garage-list'); list.innerHTML = '';
-  document.getElementById('garage-count').textContent = myZombies.length;
+  const list = document.getElementById('garage-list'); list.innerHTML = ''; document.getElementById('garage-count').textContent = myZombies.length;
   myZombies.forEach((z, idx) => {
     const card = document.createElement('div'); card.className = 'zombie-card';
     card.innerHTML = `
@@ -141,29 +140,20 @@ function saveZombies() { localStorage.setItem('myZombies', JSON.stringify(myZomb
 
 function doScout() {
   if (myZombies.length >= 3) { alert('牧場がいっぱいです。逃がしてから探してください。'); return; }
-  const cityVal = document.getElementById('scout-city').value;
-  const styleVal = document.getElementById('scout-style').value;
+  const cityVal = document.getElementById('scout-city').value; const styleVal = document.getElementById('scout-style').value;
   let nameVal = document.getElementById('scout-name').value || '名無しゾンビ';
-  
   let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
   if(cityVal==='osaka') mnt+=15; if(cityVal==='nagoya') pow+=15; if(cityVal==='fukuoka') spd+=15; if(cityVal==='sapporo') stm+=15;
-
-  const newZ = {
-    name: nameVal, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)],
-    style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5
-  };
-  myZombies.push(newZ); saveZombies();
-  alert(`${nameVal} を捕獲しました！牧場へ送ります。`);
+  const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5 };
+  myZombies.push(newZ); saveZombies(); alert(`${nameVal} を捕獲しました！牧場へ送ります。`);
   document.getElementById('scout-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden');
 }
 
 function updateNurtureUI() {
-  const z = myZombies[activeZombieIndex];
-  if (!z) return;
+  const z = myZombies[activeZombieIndex]; if (!z) return;
   document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`;
   document.getElementById('nurture-zombie-name').textContent = `[${z.sizeInfo.name}/${z.colorInfo.name}] ${z.name}`;
-  document.getElementById('stat-style').textContent = z.style;
-  document.getElementById('stat-spd').textContent = z.speed; document.getElementById('stat-pow').textContent = z.power; document.getElementById('stat-stm').textContent = z.stamina; document.getElementById('stat-mnt').textContent = z.mentality; document.getElementById('stat-mag').textContent = z.magic;
+  document.getElementById('stat-style').textContent = z.style; document.getElementById('stat-spd').textContent = z.speed; document.getElementById('stat-pow').textContent = z.power; document.getElementById('stat-stm').textContent = z.stamina; document.getElementById('stat-mnt').textContent = z.mentality; document.getElementById('stat-mag').textContent = z.magic;
   const pCtx = document.getElementById('zombieCanvas').getContext('2d'); pCtx.clearRect(0, 0, 120, 120);
   drawZombieCharacter(pCtx, 30, 20, 60, 80, { ...z, knockback: 0 }, updateChromaKeyFrame(60, 80), false);
   const cmdBox = document.querySelector('.command-container');
@@ -182,15 +172,13 @@ function executeCommand(type) {
 
 function showNurtureResult(type) {
   const rand = Math.random(); let resultType = 1; if (rand < 0.20) resultType = 2; else if (rand > 0.85) resultType = 0;
-  let mainStat = ''; let subStat = ''; let mainStatName = ''; let subStatName = '';
+  let mainStat = '', subStat = '', mainStatName = '', subStatName = '';
   if (type === 'spd') { mainStat = 'speed'; subStat = 'mentality'; mainStatName = '速さ'; subStatName = '気性'; } else if (type === 'pow') { mainStat = 'power'; subStat = 'magic'; mainStatName = '力強さ'; subStatName = '異能'; } else if (type === 'stm') { mainStat = 'stamina'; subStat = 'speed'; mainStatName = '体力'; subStatName = '速さ'; }
   let mainInc = resultType === 2 ? 20 : (resultType === 1 ? 10 : 3); let subDec = resultType === 2 ? -5 : (resultType === 1 ? -3 : -1);
-  
   document.getElementById('drumroll-text').classList.add('hidden'); document.getElementById('result-label').classList.remove('hidden'); document.getElementById('result-status-changes').classList.remove('hidden');
   const rLbl = document.getElementById('result-label');
   if (resultType===2){ rLbl.textContent='大成功!!'; rLbl.className='result-label lbl-great'; } else if(resultType===1){ rLbl.textContent='成功'; rLbl.className='result-label lbl-good'; } else { rLbl.textContent='失敗...'; rLbl.className='result-label lbl-bad'; }
   document.getElementById('result-status-changes').innerHTML = `<div>${mainStatName} <span class="change-up">+${mainInc}</span></div><div>${subStatName} <span class="change-down">${subDec}</span></div>`;
-
   setTimeout(() => {
     myZombies[activeZombieIndex][mainStat] += mainInc; myZombies[activeZombieIndex][subStat] += subDec; myZombies[activeZombieIndex].remainingTurns--;
     saveZombies(); document.getElementById('nurture-result-overlay').classList.add('hidden'); isNurturing = false; updateNurtureUI();
@@ -217,16 +205,11 @@ function startRace() {
 }
 
 function setupRaceState() {
-  // 🌟 エラー防止：ゾンビが選択されていない場合はタイトルへ戻す
-  const z = myZombies[activeZombieIndex];
-  if (!z) { alert('出走エラー：検体が見つかりません'); location.reload(); return; }
-
+  const z = myZombies[activeZombieIndex]; if (!z) { alert('出走エラー：検体が見つかりません'); location.reload(); return; }
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
-  document.getElementById('countdown-overlay').classList.remove('hidden');
-  document.getElementById('slime-overlay').classList.remove('active');
+  document.getElementById('countdown-overlay').classList.remove('hidden'); document.getElementById('slime-overlay').classList.remove('active');
   runners.length = 0; particles.length = 0;
 
-  // 🌟 スタミナの適正化（×10に増加し、消費量とのバランスを取る）
   runners.push({ id: 0, name: z.name, x: 20, y: 220, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, skillCd: 9999 });
 
   for (let i = 1; i < 4; i++) {
@@ -244,6 +227,7 @@ function selectRandomFlasks() {
   currentFlasks.forEach((flask, idx) => { document.getElementById(`flask-icon-${idx}`).textContent = flask.icon; document.getElementById(`flask-name-${idx}`).textContent = flask.name; });
 }
 
+// 💥 毒と小石の演出強化
 function triggerSkill(index, power) {
   if (!currentFlasks[index] || raceState !== 'RACING') return;
   const flask = currentFlasks[index]; const isMax = power >= 100; const player = runners[0];
@@ -255,8 +239,26 @@ function triggerSkill(index, power) {
   else if (flask.id === 'tornado') { shakeTime = 10; effects.push({ text: `竜巻!`, x: canvas.width/2, y: 200, color: '#a3e635' }); createExplosion(canvas.width/2, 200, '#a3e635', 50, 8, 3, 'spark'); runners.forEach(r => { if (r.id !== 0) r.dist -= effectivePower * 0.2; }); } 
   else if (flask.id === 'frog') { effects.push({ text: `ベチャッ!!`, x: canvas.width/2, y: 200, color: '#4ade80' }); document.getElementById('slime-overlay').classList.add('active'); setTimeout(() => { document.getElementById('slime-overlay').classList.remove('active'); }, 4000); } 
   else if (flask.id === 'psycho') { let target = runners[1]; runners.forEach(r => { if (r.id !== 0 && Math.abs(r.dist - player.dist) < Math.abs(target.dist - player.dist)) target = r; }); effects.push({ text: `レーザー!`, x: player.x, y: player.y, color: '#38bdf8' }); createExplosion(target.x + 24, target.y + 16, '#38bdf8', 40, 6, 4, 'spark'); applyKnockback(target, effectivePower * 1.5); } 
-  else if (flask.id === 'poison') { effects.push({ text: isMax ? `極太毒ゲロ!` : `ペッ`, x: player.x, y: player.y - 30, color: '#a3e635' }); particles.push({ type: 'poison_laser', x: player.x + 24, y: player.y, width: isMax ? 40 : 10, life: 1.0 }); createExplosion(player.x + 24, player.y - 50, '#a3e635', isMax ? 30 : 10, 2, 8, 'spark'); runners.forEach(r => { if (r.id !== 0 && r.dist > player.dist && Math.abs(r.x - player.x) < 40) applyKnockback(r, effectivePower); }); } 
-  else if (flask.id === 'stone') { effects.push({ text: `小石投げ`, x: player.x, y: player.y - 20, color: '#94a3b8' }); let target = runners[1]; runners.forEach(r => { if (r.id !== 0 && Math.abs(r.dist - player.dist) < Math.abs(target.dist - player.dist)) target = r; }); particles.push({ type: 'stone_throw', startX: player.x + 24, startY: player.y, targetX: target.x + 24, targetY: target.y + 16, progress: 0, targetRunner: target }); } 
+  else if (flask.id === 'poison') { 
+    // 🤮 毒液：前にいる敵すべてをロックオンしてレーザーを撃つ
+    effects.push({ text: isMax ? `広範囲毒ゲロ!` : `ペッ`, x: player.x, y: player.y - 30, color: '#a3e635' });
+    const targets = runners.filter(r => r.id !== 0 && r.dist > player.dist && r.dist - player.dist < 300);
+    if (targets.length > 0) {
+      targets.forEach(t => {
+        particles.push({ type: 'poison_line', startX: player.x+24, startY: player.y, targetX: t.x+24, targetY: t.y+16, width: isMax?20:8, life: 1.0 });
+        applyKnockback(t, effectivePower);
+        effects.push({text: 'POISON!', x: t.x+24, y: t.y-20, color: '#a3e635'});
+      });
+    } else {
+      particles.push({ type: 'poison_laser', x: player.x + 24, y: player.y, width: isMax ? 40 : 10, life: 1.0 });
+    }
+  } 
+  else if (flask.id === 'stone') { 
+    // 🪨 小石：見えやすく、白く、ゆっくり放物線を描く
+    effects.push({ text: `小石投げ`, x: player.x, y: player.y - 20, color: '#94a3b8' }); 
+    let target = runners[1]; runners.forEach(r => { if (r.id !== 0 && Math.abs(r.dist - player.dist) < Math.abs(target.dist - player.dist)) target = r; }); 
+    particles.push({ type: 'stone_throw', startX: player.x + 24, startY: player.y, targetX: target.x + 24, targetY: target.y + 16, progress: 0, targetRunner: target }); 
+  } 
   else if (flask.id === 'hard') { player.isHard = true; player.knockback = effectivePower; effects.push({ text: `完全硬化`, x: player.x + 24, y: player.y - 12, color: '#94a3b8' }); createExplosion(player.x + 24, player.y + 16, '#cbd5e1', 20, 2, 3, 'spark'); setTimeout(() => { player.isHard = false; }, effectivePower * 30); } 
   else if (flask.id === 'barrier') { flashEffect.color = '#a855f7'; player.barrierPower = effectivePower; effects.push({ text: `透過バリア`, x: player.x + 24, y: player.y - 12, color: '#a855f7' }); createExplosion(player.x + 24, player.y + 16, '#a855f7', 30, 4, 3, 'spark'); setTimeout(() => { player.barrierPower = 0; }, 3000); } 
   else if (flask.id === 'slip') { effects.push({ text: `謎ポーズ`, x: player.x + 24, y: player.y - 12, color: '#facc15' }); if (Math.random() > 0.5) player.barrierPower = 50; } 
@@ -307,23 +309,21 @@ function update() {
 
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
-      // 🌟 バランス調整：ベース速度を向上させ、1レースを30秒前後のテンポに
-      let baseSpeed = 0.45 + (r.spdAttr - 50) * 0.005; 
+      // 🌟 バランス修正：基礎スピードを大幅に下げ、約40秒かかる適正なレースへ
+      let baseSpeed = 0.28 + (r.spdAttr - 50) * 0.004; 
       
       if (Math.random() < 0.05) { const mntPenalty = r.mntAttr < 50 ? (50 - r.mntAttr) * 0.01 : 0; baseSpeed -= Math.random() * mntPenalty; }
       
       const progress = r.dist / totalDistance; 
-      // 🌟 バランス調整：スタミナ消費量を調整
-      let stmDrain = currentCity.bgType === 'snow' ? 0.35 : 0.25; 
+      let stmDrain = currentCity.bgType === 'snow' ? 0.08 : 0.06; // スタミナ消費も再調整
       
       if (r.style === '逃げ') { if (progress < 0.35) { baseSpeed *= 1.4; stmDrain *= 1.5; } else if (progress > 0.7) { baseSpeed *= 0.85; } } 
       else if (r.style === '先行') { if (progress > 0.2 && progress < 0.6) { baseSpeed *= 1.15; stmDrain *= 1.1; } } 
       else if (r.style === '差し') { if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.25; stmDrain *= 1.1; } } 
       else if (r.style === '追込') { if (progress > 0.65) { baseSpeed *= 1.45; stmDrain *= 0.9; } }
 
-      // 🌟 バランス調整：スタミナが切れると大きく失速する
       if (r.stm > 0) r.stm -= stmDrain; 
-      else baseSpeed *= 0.4; 
+      else baseSpeed *= 0.3; // バテたら超減速
 
       if (r.boostTimer > 0) { r.boostTimer--; baseSpeed *= 2.0; if (globalTime % 5 === 0) createExplosion(r.x + 24, r.y + 24, '#facc15', 2, 2, 2, 'spark'); }
       if (r.knockback > 0) { r.knockback--; baseSpeed *= 0; }
@@ -356,7 +356,7 @@ function update() {
 
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime--; }
-  if (raceState === 'RACING') scrollY = (scrollY + 0.5) % 60; // スクロール速度もアップ
+  if (raceState === 'RACING') scrollY = (scrollY + 0.25) % 60; // スクロール速度も適正化
   drawJapaneseStreetBackground();
 
   const processedCanvas = updateChromaKeyFrame(54, 64);
@@ -375,10 +375,18 @@ function update() {
     } else if (p.type === 'poison_laser') {
       ctx.fillStyle = '#84cc16'; ctx.fillRect(p.x - p.width/2, 0, p.width, p.y); p.life -= 0.05;
       if (p.life <= 0) particles.splice(i, 1);
+    } else if (p.type === 'poison_line') {
+      // 🤮 毒のロックオンレーザー描画
+      ctx.strokeStyle = '#84cc16'; ctx.lineWidth = p.width; ctx.globalAlpha = p.life;
+      ctx.beginPath(); ctx.moveTo(p.startX, p.startY); ctx.lineTo(p.targetX, p.targetY); ctx.stroke(); ctx.globalAlpha = 1.0;
+      p.life -= 0.05; if (p.life <= 0) particles.splice(i, 1);
     } else if (p.type === 'stone_throw') {
-      p.progress += 0.08; const currentX = p.startX + (p.targetX - p.startX) * p.progress; const currentY = p.startY + (p.targetY - p.startY) * p.progress - Math.sin(p.progress * Math.PI) * 40; 
-      ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.arc(currentX, currentY, 4, 0, Math.PI * 2); ctx.fill();
-      if (p.progress >= 1) { applyKnockback(p.targetRunner, 30); effects.push({ text: `イテッ`, x: currentX, y: currentY, color: '#f8fafc' }); particles.splice(i, 1); }
+      // 🪨 小石の放物線描画（白くて見やすい、少しゆっくり）
+      p.progress += 0.03; 
+      const currentX = p.startX + (p.targetX - p.startX) * p.progress; 
+      const currentY = p.startY + (p.targetY - p.startY) * p.progress - Math.sin(p.progress * Math.PI) * 50; 
+      ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(currentX, currentY, 6, 0, Math.PI * 2); ctx.fill();
+      if (p.progress >= 1) { applyKnockback(p.targetRunner, 40); effects.push({ text: `イテッ`, x: currentX, y: currentY, color: '#f8fafc' }); createExplosion(currentX, currentY, '#f8fafc', 5, 2, 2, 'spark'); particles.splice(i, 1); }
     } else {
       p.x += p.vx; p.y += p.vy; p.life -= p.decay;
       if (p.life <= 0) { particles.splice(i, 1); } else { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); if (p.type === 'frog') ctx.fillRect(p.x, p.y, p.size, p.size); else ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
