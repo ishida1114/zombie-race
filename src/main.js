@@ -12,7 +12,6 @@ let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
 
-// 🖼️ 1. アニメーション画像の読み込み（ユーザー配置の4枚の画像）
 const assets = {
   zombieWalk: [new Image(), new Image(), new Image(), new Image()]
 };
@@ -21,16 +20,14 @@ assets.zombieWalk[1].src = '/zombie_walk2.png';
 assets.zombieWalk[2].src = '/zombie_walk3.png';
 assets.zombieWalk[3].src = '/zombie_walk4.png';
 
-// 🧪 プレイヤー（YOU）
 let currentZombie = {
   name: '検体 No.101',
-  hue: 0, // 色相（0=元の色, 180=反転色など。これでバリエーションを作ります）
+  hue: 0,
   speed: 50, power: 50, stamina: 50
 };
 
 let remainingTurns = 5;
 
-// 🏃 4人の走者
 const runners = [
   { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 0, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
   { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 90, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
@@ -52,57 +49,57 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🎨 本物画像によるアニメーション描画
+// 🎨 本物画像によるアニメーション描画（ドット絵最適化版）
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted, distPhase) {
   targetCtx.save();
 
-  // 足元の影
-  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-  targetCtx.beginPath();
-  targetCtx.ellipse(x + width / 2, y + height - 2, width / 2 - 4, 6, 0, 0, Math.PI * 2);
-  targetCtx.fill();
+  // ★重要：ドット絵の「ぼやけ」を完全にオフにする（くっきり表示）
+  targetCtx.imageSmoothingEnabled = false;
 
-  // 🏃 歩行アニメーションのフレーム（コマ）計算
+  // 🏃 歩行アニメーションのフレーム（コマ）計算とバウンド補正
   let frameIndex = 0;
+  let bounce = 0;
+
   if (!isExhausted) {
-    // 走っている距離に応じて1〜4コマ目をパラパラ切り替え
-    frameIndex = Math.floor(distPhase * 1.5) % 4;
+    // 距離に対してコマ切り替え速度を少し落とし、パラパラ感を軽減
+    const animSpeed = distPhase * 0.8; 
+    frameIndex = Math.floor(animSpeed) % 4;
+    // コマの切り替えに合わせて体を滑らかに上下させる（歩く反動）
+    bounce = Math.abs(Math.sin(animSpeed * Math.PI / 2)) * 3;
   } else {
-    // バテている時はノロノロとしかコマが進まない
-    frameIndex = Math.floor(globalTime * 0.05) % 4;
+    frameIndex = Math.floor(globalTime * 0.04) % 4;
+    bounce = 0; // バテると足を引きずるためバウンドしない
   }
 
-  // 該当するコマの画像を取得
+  // 影
+  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+  targetCtx.beginPath();
+  targetCtx.ellipse(x + width / 2, y + height - 2, width / 2 - 4, 5, 0, 0, Math.PI * 2);
+  targetCtx.fill();
+
   const img = assets.zombieWalk[frameIndex];
 
   if (img.complete && img.naturalWidth > 0) {
-    // 🎨 個体ごとの色違い（Hue）と、バテ状態（グレーアウト・暗転）を適用
     let filterStr = `hue-rotate(${zData.hue}deg)`;
-    if (isExhausted) {
-      filterStr += ' grayscale(80%) brightness(0.6)';
-    }
+    if (isExhausted) filterStr += ' grayscale(80%) brightness(0.6)';
     targetCtx.filter = filterStr;
 
-    // バテている時は前傾姿勢に
-    if (isExhausted) {
-      targetCtx.translate(x + width / 2, y + height);
-      targetCtx.rotate(0.15);
-      targetCtx.translate(-(x + width / 2), -(y + height));
-    }
+    // バウンドと前傾姿勢の適用
+    targetCtx.translate(x + width / 2, y + height - bounce);
+    targetCtx.rotate(isExhausted ? 0.15 : 0); 
+    targetCtx.translate(-(x + width / 2), -(y + height));
 
     // 画像描画
     targetCtx.drawImage(img, x, y, width, height);
     
-    // フィルターリセット
     targetCtx.filter = 'none';
   } else {
-    // 画像読み込み前や失敗時のダミー表示
+    // フォールバック
     targetCtx.fillStyle = isExhausted ? '#64748b' : `hsl(${120 + zData.hue}, 60%, 50%)`;
     targetCtx.fillRect(x + 4, y + 10, width - 8, height - 14);
     targetCtx.fillRect(x + 2, y, width - 4, 16);
   }
 
-  // バテ状態の汗エフェクト
   if (isExhausted) {
     targetCtx.fillStyle = '#38bdf8';
     targetCtx.fillRect(x + width - 6, y + 4, 3, 5);
@@ -115,7 +112,7 @@ function generateRandomZombie() {
   const num = Math.floor(Math.random() * 900) + 100;
   currentZombie = {
     name: `検体 No.${num}`,
-    hue: Math.floor(Math.random() * 360), // ランダムな色バリエーション
+    hue: Math.floor(Math.random() * 360),
     speed: Math.floor(Math.random() * 20) + 40,
     power: Math.floor(Math.random() * 20) + 40,
     stamina: Math.floor(Math.random() * 20) + 40
@@ -133,9 +130,11 @@ function updateNurtureUI() {
 
   const previewCanvas = document.getElementById('zombieCanvas');
   const pCtx = previewCanvas.getContext('2d');
+  
+  // ★育成画面もドットくっきり表示
+  pCtx.imageSmoothingEnabled = false;
   pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
   
-  // 育成画面に大きく表示 (globalTimeを使って歩かせる)
   drawZombieCharacter(pCtx, 20, 10, 80, 100, currentZombie, false, globalTime * 0.1);
 
   const cmdBox = document.querySelector('.command-container');
@@ -170,7 +169,6 @@ function startRace() {
   startTime = Date.now();
   globalTime = 0;
   
-  // プレイヤー反映
   runners[0] = { 
     ...runners[0], 
     spdAttr: currentZombie.speed, powAttr: currentZombie.power, hue: currentZombie.hue,
@@ -179,7 +177,7 @@ function startRace() {
 
   for (let i = 1; i < 4; i++) {
     runners[i].dist = 0;
-    runners[i].hue = Math.floor(Math.random() * 360); // ライバルもランダムな色
+    runners[i].hue = Math.floor(Math.random() * 360);
     runners[i].spdAttr = currentZombie.speed + (Math.floor(Math.random() * 30) - 15);
     runners[i].powAttr = currentZombie.power + (Math.floor(Math.random() * 30) - 15);
     runners[i].maxStm = (currentZombie.stamina + (Math.floor(Math.random() * 30) - 15)) * 2.2;
@@ -276,6 +274,9 @@ function finishRace() {
 }
 
 function update() {
+  // ★全体に対するぼやけ防止
+  ctx.imageSmoothingEnabled = false;
+
   if (!isGameRunning) {
     if (document.getElementById('nurture-screen').classList.contains('hidden') === false) {
       globalTime++;
@@ -376,13 +377,11 @@ function update() {
   }
   ctx.setLineDash([]);
 
-  // 描画（Y座標順）画像のサイズ調整
+  // 描画（Y座標順）
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
-    // 描画サイズは少し大きめの 48x56 で表示
     drawZombieCharacter(ctx, r.x - 4, r.y - 12, 48, 56, r, r.stm <= 0, r.dist);
     
-    // バリア（円）
     if (r.isBarrier) {
       ctx.strokeStyle = '#8957e5';
       ctx.lineWidth = 2;
