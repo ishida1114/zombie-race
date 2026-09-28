@@ -1,308 +1,62 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  user-select: none;
-}
-
-html, body {
-  width: 100%;
-  height: 100%;
-  background-color: #08090d;
-  color: #e2e8f0;
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
-
-#game-container {
-  position: relative;
-  height: min(92vh, 800px);
-  width: calc(min(92vh, 800px) * (360 / 660));
-  max-width: 95vw;
-  background-color: #12151e;
-  border: 1px solid #2d3748;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.9);
-  display: flex;
-  flex-direction: column;
-}
-
-.hidden {
-  display: none !important;
-}
-
-/* タイトル画面 */
-#title-screen {
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle at center, #1a202c 0%, #08090d 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12% 6%;
-  text-align: center;
-}
-
-.title-logo-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
-
-.title-logo-img {
-  width: 85%;
-  max-width: 300px;
-  height: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.9));
-}
-
-.retro-btn {
-  background: #1e293b;
-  border: 1px solid #475569;
-  border-radius: 4px;
-  padding: 12px 36px;
-  cursor: pointer;
-  touch-action: manipulation;
-  z-index: 10;
-}
-
-.retro-btn:active {
-  background: #334155;
-  border-color: #94a3b8;
-}
-
-.retro-btn span {
-  font-size: clamp(14px, 2vh, 17px);
-  letter-spacing: 2px;
-  color: #f1f5f9;
-  font-weight: bold;
-}
-
-/* 育成画面 */
-#nurture-screen {
+/* --- 🌟 都市選択画面のスタイル --- */
+#city-select-screen {
   width: 100%;
   height: 100%;
   background: #0d1117;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px;
+  padding: 10% 20px;
 }
-
-.nurture-header {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #21262d;
-  padding-bottom: 8px;
+.screen-title {
+  font-size: 20px; color: #f8fafc; font-weight: bold; letter-spacing: 2px;
+  margin-bottom: 24px; border-bottom: 2px solid #334155; padding-bottom: 8px;
 }
-
-.nurture-turn, .nurture-name {
-  color: #e2e8f0;
-  font-size: 13px;
-  font-weight: bold;
+.city-container {
+  width: 100%; display: flex; flex-direction: column; gap: 12px;
 }
-
-.zombie-preview-box {
-  width: 120px;
-  height: 120px;
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.city-btn {
+  background: #1e293b; border: 1px solid #475569; border-radius: 6px;
+  padding: 12px 16px; display: flex; flex-direction: column; text-align: left;
+  cursor: pointer; transition: 0.1s;
 }
+.city-btn:active { background: #334155; }
+.city-name { font-size: 18px; color: #f1f5f9; font-weight: bold; }
+.city-desc { font-size: 11px; color: #94a3b8; margin-top: 4px; }
 
-.status-box {
-  width: 100%;
-  background: #161b22;
-  border: 1px solid #21262d;
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* --- 🌟 カットイン画面のスタイル（画像なしでカッコよく） --- */
+#cutin-screen {
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: transparent;
 }
-
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #8b949e;
+.cutin-bg {
+  position: absolute; inset: -20%; background: #e11d48;
+  transform: skewY(-15deg) translateY(-100%);
+  animation: cutinSlide 1.8s cubic-bezier(0.8, 0, 0.2, 1) forwards;
 }
-
-.stat-row span:last-child {
-  color: #38bdf8;
-  font-weight: bold;
+.cutin-content {
+  position: relative; z-index: 2; text-align: center;
+  transform: scale(1.5); opacity: 0;
+  animation: cutinText 1.8s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
 }
-
-.command-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.cutin-en {
+  font-size: 64px; font-weight: 900; color: rgba(255,255,255,0.1);
+  letter-spacing: 8px; line-height: 0.8;
 }
-
-.cmd-btn {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  touch-action: manipulation;
+.cutin-ja {
+  font-size: 48px; font-weight: 900; color: #ffffff;
+  text-shadow: 4px 4px 0 #000; letter-spacing: 12px; margin-top: -10px;
 }
-
-.cmd-btn:active { background: #21262d; }
-.cmd-icon { font-size: 16px; }
-.cmd-text { color: #c9d1d9; font-size: 12px; font-weight: bold; }
-
-/* レース画面 */
-#race-screen {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+@keyframes cutinSlide {
+  0% { transform: skewY(-15deg) translateY(-100%); }
+  20% { transform: skewY(-15deg) translateY(0); }
+  80% { transform: skewY(-15deg) translateY(0); }
+  100% { transform: skewY(-15deg) translateY(100%); }
 }
-
-#progress-bar-container {
-  width: 100%;
-  height: 28px;
-  background: #0d1117;
-  border-bottom: 1px solid #30363d;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  gap: 8px;
-  z-index: 6;
+@keyframes cutinText {
+  0% { transform: scale(1.5); opacity: 0; }
+  20% { transform: scale(1.0); opacity: 1; }
+  80% { transform: scale(1.0); opacity: 1; filter: blur(0); }
+  100% { transform: scale(0.8); opacity: 0; filter: blur(10px); }
 }
-
-.progress-start, .progress-goal { font-size: 11px; font-weight: bold; color: #8b949e; }
-.progress-track { position: relative; flex: 1; height: 6px; background: #21262d; border-radius: 3px; }
-.runner-marker { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #0d1117; transform: translateX(-50%); transition: left 0.1s linear; }
-.runner-marker.p-you { background-color: #38bdf8; z-index: 4; }
-.runner-marker.p-r1  { background-color: #f87171; z-index: 3; }
-.runner-marker.p-r2  { background-color: #a855f7; z-index: 2; }
-.runner-marker.p-r3  { background-color: #facc15; z-index: 1; }
-
-#race-hud {
-  height: 32px;
-  background: #161b22;
-  border-bottom: 1px solid #30363d;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  z-index: 5;
-}
-
-.hud-item { display: flex; align-items: center; gap: 6px; }
-.hud-label { font-size: 11px; color: #8b949e; }
-.hud-val { font-size: 13px; color: #facc15; font-weight: bold; }
-
-.canvas-wrapper {
-  position: relative;
-  width: 100%;
-  height: 68%;
-}
-
-canvas#gameCanvas {
-  width: 100%;
-  height: 100%;
-  background-color: #1a1e28;
-  display: block;
-}
-
-/* ⏱️ ラスト5秒カウントダウン（文字装飾） */
-#countdown-overlay {
-  position: absolute;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 80px;
-  font-weight: 900;
-  color: #ef4444;
-  text-shadow: 0 0 25px rgba(239, 68, 68, 0.9), 4px 4px 0 #000;
-  pointer-events: none;
-  z-index: 10;
-}
-
-#flask-container {
-  width: 100%;
-  height: 27%;
-  background: #0d1117;
-  border-top: 1px solid #21262d;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 2%;
-}
-
-.flask-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  width: 32%;
-  height: 98%;
-  justify-content: center;
-  touch-action: manipulation;
-}
-
-.flask-wrapper {
-  position: relative;
-  width: 48px;
-  height: 52px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid #484f58;
-  border-radius: 4px 4px 14px 14px;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.flask-fill {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 0%;
-  background: linear-gradient(to top, #0284c7, #38bdf8);
-  transition: height 0.1s linear;
-  pointer-events: none;
-}
-
-.flask-card.ready .flask-wrapper { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
-.flask-icon { position: relative; z-index: 2; font-size: 20px; pointer-events: none; }
-.flask-name { font-size: 11px; font-weight: bold; color: #e2e8f0; }
-.flask-desc { font-size: 10px; color: #8b949e; margin-top: 2px; text-align: center; }
-.flask-percent { font-size: 11px; color: #38bdf8; margin-top: 2px; font-weight: bold; }
-
-#result-screen {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 9, 13, 0.96);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12% 6%;
-  z-index: 20;
-}
-
-.result-title { font-size: 18px; color: #8b949e; letter-spacing: 4px; font-weight: bold; }
-.rank-badge { font-size: 52px; color: #facc15; font-weight: bold; }
-.result-detail { font-size: 14px; color: #c9d1d9; }
