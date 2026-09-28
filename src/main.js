@@ -12,68 +12,71 @@ let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
 
-const assets = {
-  zombieWalk: [new Image(), new Image(), new Image(), new Image()]
-};
-assets.zombieWalk[0].src = '/zombie_walk1.png';
-assets.zombieWalk[1].src = '/zombie_walk2.png';
-assets.zombieWalk[2].src = '/zombie_walk3.png';
-assets.zombieWalk[3].src = '/zombie_walk4.png';
+let lastCountdownValue = null;
 
-// 🎨 画像の余白背景（白や黒）を自動で判定して透明化するカラーキーキャッシュ機能
-const transparentCache = {};
+// 🎥 1. mp4動画エレメントの生成と読み込み
+const zombieVideo = document.createElement('video');
+zombieVideo.src = '/zombie1.mp4';
+zombieVideo.loop = true;
+zombieVideo.muted = true;
+zombieVideo.playsInline = true;
+zombieVideo.autoplay = true;
 
-function getTransparentSprite(img) {
-  if (!img.complete || img.naturalWidth === 0) return img;
-  if (transparentCache[img.src]) return transparentCache[img.src];
+// 動画が読み込まれたら自動再生開始
+zombieVideo.addEventListener('canplay', () => {
+  zombieVideo.play().catch(() => {});
+});
 
-  const offCanvas = document.createElement('canvas');
-  offCanvas.width = img.naturalWidth;
-  offCanvas.height = img.naturalHeight;
-  const offCtx = offCanvas.getContext('2d');
-  offCtx.drawImage(img, 0, 0);
+// 🎨 2. mp4動画のクロマキー（緑背景消去）用オフスクリーンCanvas
+const offCanvas = document.createElement('canvas');
+const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
-  const imgData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
-  const data = imgData.data;
+function getChromaKeyFrame(hue) {
+  if (!zombieVideo.videoWidth || zombieVideo.paused) return null;
 
-  // すでに背景が透明な透過PNGの場合は何もせず返す
-  if (data[3] === 0) {
-    transparentCache[img.src] = img;
-    return img;
+  // 動画のサイズに合わせてオフスクリーンCanvasを調整
+  if (offCanvas.width !== zombieVideo.videoWidth) {
+    offCanvas.width = zombieVideo.videoWidth;
+    offCanvas.height = zombieVideo.videoHeight;
   }
 
-  // 四角い画像の左上（0,0）のピクセル色を背景色とみなす
-  const bgR = data[0];
-  const bgG = data[1];
-  const bgB = data[2];
+  // 動画の現在の1フレームを描画
+  offCtx.drawImage(zombieVideo, 0, 0);
 
-  for (let i = 0; i < data.length; i += 4) {
+  // ピクセルデータを取得して「緑色」だけを透明化
+  const imgData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+  const data = imgData.data;
+  const len = data.length;
+
+  for (let i = 0; i < len; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
-    // 背景色に近いピクセルを透明化
-    if (Math.abs(r - bgR) < 35 && Math.abs(g - bgG) < 35 && Math.abs(b - bgB) < 35) {
-      data[i + 3] = 0;
+
+    // グリーンバック判定（緑要素が赤・青より十分に強い部分を透明にする）
+    if (g > 80 && g > r * 1.2 && g > b * 1.2) {
+      data[i + 3] = 0; // 透明化
     }
   }
 
   offCtx.putImageData(imgData, 0, 0);
-  transparentCache[img.src] = offCanvas;
   return offCanvas;
 }
 
 let currentZombie = {
   name: '検体 No.101',
+  hue: 0, // 0=元の色(緑), 90=青系, 180=紫系, 270=赤系
   speed: 50, power: 50, stamina: 50
 };
 
 let remainingTurns = 5;
 
+// 🏃 4人の走者（それぞれ異なる色相 hue を持つ）
 const runners = [
-  { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
-  { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
-  { id: 2, name: 'No.204', x: 180, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
-  { id: 3, name: 'No.305', x: 260, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
+  { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 0, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
+  { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 100, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
+  { id: 2, name: 'No.204', x: 180, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 200, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
+  { id: 3, name: 'No.305', x: 260, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 300, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
 ];
 
 const particles = [];
@@ -90,50 +93,47 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🎨 ゾンビ描画：背景自動透過処理付きのクリーン描画
-function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted, distPhase) {
+// 🎨 ゾンビ描画：mp4動画のクロマキー＋リアルタイム色違い処理
+function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted) {
   targetCtx.save();
-  targetCtx.imageSmoothingEnabled = false;
 
-  let frameIndex = 0;
-  let bounce = 0;
   const isKnockback = zData.knockback > 0;
 
-  if (!isExhausted && !isKnockback) {
-    const animSpeed = distPhase * 0.8; 
-    frameIndex = Math.floor(animSpeed) % 4;
-    bounce = Math.abs(Math.sin(animSpeed * Math.PI / 2)) * 3;
-  } else {
-    frameIndex = Math.floor(globalTime * 0.04) % 4;
-  }
-
-  // 接地影
+  // 足元の接地影
   targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   targetCtx.beginPath();
   targetCtx.ellipse(x + width / 2, y + height - 2, width / 2 - 4, 5, 0, 0, Math.PI * 2);
   targetCtx.fill();
 
-  const rawImg = assets.zombieWalk[frameIndex];
+  // グリーンバックを消去した動画フレームを取得
+  const processedVideoCanvas = getChromaKeyFrame();
 
-  if (rawImg.complete && rawImg.naturalWidth > 0) {
-    const drawY = y - bounce;
+  if (processedVideoCanvas) {
+    // 🎨 色相（Hue）回転で動画の色違いを生成
+    let filterStr = `hue-rotate(${zData.hue}deg)`;
+    if (isExhausted) {
+      filterStr += ' grayscale(80%) brightness(0.6)';
+    }
+    targetCtx.filter = filterStr;
 
-    // 背景切り抜き処理を通した画像を取得
-    const cleanSprite = getTransparentSprite(rawImg);
-
+    // 被弾（のけぞり）モーション
     if (isKnockback) {
       targetCtx.translate(x + width / 2, y + height);
       targetCtx.rotate(-0.35);
       targetCtx.translate(-(x + width / 2), -(y + height));
     }
 
-    targetCtx.drawImage(cleanSprite, x, drawY, width, height);
+    // クロマキー済みの動画フレームを描画
+    targetCtx.drawImage(processedVideoCanvas, x, y, width, height);
 
+    targetCtx.filter = 'none';
   } else {
+    // 動画読み込み中のフォールバック
     targetCtx.fillStyle = '#475569';
     targetCtx.fillRect(x + 4, y + 10, width - 8, height - 14);
   }
 
+  // バテ状態の汗マーク
   if (isExhausted && !isKnockback) {
     targetCtx.fillStyle = '#38bdf8';
     targetCtx.fillRect(x + width - 6, y + 4, 3, 5);
@@ -142,12 +142,11 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted,
   targetCtx.restore();
 }
 
-// 🏙️ シックでクリーンな日常道路描画（余計な白いノイズペイントを全廃止）
+// 🏙️ 日本の公道背景の描画
 function drawJapaneseStreetBackground() {
   ctx.fillStyle = '#1e232e';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 左右側溝
   ctx.fillStyle = '#131720';
   ctx.fillRect(0, 0, 12, canvas.height);
   ctx.fillRect(canvas.width - 12, 0, 12, canvas.height);
@@ -156,7 +155,6 @@ function drawJapaneseStreetBackground() {
   ctx.fillRect(12, 0, 2, canvas.height);
   ctx.fillRect(canvas.width - 14, 0, 2, canvas.height);
 
-  // レーン破線
   ctx.strokeStyle = '#2d3748';
   ctx.lineWidth = 1;
   ctx.setLineDash([12, 18]);
@@ -168,7 +166,6 @@ function drawJapaneseStreetBackground() {
   }
   ctx.setLineDash([]);
 
-  // 中央黄線
   ctx.strokeStyle = '#eab308';
   ctx.lineWidth = 3;
   ctx.setLineDash([24, 20]);
@@ -183,6 +180,7 @@ function generateRandomZombie() {
   const num = Math.floor(Math.random() * 900) + 100;
   currentZombie = {
     name: `検体 No.${num}`,
+    hue: Math.floor(Math.random() * 360), // ガチャでランダムな色相を決定
     speed: Math.floor(Math.random() * 20) + 40,
     power: Math.floor(Math.random() * 20) + 40,
     stamina: Math.floor(Math.random() * 20) + 40
@@ -201,10 +199,10 @@ function updateNurtureUI() {
   const previewCanvas = document.getElementById('zombieCanvas');
   const pCtx = previewCanvas.getContext('2d');
   
-  pCtx.imageSmoothingEnabled = false;
   pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
   
-  drawZombieCharacter(pCtx, 20, 10, 80, 100, currentZombie, false, globalTime * 0.1);
+  // 育成画面でプレビュー描画（大きめサイズ 80x100）
+  drawZombieCharacter(pCtx, 20, 10, 80, 100, currentZombie, false);
 
   const cmdBox = document.querySelector('.command-container');
   const raceBtn = document.getElementById('to-race-btn');
@@ -242,12 +240,13 @@ function startRace() {
 
   runners[0] = { 
     ...runners[0], 
-    spdAttr: currentZombie.speed, powAttr: currentZombie.power,
+    spdAttr: currentZombie.speed, powAttr: currentZombie.power, hue: currentZombie.hue,
     maxStm: currentZombie.stamina * 2.2, stm: currentZombie.stamina * 2.2, dist: 0, boostTimer: 0, knockback: 0 
   };
 
   for (let i = 1; i < 4; i++) {
     runners[i].dist = 0;
+    runners[i].hue = Math.floor(Math.random() * 360); // ライバルもランダム色で登場
     runners[i].spdAttr = currentZombie.speed + (Math.floor(Math.random() * 30) - 15);
     runners[i].powAttr = currentZombie.power + (Math.floor(Math.random() * 30) - 15);
     runners[i].maxStm = (currentZombie.stamina + (Math.floor(Math.random() * 30) - 15)) * 2.2;
@@ -345,8 +344,6 @@ function finishRace() {
 }
 
 function update() {
-  ctx.imageSmoothingEnabled = false;
-
   if (!isGameRunning) {
     if (document.getElementById('nurture-screen').classList.contains('hidden') === false) {
       globalTime++;
@@ -401,7 +398,7 @@ function update() {
   const leadingDist = Math.max(...runners.map(r => r.dist));
   remainingDistance = Math.max(0, totalDistance - leadingDist);
 
-  // ⏱️ 残り200m以下で確実に「5」「4」「3」「2」「1」を画面中央にカウントダウン表示
+  // カウントダウン
   const cdEl = document.getElementById('countdown-overlay');
   if (remainingDistance <= 200 && remainingDistance > 0) {
     const countVal = Math.min(5, Math.max(1, Math.ceil(remainingDistance / 40)));
@@ -437,14 +434,14 @@ function update() {
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6); shakeTime--; }
 
-  // 道路描画
   scrollY = (scrollY + 0.25) % 60;
   drawJapaneseStreetBackground();
 
   // キャラの描画
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
-    drawZombieCharacter(ctx, r.x - 4, r.y - 12, 48, 56, r, r.stm <= 0, r.dist);
+    // 描画サイズ 54x64
+    drawZombieCharacter(ctx, r.x - 6, r.y - 16, 54, 64, r, r.stm <= 0);
     
     if (r.isBarrier) {
       ctx.strokeStyle = '#a855f7';
