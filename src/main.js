@@ -5,6 +5,11 @@ let isGameRunning = false;
 let shakeTime = 0;
 let scrollY = 0;
 
+// 🚶 スピードを「よちよち歩き」の超低速に設定
+let currentScrollSpeed = 0.25;
+const baseScrollSpeed = 0.25;
+
+// レース時間を約60秒間のじっくり展開へ
 let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
@@ -20,36 +25,35 @@ let currentZombie = {
 
 let remainingTurns = 5;
 
-// 🏃 4人の走者（絶対進行距離 dist とスタミナ stm を持つ）
+// 🏃 4人の走者（脚力spd, 筋力pow, 持久stm の3ステータスを保持）
 const runners = [
-  { id: 0, name: 'YOU', x: 25, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, color: '#3fb950', boostTimer: 0, isBarrier: false, knockback: 0 },
-  { id: 1, name: 'No.088', x: 105, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, color: '#f85149', boostTimer: 0, isBarrier: false, knockback: 0 },
-  { id: 2, name: 'No.204', x: 185, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, color: '#a371f7', boostTimer: 0, isBarrier: false, knockback: 0 },
-  { id: 3, name: 'No.305', x: 265, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, color: '#d29922', boostTimer: 0, isBarrier: false, knockback: 0 }
+  { id: 0, name: 'YOU', x: 25, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#3fb950', boostTimer: 0, isBarrier: false, knockback: 0 },
+  { id: 1, name: 'No.088', x: 105, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#f85149', boostTimer: 0, isBarrier: false, knockback: 0 },
+  { id: 2, name: 'No.204', x: 185, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#a371f7', boostTimer: 0, isBarrier: false, knockback: 0 },
+  { id: 3, name: 'No.305', x: 265, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#d29922', boostTimer: 0, isBarrier: false, knockback: 0 }
 ];
 
 const particles = [];
 const effects = [];
 
 const ALL_SKILLS = [
-  { id: 'meteor', name: '細胞活性', icon: '🧪', speed: 0.12 },
-  { id: 'mach', name: '神経加速', icon: '⚡', speed: 0.20 },
-  { id: 'barrier', name: '硬化膜', icon: '🛡️', speed: 0.15 },
-  { id: 'volcano', name: '暴走反応', icon: '🔥', speed: 0.10 },
-  { id: 'meat', name: '組織投与', icon: '🥩', speed: 0.14 },
-  { id: 'heal', name: '強心刺激', icon: '💉', speed: 0.18 }
+  { id: 'meteor', name: '細胞活性', icon: '🧪', speed: 0.15 },
+  { id: 'mach', name: '神経加速', icon: '⚡', speed: 0.22 },
+  { id: 'barrier', name: '硬化膜', icon: '🛡️', speed: 0.18 },
+  { id: 'volcano', name: '暴走反応', icon: '🔥', speed: 0.12 },
+  { id: 'meat', name: '組織投与', icon: '🥩', speed: 0.16 },
+  { id: 'heal', name: '強心刺激', icon: '💉', speed: 0.20 }
 ];
 
 let currentFlasks = [];
 
-// 🎨 ゾンビの描画（バテ状態での汗・フラつき表示付き）
+// 🎨 ゾンビ描画（よちよち歩き・バテ時の演出）
 function drawZombieCharacter(targetCtx, x, y, width, height, color, isExhausted) {
   targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
   targetCtx.beginPath();
   targetCtx.ellipse(x + width / 2, y + height + 2, width / 2, 5, 0, 0, Math.PI * 2);
   targetCtx.fill();
 
-  // バテ状態なら前かがみ・色あせ
   targetCtx.fillStyle = isExhausted ? '#64748b' : color;
   targetCtx.fillRect(x + 4, y + 10, width - 8, height - 10);
   targetCtx.fillRect(x + 2, y, width - 4, 16);
@@ -67,7 +71,7 @@ function drawZombieCharacter(targetCtx, x, y, width, height, color, isExhausted)
 
   if (isExhausted) {
     targetCtx.fillStyle = '#38bdf8';
-    targetCtx.fillRect(x + width, y - 2, 3, 5); // 汗マーク
+    targetCtx.fillRect(x + width, y - 2, 3, 5);
   }
 }
 
@@ -78,9 +82,9 @@ function generateRandomZombie() {
   currentZombie = {
     name: `検体 No.${num}`,
     color: corpseColors[Math.floor(Math.random() * corpseColors.length)],
-    speed: Math.floor(Math.random() * 20) + 45,
-    power: Math.floor(Math.random() * 20) + 45,
-    stamina: Math.floor(Math.random() * 20) + 45
+    speed: Math.floor(Math.random() * 20) + 40,
+    power: Math.floor(Math.random() * 20) + 40,
+    stamina: Math.floor(Math.random() * 20) + 40
   };
 
   remainingTurns = 5;
@@ -133,20 +137,22 @@ function startRace() {
   remainingDistance = totalDistance;
   startTime = Date.now();
   
-  // プレイヤー初期化（ステータス反映）
+  // プレイヤーパラメータ反映
   runners[0].color = currentZombie.color;
   runners[0].spdAttr = currentZombie.speed;
-  runners[0].maxStm = currentZombie.stamina * 1.8;
+  runners[0].powAttr = currentZombie.power;
+  runners[0].maxStm = currentZombie.stamina * 2.2;
   runners[0].stm = runners[0].maxStm;
   runners[0].dist = 0;
   runners[0].boostTimer = 0;
   runners[0].knockback = 0;
 
-  // ライバル3人の初期化
+  // ライバル3人のパラメータ設定
   for (let i = 1; i < 4; i++) {
     runners[i].dist = 0;
-    runners[i].spdAttr = Math.floor(Math.random() * 20) + 50;
-    runners[i].maxStm = Math.floor(Math.random() * 30) + 80;
+    runners[i].spdAttr = Math.floor(Math.random() * 20) + 45;
+    runners[i].powAttr = Math.floor(Math.random() * 20) + 45;
+    runners[i].maxStm = Math.floor(Math.random() * 30) + 90;
     runners[i].stm = runners[i].maxStm;
     runners[i].boostTimer = 0;
     runners[i].knockback = 0;
@@ -180,19 +186,23 @@ function triggerSkill(index, power) {
     particles.push({ type: 'meteor', x: canvas.width / 2, y: -50, targetY: 200, radius: isMax ? 35 : 18, power: power });
     if (isMax) shakeTime = 12;
   } else if (flask.id === 'mach') {
-    playerRunner.boostTimer = Math.floor((power / 100) * 120);
+    playerRunner.boostTimer = Math.floor((power / 100) * 140);
     effects.push({ text: `神経加速`, x: playerRunner.x + 19, y: playerRunner.y - 12, color: '#388bfd' });
   } else if (flask.id === 'barrier') {
     playerRunner.isBarrier = true;
-    setTimeout(() => { playerRunner.isBarrier = false; }, (power / 100) * 3000);
+    setTimeout(() => { playerRunner.isBarrier = false; }, (power / 100) * 3500);
     effects.push({ text: `組織硬化`, x: playerRunner.x + 19, y: playerRunner.y - 12, color: '#8957e5' });
   } else if (flask.id === 'meat') {
     effects.push({ text: `組織妨害`, x: canvas.width / 2, y: 150, color: '#da3633' });
-    for (let i = 1; i < 4; i++) runners[i].knockback = 40;
+    // 筋力（パワー）が高いライバルほど減速時間が短い
+    for (let i = 1; i < 4; i++) {
+      const powResistance = Math.floor(runners[i].powAttr * 0.4);
+      runners[i].knockback = Math.max(10, 45 - powResistance);
+    }
   } else if (flask.id === 'heal') {
-    playerRunner.stm = Math.min(playerRunner.maxStm, playerRunner.stm + 40); // スタミナ回復！
-    playerRunner.boostTimer = 60;
-    effects.push({ text: `強心刺激（スタミナ回復）`, x: playerRunner.x + 19, y: playerRunner.y - 12, color: '#238636' });
+    playerRunner.stm = Math.min(playerRunner.maxStm, playerRunner.stm + 50);
+    playerRunner.boostTimer = 70;
+    effects.push({ text: `強心刺激（スタミナ補給）`, x: playerRunner.x + 19, y: playerRunner.y - 12, color: '#238636' });
   }
 
   flask.charge = 0;
@@ -231,31 +241,51 @@ function update() {
     }
   });
 
-  // 4人の物理速度・スタミナ消費・ノックバック計算
+  // 4人の物理・スタミナ・パワー押し合い計算
   for (let i = 0; i < 4; i++) {
     const r = runners[i];
-    let baseSpeed = r.spdAttr * 0.012; // 基礎移動力
+    
+    // スピード（脚力）差はマイルド（0.003倍）にし、よちよち横並びを基本にする
+    let baseSpeed = 0.22 + (r.spdAttr - 50) * 0.003;
 
     // スタミナ消費処理
     if (r.stm > 0) {
-      r.stm -= 0.08; // 走るとスタミナ減少
+      r.stm -= 0.06;
     } else {
-      baseSpeed *= 0.35; // ★スタミナ切れで超失速！
+      baseSpeed *= 0.3; // スタミナ切れで超ノロノロ化
     }
 
-    // ブースト＆被弾減速
-    if (r.boostTimer > 0) { r.boostTimer--; baseSpeed *= 1.8; }
-    if (r.knockback > 0) { r.knockback--; baseSpeed *= 0.2; }
+    if (r.boostTimer > 0) { r.boostTimer--; baseSpeed *= 1.7; }
+    if (r.knockback > 0) { r.knockback--; baseSpeed *= 0.25; }
 
-    // ライバルの終盤スパートAI
-    if (i !== 0 && remainingDistance < 300 && Math.random() < 0.02) {
-      r.boostTimer = 30; // 終盤追い上げ
+    // ライバルのラストスパート（残り300m）
+    if (i !== 0 && remainingDistance < 300 && Math.random() < 0.015) {
+      r.boostTimer = 40;
     }
 
     r.dist += baseSpeed;
   }
 
-  // レース全体の進行度（トップ走者の距離）
+  // 💥 筋力（パワー）による「体当たり・押し合い」処理
+  for (let i = 0; i < 4; i++) {
+    for (let j = i + 1; j < 4; j++) {
+      const r1 = runners[i];
+      const r2 = runners[j];
+      
+      // 前後距離が近く、隣接レーン同士の場合に接触判定
+      if (Math.abs(r1.dist - r2.dist) < 8) {
+        if (r1.powAttr > r2.powAttr) {
+          r1.dist += 0.08; // 筋力が高い方が前に押し出る
+          r2.dist -= 0.08;
+        } else if (r2.powAttr > r1.powAttr) {
+          r2.dist += 0.08;
+          r1.dist -= 0.08;
+        }
+      }
+    }
+  }
+
+  // レース進行度計算
   const leadingDist = Math.max(...runners.map(r => r.dist));
   remainingDistance = Math.max(0, totalDistance - leadingDist);
 
@@ -264,15 +294,13 @@ function update() {
     return;
   }
 
-  // ★集団相対カメラの計算（1位〜4位が常に画面中央200px以内に収まる補正）
+  // 集団カメラ位置合わせ（よちよち並走画面）
   const avgDist = runners.reduce((acc, r) => acc + r.dist, 0) / 4;
   for (let i = 0; i < 4; i++) {
     const r = runners[i];
-    const diffFromAvg = r.dist - avgDist; // 集団平均からのリード距離
-    // Y座標：画面中央(220px) を基準に、リードしているほど上に(Yが小さく)、遅れているほど下に(Yが大きく)
-    r.y = 220 - diffFromAvg * 3.5;
+    const diffFromAvg = r.dist - avgDist;
+    r.y = 220 - diffFromAvg * 4.5;
     
-    // 画面外に出て埋まらないよう上下限界クランプ (80px 〜 340px)
     if (r.y < 80) r.y = 80;
     if (r.y > 340) r.y = 340;
   }
@@ -284,7 +312,6 @@ function update() {
   const myRank = sortedRunners.findIndex(r => r.id === 0) + 1;
   document.getElementById('hud-rank').textContent = `${myRank}位 / 4人`;
 
-  // 横一列ミニマップの位置反映
   for (let i = 0; i < 4; i++) {
     const r = runners[i];
     const ratio = Math.min(1, Math.max(0, r.dist / totalDistance));
@@ -294,16 +321,16 @@ function update() {
     }
   }
 
-  // 描画処理
+  // 描画
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6); shakeTime--; }
 
   ctx.fillStyle = '#1e222a';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  scrollY = (scrollY + 0.8) % 60;
+  // 背景スクロールを超低速（よちよち歩き）化
+  scrollY = (scrollY + 0.25) % 60;
 
-  // 4レーン道路描画
   ctx.fillStyle = '#12151c';
   ctx.fillRect(0, 0, 10, canvas.height);
   ctx.fillRect(canvas.width - 10, 0, 10, canvas.height);
@@ -319,7 +346,7 @@ function update() {
   }
   ctx.setLineDash([]);
 
-  // 4人のゾンビ描画（重なり順制御）
+  // 4人の描画
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
     drawZombieCharacter(ctx, r.x, r.y, 38, 42, r.color, r.stm <= 0);
@@ -340,7 +367,11 @@ function update() {
       p.y += 8; ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
       if (p.y >= p.targetY) {
         shakeTime = 8;
-        for (let j = 1; j < 4; j++) runners[j].knockback = 35;
+        // 筋力（パワー）が高いライバルほど吹き飛ばされにくい
+        for (let j = 1; j < 4; j++) {
+          const powResist = Math.floor(runners[j].powAttr * 0.3);
+          runners[j].knockback = Math.max(8, 35 - powResist);
+        }
         effects.push({ text: `衝撃波`, x: p.x, y: p.y, color: '#f87171' });
         particles.splice(i, 1);
       }
