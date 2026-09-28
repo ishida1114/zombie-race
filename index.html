@@ -2,174 +2,147 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0" />
   <title>ZOMBIE DERBY : 異能survivors</title>
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
   <div id="game-container">
-    <!-- 🏠 タイトル画面 -->
+    <!-- 🏠 タイトル -->
     <div id="title-screen">
-      <div class="title-logo-wrapper">
-        <img src="/zombielogo.webp" alt="ZOMBIE DERBY 異能survivors" class="title-logo-img" />
-      </div>
+      <div class="title-logo-wrapper"><img src="/zombielogo.webp" alt="ZOMBIE DERBY" class="title-logo-img" /></div>
+      <div class="money-display">所持金: <span id="title-money">0</span> Z$</div>
       <div class="title-btn-group">
         <button id="nav-scout-btn" class="retro-btn"><span>探索 (スカウト)</span></button>
         <button id="nav-garage-btn" class="retro-btn"><span>牧場 (ガレージ)</span></button>
       </div>
     </div>
 
-    <!-- 🔦 スカウト画面 -->
+    <!-- 🔦 スカウト -->
     <div id="scout-screen" class="hidden">
       <div class="screen-title">検体スカウト</div>
       <div class="scout-form">
-        <div class="form-group">
-          <label>探索エリア (特化パラメータ)</label>
+        <div class="form-group"><label>探索エリア</label>
           <select id="scout-city">
-            <option value="tokyo">東京 (バランス)</option>
-            <option value="osaka">大阪 (気性荒め/サボりやすい)</option>
-            <option value="nagoya">名古屋 (パワー/防御特化)</option>
-            <option value="fukuoka">福岡 (スピード特化)</option>
-            <option value="sapporo">札幌 (スタミナ特化)</option>
+            <option value="tokyo">東京 (バランス)</option><option value="osaka">大阪 (気性難/サボり)</option>
+            <option value="nagoya">名古屋 (防御特化)</option><option value="fukuoka">福岡 (速度特化)</option>
+            <option value="sapporo">札幌 (体力特化)</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>希望の脚質</label>
+        <div class="form-group"><label>希望の脚質</label>
           <select id="scout-style">
-            <option value="逃げ">逃げ (序盤型・燃費悪)</option>
-            <option value="先行">先行 (中盤型)</option>
-            <option value="差し">差し (後半型)</option>
-            <option value="追込">追込 (終盤特化・燃費良)</option>
+            <option value="逃げ">逃げ (序盤型・燃費悪)</option><option value="先行">先行 (中盤型)</option>
+            <option value="差し">差し (後半型)</option><option value="追込">追込 (終盤特化・燃費良)</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>検体名 (命名)</label>
-          <input type="text" id="scout-name" value="名無しゾンビ" maxlength="10">
-        </div>
+        <div class="form-group"><label>検体名</label><input type="text" id="scout-name" value="名無し" maxlength="8"></div>
         <button id="do-scout-btn" class="retro-btn" style="margin-top: 20px;"><span>探索開始</span></button>
         <button id="back-to-title-1" class="retro-btn-small" style="margin-top: 10px;">戻る</button>
       </div>
-
-      <!-- 発見！カットイン演出 -->
-      <div id="found-overlay" class="hidden">
-        <div class="found-light"></div>
-        <div class="found-text">発見！！</div>
-      </div>
+      <div id="found-overlay" class="hidden"><div class="found-light"></div><div class="found-text">発見！！</div></div>
     </div>
 
-    <!-- 🧪 育成画面（捕獲直後に強制移動） -->
+    <!-- 🧪 育成 -->
     <div id="nurture-screen" class="hidden">
-      <div class="nurture-header">
-        <span class="nurture-turn" id="nurture-turn-txt">残 5 調整</span>
-        <span class="nurture-name" id="nurture-zombie-name">検体 No.101</span>
-      </div>
-      <div class="zombie-preview-box">
-        <canvas id="zombieCanvas" width="160" height="160"></canvas>
-      </div>
+      <div class="nurture-header"><span class="nurture-turn" id="nurture-turn-txt">残 5 調整</span><span class="nurture-name" id="nurture-zombie-name">名前</span></div>
+      <div class="zombie-preview-box"><canvas id="zombieCanvas" width="160" height="160"></canvas></div>
       <div class="status-box">
-        <div class="stat-row"><span>脚質（戦法）</span><span id="stat-style" style="color:#facc15;">先行</span></div>
-        <div class="stat-row"><span>速さ</span><span id="stat-spd">50</span></div>
-        <div class="stat-row"><span>力強さ（防御）</span><span id="stat-pow">50</span></div>
-        <div class="stat-row"><span>体力</span><span id="stat-stm">50</span></div>
-        <div class="stat-row"><span>気性（ムラ）</span><span id="stat-mnt">50</span></div>
-        <div class="stat-row"><span>異能（スキル力）</span><span id="stat-mag">50</span></div>
+        <div class="stat-row"><span>脚質</span><span id="stat-style" style="color:#facc15;">先行</span></div>
+        <div class="stat-row"><span>速さ</span><span id="stat-spd">50</span></div><div class="stat-row"><span>力強さ</span><span id="stat-pow">50</span></div>
+        <div class="stat-row"><span>体力</span><span id="stat-stm">50</span></div><div class="stat-row"><span>気性</span><span id="stat-mnt">50</span></div>
+        <div class="stat-row"><span>異能</span><span id="stat-mag">50</span></div>
       </div>
       <div class="command-container">
-        <button class="cmd-btn" data-cmd="spd"><span class="cmd-icon">⚡</span><span class="cmd-text">神経投与（速さ↑ / 気性↓）</span></button>
-        <button class="cmd-btn" data-cmd="pow"><span class="cmd-icon">💥</span><span class="cmd-text">筋組織拡張（力強さ↑ / 異能↓）</span></button>
-        <button class="cmd-btn" data-cmd="stm"><span class="cmd-icon">🧪</span><span class="cmd-text">防腐処理（体力↑ / 速さ↓）</span></button>
+        <button class="cmd-btn" data-cmd="spd"><span class="cmd-icon">⚡</span><span class="cmd-text">神経投与（速↑ / 気↓）</span></button>
+        <button class="cmd-btn" data-cmd="pow"><span class="cmd-icon">💥</span><span class="cmd-text">筋組織拡張（力↑ / 魔↓）</span></button>
+        <button class="cmd-btn" data-cmd="stm"><span class="cmd-icon">🧪</span><span class="cmd-text">防腐処理（体↑ / 速↓）</span></button>
       </div>
-      <button id="send-to-garage-btn" class="retro-btn hidden" style="margin-top: 10px;"><span>牧場へ送る</span></button>
-
-      <!-- 育成ドラムロール演出 -->
-      <div id="nurture-result-overlay" class="hidden">
-        <div id="drumroll-text" class="drumroll-text">調整中...</div>
-        <div id="result-label" class="result-label hidden">成功</div>
-        <div id="result-status-changes" class="result-status-changes hidden"></div>
-      </div>
+      <button id="send-to-garage-btn" class="retro-btn hidden" style="margin-top: 10px;"><span>完了</span></button>
+      <div id="nurture-result-overlay" class="hidden"><div id="drumroll-text" class="drumroll-text">調整中...</div><div id="result-label" class="result-label hidden">成功</div><div id="result-status-changes" class="result-status-changes hidden"></div></div>
     </div>
 
-    <!-- 🧟 牧場（ガレージ）画面 -->
+    <!-- 🗑️ 牧場入れ替え -->
+    <div id="release-screen" class="hidden">
+      <div class="screen-title">牧場が満杯です<br><span style="font-size:12px;color:#f87171;">1体を逃がしてください</span></div>
+      <div id="release-list" class="garage-list"></div>
+    </div>
+
+    <!-- 🧟 牧場 -->
     <div id="garage-screen" class="hidden">
-      <div class="screen-title">保有検体 (<span id="garage-count">0</span>/3)</div>
-      <div id="garage-list" class="garage-list">
-        <!-- JSでゾンビリストが生成されます -->
+      <div class="screen-title" style="display:flex; justify-content:space-between;">
+        <span>保有検体 (<span id="garage-count">0</span>/3)</span>
+        <span style="color:#facc15; font-size:16px;">💰 <span id="garage-money">0</span> Z$</span>
       </div>
-      <button id="back-to-title-2" class="retro-btn-small" style="margin-top: 20px;">タイトルへ戻る</button>
+      <div id="garage-list" class="garage-list"></div>
+      <button id="back-to-title-2" class="retro-btn-small" style="margin-top: 20px;">タイトルへ</button>
     </div>
 
-    <!-- 🏙️ レース出走：都市選択画面 -->
+    <!-- 🛒 強化ショップ -->
+    <div id="shop-screen" class="hidden">
+      <div class="screen-title">闇市 (強化) - <span id="shop-target-name" style="color:#facc15;"></span></div>
+      <div style="text-align:right; margin-bottom:10px; color:#facc15; font-weight:bold;">所持金: <span id="shop-money">0</span> Z$</div>
+      <div class="shop-list">
+        <button class="shop-btn" data-stat="speed" data-price="300"><span class="s-icon">⚡</span><div class="s-desc"><strong>違法神経液</strong><br>速さ +3</div><span class="s-price">300 Z$</span></button>
+        <button class="shop-btn" data-stat="power" data-price="300"><span class="s-icon">💥</span><div class="s-desc"><strong>合成プロテイン</strong><br>力強さ +3</div><span class="s-price">300 Z$</span></button>
+        <button class="shop-btn" data-stat="stamina" data-price="300"><span class="s-icon">🧪</span><div class="s-desc"><strong>特濃ホルマリン</strong><br>体力 +3</div><span class="s-price">300 Z$</span></button>
+        <button class="shop-btn" data-stat="mentality" data-price="300"><span class="s-icon">🧠</span><div class="s-desc"><strong>謎の脳ミソ</strong><br>気性 +3</div><span class="s-price">300 Z$</span></button>
+        <button class="shop-btn" data-stat="magic" data-price="300"><span class="s-icon">🔮</span><div class="s-desc"><strong>宇宙生物の血</strong><br>異能 +3</div><span class="s-price">300 Z$</span></button>
+      </div>
+      <button id="close-shop-btn" class="retro-btn-small" style="margin-top: 20px;">牧場へ戻る</button>
+    </div>
+
+    <!-- 🏙️ 都市選択 -->
     <div id="city-select-screen" class="hidden">
-      <div class="screen-title">遠征先を選択</div>
-      <div id="city-list" class="city-container"></div>
-      <button id="back-to-garage-1" class="retro-btn-small" style="margin-top: 20px;">牧場へ戻る</button>
+      <div class="screen-title">遠征先を選択</div><div id="city-list" class="city-container"></div>
+      <button id="back-to-garage-1" class="retro-btn-small" style="margin-top: 20px;">戻る</button>
     </div>
 
-    <!-- ⚡ 都市カットイン画面 -->
-    <div id="cutin-screen" class="hidden">
-      <div class="cutin-bg"></div>
-      <div class="cutin-content">
-        <div id="cutin-en" class="cutin-en">TOKYO</div>
-        <div id="cutin-ja" class="cutin-ja">東京</div>
-      </div>
+    <!-- 🐎 パドック (出馬表) -->
+    <div id="paddock-screen" class="hidden">
+      <div class="paddock-title">出走検体 紹介</div>
+      <div id="paddock-grid" class="paddock-grid"></div>
     </div>
 
-    <!-- 🏁 レース画面 -->
+    <!-- 🏁 レース -->
     <div id="race-screen" class="hidden">
       <div id="progress-bar-container">
         <div class="progress-start">S</div>
         <div class="progress-track">
-          <div id="runner-marker-0" class="runner-marker p-you"></div>
-          <div id="runner-marker-1" class="runner-marker p-r1"></div>
-          <div id="runner-marker-2" class="runner-marker p-r2"></div>
-          <div id="runner-marker-3" class="runner-marker p-r3"></div>
+          <div id="runner-marker-0" class="runner-marker p-you"></div><div id="runner-marker-1" class="runner-marker p-r1"></div><div id="runner-marker-2" class="runner-marker p-r2"></div><div id="runner-marker-3" class="runner-marker p-r3"></div>
         </div>
         <div class="progress-goal">G</div>
       </div>
-
-      <div id="race-hud">
-        <div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位 / 4人</span></div>
-        <div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">400m</span></div>
-      </div>
-
+      <div id="race-hud"><div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位</span></div><div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">400m</span></div></div>
       <div class="canvas-wrapper">
-        <canvas id="gameCanvas" width="480" height="600"></canvas> <!-- サイズを大型化 -->
-        <div id="countdown-overlay" class="hidden">5</div>
-        <div id="finish-overlay" class="hidden">FINISH!!</div>
-        <div id="slime-overlay" class="hidden"></div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="countdown-overlay" class="hidden">5</div><div id="finish-overlay" class="hidden">FINISH!!</div><div id="slime-overlay" class="hidden"></div>
       </div>
       
-      <div id="flask-container">
-        <div class="flask-card" data-index="0">
-          <div class="flask-wrapper"><div class="flask-fill" id="flask-fill-0"></div><div class="flask-icon" id="flask-icon-0">🧪</div></div>
-          <span class="flask-name" id="flask-name-0">スキル1</span><span class="flask-percent" id="flask-percent-0">0%</span>
+      <!-- 下部UI: プレイヤーステータス ＆ スキル -->
+      <div id="player-hud-container">
+        <div class="player-info-bar">
+          <div class="p-name" id="p-name-disp">名前</div>
+          <div class="p-stm-wrap"><div class="p-stm-fill" id="p-stm-bar"></div></div>
         </div>
-        <div class="flask-card" data-index="1">
-          <div class="flask-wrapper"><div class="flask-fill" id="flask-fill-1"></div><div class="flask-icon" id="flask-icon-1">⚡</div></div>
-          <span class="flask-name" id="flask-name-1">スキル2</span><span class="flask-percent" id="flask-percent-1">0%</span>
-        </div>
-        <div class="flask-card" data-index="2">
-          <div class="flask-wrapper"><div class="flask-fill" id="flask-fill-2"></div><div class="flask-icon" id="flask-icon-2">🛡️</div></div>
-          <span class="flask-name" id="flask-name-2">スキル3</span><span class="flask-percent" id="flask-percent-2">0%</span>
+        <div id="skill-container">
+          <div class="syringe-card" id="syringe-btn">
+            <div class="s-icon-bg">💉</div><div class="s-info"><span class="s-name" id="syringe-name">???</span><span class="s-tag">手動 1回</span></div>
+          </div>
+          <div class="flask-card"><div class="flask-fill" id="flask-fill-0"></div><div class="f-icon">🧪</div><span class="f-name" id="flask-name-0">スキル1</span><span class="f-tag">AUTO</span></div>
+          <div class="flask-card"><div class="flask-fill" id="flask-fill-1"></div><div class="f-icon">🧪</div><span class="f-name" id="flask-name-1">スキル2</span><span class="f-tag">AUTO</span></div>
         </div>
       </div>
     </div>
 
-    <!-- 🏆 表彰台＆リザルト画面 -->
+    <!-- 🏆 リザルト -->
     <div id="result-screen" class="hidden">
       <div class="result-title">RACE RESULT</div>
-      <div class="podium-canvas-wrapper">
-        <canvas id="podiumCanvas" width="360" height="240"></canvas>
-      </div>
-      <div id="result-list" class="result-list-container">
-        <!-- JSで順位リストが生成されます -->
-      </div>
-      <button id="retry-btn" class="retro-btn" style="margin-top: 16px;">
-        <span>牧場へ戻る</span>
-      </button>
+      <div class="podium-canvas-wrapper"><canvas id="podiumCanvas" width="360" height="240"></canvas></div>
+      <div id="result-list" class="result-list-container"></div>
+      <div id="prize-money" style="font-size:24px; color:#facc15; font-weight:bold; margin: 16px 0;">賞金: 0 Z$</div>
+      <button id="retry-btn" class="retro-btn"><span>牧場へ戻る</span></button>
     </div>
   </div>
-
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
