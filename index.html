@@ -1,13 +1,23 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>zombie-race</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>ZOMBIE RACE</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- レース用Canvas画面 -->
+    <canvas id="gameCanvas" width="360" height="640"></canvas>
+    
+    <!-- フラスコUIエリア -->
+    <div id="flask-ui">
+      <div class="flask" data-index="0"><div class="fill"></div><span>スキル1</span></div>
+      <div class="flask" data-index="1"><div class="fill"></div><span>スキル2</span></div>
+      <div class="flask" data-index="2"><div class="fill"></div><span>スキル3</span></div>
+    </div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
 </html>
