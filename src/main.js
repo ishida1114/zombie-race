@@ -4,17 +4,20 @@ const ctx = canvas.getContext('2d');
 let isGameRunning = false;
 let shakeTime = 0;
 let scrollY = 0;
-let currentScrollSpeed = 4;
-const baseScrollSpeed = 4;
 
+// 🚶 スピードを大幅に低下（「歩く」くらいのじわじわ移動）
+let currentScrollSpeed = 0.8;
+const baseScrollSpeed = 0.8;
+
+// 距離を長く（約35〜45秒間のデッドヒート）
 let remainingDistance = 1000;
+const totalDistance = 1000;
 let startTime = 0;
 
-// 🧪 ゾンビデータ（冷徹な検体パラメータ）
+// 🧪 プレイヤー（YOU）
 let currentZombie = {
   name: '検体 No.101',
-  color: '#526058', // 灰緑色
-  eyeType: 'hollow',
+  color: '#3fb950', // 緑
   speed: 50,
   power: 50,
   stamina: 50
@@ -22,11 +25,12 @@ let currentZombie = {
 
 let remainingTurns = 5;
 
-// プレイヤー＆ライバル（冷たいトーンのゾンビ群）
-const player = { x: 155, y: 380, width: 44, height: 44, color: '#526058', isBarrier: false, barrierTimer: 0, boostTimer: 0 };
-const rivals = [
-  { x: 55, y: 150, width: 44, height: 44, color: '#4a5568', name: '検体 No.088', knockback: 0 },
-  { x: 255, y: 220, width: 44, height: 44, color: '#634e56', name: '検体 No.204', knockback: 0 }
+// 🏃 4人の走者（プレイヤー ＋ AI 3人）
+const runners = [
+  { id: 0, name: 'YOU', x: 25, y: 280, width: 38, height: 42, color: '#3fb950', speedBonus: 0, boostTimer: 0, isBarrier: false, knockback: 0 },
+  { id: 1, name: 'No.088', x: 105, y: 285, width: 38, height: 42, color: '#f85149', speedBonus: 0, boostTimer: 0, isBarrier: false, knockback: 0 },
+  { id: 2, name: 'No.204', x: 185, y: 275, width: 38, height: 42, color: '#a371f7', speedBonus: 0, boostTimer: 0, isBarrier: false, knockback: 0 },
+  { id: 3, name: 'No.305', x: 265, y: 290, width: 38, height: 42, color: '#d29922', speedBonus: 0, boostTimer: 0, isBarrier: false, knockback: 0 }
 ];
 
 const particles = [];
@@ -38,45 +42,53 @@ const ALL_SKILLS = [
   { id: 'barrier', name: '硬化膜', icon: '🛡️', speed: 0.15 },
   { id: 'volcano', name: '暴走反応', icon: '🔥', speed: 0.10 },
   { id: 'meat', name: '組織投与', icon: '🥩', speed: 0.14 },
-  { id: 'heal', name: '強心剤', icon: '💉', speed: 0.18 }
+  { id: 'heal', name: '強心刺激', icon: '💉', speed: 0.18 }
 ];
 
 let currentFlasks = [];
 
-// 🎨 ゾンビ描画：過度なアニメ表現を排除した淡々とした個体描画
-function drawZombieCharacter(targetCtx, x, y, width, height, color, eyeType) {
-  // 人型素体（落ちついた死体色）
+// 🎨 ゾンビの描画（影、落ちくぼんだ目、検体タグなどのグラフィック表現）
+function drawZombieCharacter(targetCtx, x, y, width, height, color) {
+  // 足元の影
+  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+  targetCtx.beginPath();
+  targetCtx.ellipse(x + width / 2, y + height + 2, width / 2, 6, 0, 0, Math.PI * 2);
+  targetCtx.fill();
+
+  // 胴体（うつむいて歩く前傾姿勢）
   targetCtx.fillStyle = color;
-  targetCtx.fillRect(x, y, width, height);
+  targetCtx.fillRect(x + 4, y + 10, width - 8, height - 10);
 
-  // 落ちくぼんだ眼孔
-  targetCtx.fillStyle = '#0f1117';
-  targetCtx.fillRect(x + 9, y + 10, 8, 8);
-  targetCtx.fillRect(x + 27, y + 10, 8, 8);
+  // 頭部
+  targetCtx.fillRect(x + 2, y, width - 4, 16);
 
-  // 小さな虹彩（無機質な視線）
-  targetCtx.fillStyle = '#d1d5db';
-  targetCtx.fillRect(x + 12, y + 13, 2, 2);
-  targetCtx.fillRect(x + 30, y + 13, 2, 2);
+  // 落ちくぼんだ目（暗がり）
+  targetCtx.fillStyle = '#090a0f';
+  targetCtx.fillRect(x + 8, y + 4, 7, 7);
+  targetCtx.fillRect(x + 23, y + 4, 7, 7);
 
-  // 口元・縫い痕
-  targetCtx.fillStyle = '#111827';
-  targetCtx.fillRect(x + 12, y + 26, 20, 2);
-  
-  // 耳タグ／管理識別記号風のマーキング
-  targetCtx.fillStyle = '#e5e7eb';
-  targetCtx.fillRect(x + 2, y + 4, 4, 6);
+  // 小さな光のない目（白）
+  targetCtx.fillStyle = '#cbd5e1';
+  targetCtx.fillRect(x + 10, y + 6, 2, 2);
+  targetCtx.fillRect(x + 25, y + 6, 2, 2);
+
+  // 口（引きつった傷痕）
+  targetCtx.fillStyle = '#1e293b';
+  targetCtx.fillRect(x + 10, y + 13, 18, 1);
+
+  // 検体識別マーカー（首元の耳タグ風）
+  targetCtx.fillStyle = '#f87171';
+  targetCtx.fillRect(x, y + 16, 4, 6);
 }
 
-// 🧪 個体スカウト（淡々とした抽選）
+// 🧪 育成スカウト
 function generateRandomZombie() {
-  const corpseColors = ['#4a584e', '#3d4d5c', '#5a4d4d', '#525252']; // 灰緑, 灰青, くすみ赤紫, 暗灰色
+  const corpseColors = ['#3fb950', '#2ea043', '#238636'];
   const num = Math.floor(Math.random() * 900) + 100;
 
   currentZombie = {
     name: `検体 No.${num}`,
     color: corpseColors[Math.floor(Math.random() * corpseColors.length)],
-    eyeType: 'hollow',
     speed: Math.floor(Math.random() * 15) + 45,
     power: Math.floor(Math.random() * 15) + 45,
     stamina: Math.floor(Math.random() * 15) + 45
@@ -96,7 +108,7 @@ function updateNurtureUI() {
   const previewCanvas = document.getElementById('zombieCanvas');
   const pCtx = previewCanvas.getContext('2d');
   pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-  drawZombieCharacter(pCtx, 38, 38, 44, 44, currentZombie.color, currentZombie.eyeType);
+  drawZombieCharacter(pCtx, 41, 38, 38, 42, currentZombie.color);
 
   const cmdBox = document.querySelector('.command-container');
   const raceBtn = document.getElementById('to-race-btn');
@@ -121,6 +133,7 @@ function executeCommand(type) {
   updateNurtureUI();
 }
 
+// 🏁 レース開始
 function startRace() {
   if (isGameRunning) return;
 
@@ -129,14 +142,21 @@ function startRace() {
   document.getElementById('result-screen').classList.add('hidden');
   document.getElementById('race-screen').classList.remove('hidden');
 
-  remainingDistance = 1000;
+  remainingDistance = totalDistance;
   startTime = Date.now();
   
-  player.color = currentZombie.color;
-  player.y = 380;
-  rivals[0].y = 150;
-  rivals[1].y = 220;
-  
+  // 4人の初期設定（中央〜やや下のスタート位置）
+  runners[0].color = currentZombie.color;
+  runners[0].speedBonus = (currentZombie.speed - 50) * 0.01;
+  runners[0].y = 280;
+
+  for (let i = 1; i < 4; i++) {
+    runners[i].y = 280 + (Math.random() - 0.5) * 20;
+    runners[i].speedBonus = (Math.random() - 0.5) * 0.1;
+    runners[i].boostTimer = 0;
+    runners[i].knockback = 0;
+  }
+
   selectRandomFlasks();
   
   isGameRunning = true;
@@ -159,23 +179,24 @@ function triggerSkill(index, power) {
   if (!currentFlasks[index]) return;
   const flask = currentFlasks[index];
   const isMax = power >= 100;
+  const playerRunner = runners[0];
 
   if (flask.id === 'meteor' || flask.id === 'volcano') {
     particles.push({ type: 'meteor', x: canvas.width / 2, y: -50, targetY: 200, radius: isMax ? 35 : 18, power: power });
     if (isMax) shakeTime = 12;
   } else if (flask.id === 'mach') {
-    player.boostTimer = Math.floor((power / 100) * 100);
-    effects.push({ text: `加速反応`, x: player.x + 22, y: player.y - 12, color: '#388bfd' });
+    playerRunner.boostTimer = Math.floor((power / 100) * 120);
+    effects.push({ text: `加速反応`, x: playerRunner.x + 19, y: playerRunner.y - 12, color: '#388bfd' });
   } else if (flask.id === 'barrier') {
-    player.isBarrier = true;
-    player.barrierTimer = Math.floor((power / 100) * 150);
-    effects.push({ text: `組織硬化`, x: player.x + 22, y: player.y - 12, color: '#8957e5' });
+    playerRunner.isBarrier = true;
+    setTimeout(() => { playerRunner.isBarrier = false; }, (power / 100) * 3000);
+    effects.push({ text: `組織硬化`, x: playerRunner.x + 19, y: playerRunner.y - 12, color: '#8957e5' });
   } else if (flask.id === 'meat') {
     effects.push({ text: `組織投擲`, x: canvas.width / 2, y: 150, color: '#da3633' });
-    rivals.forEach(r => r.knockback = 30);
+    for (let i = 1; i < 4; i++) runners[i].knockback = 35;
   } else if (flask.id === 'heal') {
-    effects.push({ text: `強心刺激`, x: player.x + 22, y: player.y - 12, color: '#238636' });
-    player.boostTimer = 50;
+    effects.push({ text: `強心刺激`, x: playerRunner.x + 19, y: playerRunner.y - 12, color: '#238636' });
+    playerRunner.boostTimer = 80;
   }
 
   flask.charge = 0;
@@ -185,20 +206,15 @@ function finishRace() {
   isGameRunning = false;
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
 
-  const allRunners = [
-    { name: 'YOU', y: player.y },
-    { name: rivals[0].name, y: rivals[0].y },
-    { name: rivals[1].name, y: rivals[1].y }
-  ].sort((a, b) => a.y - b.y);
-
-  const playerRank = allRunners.findIndex(r => r.name === 'YOU') + 1;
-  const rankText = playerRank === 1 ? '1位' : playerRank === 2 ? '2位' : '3位';
+  // 順位確定（Y座標が小さい＝画面の上＝先頭）
+  const sorted = [...runners].sort((a, b) => a.y - b.y);
+  const playerRank = sorted.findIndex(r => r.id === 0) + 1;
 
   const badgeEl = document.getElementById('result-rank-badge');
   const detailEl = document.getElementById('result-detail');
   const resultScreen = document.getElementById('result-screen');
 
-  if (badgeEl) badgeEl.textContent = rankText;
+  if (badgeEl) badgeEl.textContent = `${playerRank}位`;
   if (detailEl) detailEl.textContent = `走破タイム: ${elapsedSec}秒`;
   if (resultScreen) resultScreen.classList.remove('hidden');
 }
@@ -206,6 +222,7 @@ function finishRace() {
 function update() {
   if (!isGameRunning) return;
 
+  // フラスコ充填
   currentFlasks.forEach((flask, index) => {
     if (flask.charge < flask.max) flask.charge = Math.min(flask.max, flask.charge + flask.speed);
     const fillEl = document.getElementById(`flask-fill-${index}`);
@@ -219,93 +236,133 @@ function update() {
     }
   });
 
-  const spdBonus = (currentZombie.speed - 50) * 0.02;
-  if (player.boostTimer > 0) { player.boostTimer--; currentScrollSpeed = (baseScrollSpeed + spdBonus) * 2.0; }
-  else { currentScrollSpeed = baseScrollSpeed + spdBonus; }
+  // レース進行とノロノロ速度の移動計算
+  const playerRunner = runners[0];
+  let pSpeed = baseScrollSpeed + playerRunner.speedBonus;
+  if (playerRunner.boostTimer > 0) {
+    playerRunner.boostTimer--;
+    pSpeed *= 1.8;
+  }
 
-  remainingDistance -= Math.floor(currentScrollSpeed * 0.4);
-  if (remainingDistance <= 0) { remainingDistance = 0; finishRace(); return; }
+  remainingDistance -= pSpeed * 0.25;
+  if (remainingDistance <= 0) {
+    remainingDistance = 0;
+    finishRace();
+    return;
+  }
 
-  const distEl = document.getElementById('hud-dist');
-  const rankEl = document.getElementById('hud-rank');
-  if (distEl) distEl.textContent = `${remainingDistance}m`;
-  
-  const currentRank = [player.y, rivals[0].y, rivals[1].y].sort((a, b) => a - b).indexOf(player.y) + 1;
-  if (rankEl) rankEl.textContent = `${currentRank}位`;
+  // 4人の個別AI・ノックバック・前後ゆらぎ移動
+  for (let i = 0; i < 4; i++) {
+    const r = runners[i];
+    if (r.knockback > 0) {
+      r.y += 1.5; // 被弾・踏みとどまり減速
+      r.knockback--;
+    } else {
+      // プレイヤー基準の相対位置ズレ
+      if (i !== 0) {
+        let rSpeed = baseScrollSpeed + r.speedBonus;
+        if (r.boostTimer > 0) { r.boostTimer--; rSpeed *= 1.8; }
+        
+        // プレイヤーとの相対移動（じわじわ差が開く・縮まる）
+        r.y += (pSpeed - rSpeed) * 0.8 + (Math.random() - 0.5) * 0.4;
+      }
+    }
+    
+    // 移動可能可視領域（画面中央部を維持）
+    if (r.y < 80) r.y = 80;
+    if (r.y > 360) r.y = 360;
+  }
 
-  if (player.barrierTimer > 0) { player.barrierTimer--; if (player.barrierTimer === 0) player.isBarrier = false; }
+  // HUD & 進行ミニマップ（横一列メーター）の更新
+  document.getElementById('hud-dist').textContent = `${Math.floor(remainingDistance)}m`;
 
+  const sortedRunners = [...runners].sort((a, b) => a.y - b.y);
+  const myRank = sortedRunners.findIndex(r => r.id === 0) + 1;
+  document.getElementById('hud-rank').textContent = `${myRank}位 / 4人`;
+
+  // 横一列のミニマップ進行度反映
+  const progressRatio = 1 - (remainingDistance / totalDistance);
+  for (let i = 0; i < 4; i++) {
+    const r = runners[i];
+    // Y座標の位置ズレをコース全体の微差としてメーターに反映
+    const relativeOffset = (280 - r.y) / 5000;
+    const individualProgress = Math.min(1, Math.max(0, progressRatio + relativeOffset));
+    
+    const markerEl = document.getElementById(`runner-marker-${i}`);
+    if (markerEl) {
+      markerEl.style.left = `${individualProgress * 100}%`;
+    }
+  }
+
+  // 描画処理
   ctx.save();
-  if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8); shakeTime--; }
+  if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6); shakeTime--; }
 
-  // 1. 日本の日常のアスファルト道路
-  ctx.fillStyle = '#21252d';
+  // 1. 日常のアスファルト道路
+  ctx.fillStyle = '#1e222a';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  scrollY = (scrollY + currentScrollSpeed) % 80;
+  scrollY = (scrollY + pSpeed) % 60;
 
-  // 2. 側道・ガードレール
-  ctx.fillStyle = '#16191f';
-  ctx.fillRect(0, 0, 18, canvas.height);
-  ctx.fillRect(canvas.width - 18, 0, 18, canvas.height);
+  // 2. 4レーンの道路仕切り（歩道・レーン線）
+  ctx.fillStyle = '#12151c';
+  ctx.fillRect(0, 0, 10, canvas.height);
+  ctx.fillRect(canvas.width - 10, 0, 10, canvas.height);
 
-  ctx.fillStyle = '#9ca3af';
-  ctx.fillRect(18, 0, 2, canvas.height);
-  ctx.fillRect(canvas.width - 20, 0, 2, canvas.height);
-
-  // 3. 黄色のセンターライン（日本の一般的な道路）
-  ctx.strokeStyle = '#eab308';
-  ctx.lineWidth = 4;
-  ctx.setLineDash([24, 24]);
-  ctx.beginPath();
-  ctx.moveTo(canvas.width / 2, -80 + scrollY);
-  ctx.lineTo(canvas.width / 2, canvas.height + 80 + scrollY);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // レーン境界線
-  ctx.strokeStyle = '#374151';
+  ctx.strokeStyle = '#333a48';
   ctx.lineWidth = 1;
-  ctx.setLineDash([12, 18]);
-  for (let x of [100, 260]) {
+  ctx.setLineDash([10, 15]);
+  for (let x of [90, 170, 250]) {
     ctx.beginPath();
-    ctx.moveTo(x, -80 + scrollY);
-    ctx.lineTo(x, canvas.height + 80 + scrollY);
+    ctx.moveTo(x, -60 + scrollY);
+    ctx.lineTo(x, canvas.height + 60 + scrollY);
     ctx.stroke();
   }
   ctx.setLineDash([]);
 
-  // ライバル描画
-  rivals.forEach(r => {
-    if (r.knockback > 0) { r.y += 3; r.knockback--; }
-    else { if (player.boostTimer > 0) r.y += 2; else r.y += (Math.random() - 0.48) * 1.5; }
-    if (r.y < 50) r.y = 50; if (r.y > 380) r.y = 380;
-    drawZombieCharacter(ctx, r.x, r.y, r.width, r.height, r.color, 'hollow');
+  // 黄色の薄い中央線
+  ctx.strokeStyle = '#ca8a04';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([20, 20]);
+  ctx.beginPath();
+  ctx.moveTo(170, -60 + scrollY);
+  ctx.lineTo(170, canvas.height + 60 + scrollY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 3. 4人のゾンビ描画
+  // Y座標順（後ろから順に描画して重なりを自然にする）
+  const drawOrder = [...runners].sort((a, b) => b.y - a.y);
+  drawOrder.forEach(r => {
+    drawZombieCharacter(ctx, r.x, r.y, r.width, r.height, r.color);
+
+    if (r.isBarrier) {
+      ctx.strokeStyle = '#8957e5';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(r.x + 19, r.y + 20, 26, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   });
 
-  // プレイヤー描画
-  drawZombieCharacter(ctx, player.x, player.y, player.width, player.height, player.color, currentZombie.eyeType);
-
-  if (player.isBarrier) {
-    ctx.strokeStyle = '#8957e5'; ctx.lineWidth = 2; ctx.beginPath();
-    ctx.arc(player.x + 22, player.y + 22, 30, 0, Math.PI * 2); ctx.stroke();
-  }
-
+  // パーティクル（メテオ）
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     if (p.type === 'meteor') {
-      p.y += 10; ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+      p.y += 8; ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
       if (p.y >= p.targetY) {
-        shakeTime = 10; rivals.forEach(r => r.knockback = Math.floor((p.power / 100) * 25));
+        shakeTime = 8;
+        for (let j = 1; j < 4; j++) runners[j].knockback = Math.floor((p.power / 100) * 25);
         effects.push({ text: `衝撃波`, x: p.x, y: p.y, color: '#f87171' });
         particles.splice(i, 1);
       }
     }
   }
 
+  // テキスト演出
   for (let i = effects.length - 1; i >= 0; i--) {
-    const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(eff.text, eff.x, eff.y); eff.y -= 1.2; if (eff.y < 150) effects.splice(i, 1);
+    const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(eff.text, eff.x, eff.y); eff.y -= 0.8; if (eff.y < 120) effects.splice(i, 1);
   }
 
   ctx.restore();
