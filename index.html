@@ -8,7 +8,7 @@
 </head>
 <body>
   <div id="game-container">
-    <!-- 1. タイトル画面 -->
+    <!-- タイトル画面 -->
     <div id="title-screen">
       <div class="title-logo-wrapper">
         <img src="/zombielogo.webp" alt="ZOMBIE DERBY 異能survivors" class="title-logo-img" />
@@ -18,15 +18,13 @@
       </button>
     </div>
 
-    <!-- 🌟 1.5 都市選択画面（新設） -->
+    <!-- 都市選択画面 -->
     <div id="city-select-screen" class="hidden">
       <div class="screen-title">遠征先を選択</div>
-      <div id="city-list" class="city-container">
-        <!-- JSでボタンが生成されます -->
-      </div>
+      <div id="city-list" class="city-container"></div>
     </div>
 
-    <!-- 2. 育成画面 -->
+    <!-- 育成画面 -->
     <div id="nurture-screen" class="hidden">
       <div class="nurture-header">
         <span class="nurture-turn" id="nurture-turn-txt">残 5 調整</span>
@@ -64,9 +62,16 @@
       <button id="to-race-btn" class="retro-btn hidden">
         <span>出走準備完了</span>
       </button>
+
+      <!-- 🌟 育成中のドラムロール＆結果発表オーバーレイ -->
+      <div id="nurture-result-overlay" class="hidden">
+        <div id="drumroll-text" class="drumroll-text">調整中...</div>
+        <div id="result-label" class="result-label hidden">成功</div>
+        <div id="result-status-changes" class="result-status-changes hidden"></div>
+      </div>
     </div>
 
-    <!-- 🌟 2.5 派手なカットイン画面（画像不要・CSS演出） -->
+    <!-- カットイン画面 -->
     <div id="cutin-screen" class="hidden">
       <div class="cutin-bg"></div>
       <div class="cutin-content">
@@ -75,7 +80,7 @@
       </div>
     </div>
 
-    <!-- 3. レース画面 -->
+    <!-- レース画面 -->
     <div id="race-screen" class="hidden">
       <div id="progress-bar-container">
         <div class="progress-start">S</div>
@@ -114,7 +119,7 @@
       </div>
     </div>
 
-    <!-- 4. リザルト画面 -->
+    <!-- リザルト画面 -->
     <div id="result-screen" class="hidden">
       <div class="result-title">RACE RESULT</div>
       <div id="result-rank-badge" class="rank-badge">1位</div>

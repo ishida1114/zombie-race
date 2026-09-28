@@ -9,12 +9,11 @@ let scrollY = 0;
 let globalTime = 0;
 
 let remainingDistance = 1000;
-let totalDistance = 1000; // 都市によって変動
+let totalDistance = 1000;
 let startTime = 0;
 
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
-// 🏙️ 都市データと特色
 const CITIES = [
   { id: 'tokyo', name: '東京', distance: 1000, color: '#e11d48', bgType: 'normal', desc: '【標準】すべてが平均的な基本コース。' },
   { id: 'osaka', name: '大阪', distance: 1000, color: '#ca8a04', bgType: 'normal', desc: '【乱戦】ライバル達の気性が荒く、速度ムラが激しい。' },
@@ -69,14 +68,12 @@ function updateChromaKeyFrame(targetW, targetH) {
 }
 
 let currentZombie = {
-  name: '検体 No.101',
-  colorInfo: ZOMBIE_COLORS[0],
-  sizeInfo: ZOMBIE_SIZES[0],
-  style: '先行',
+  name: '検体 No.101', colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[0], style: '先行',
   speed: 50, power: 50, stamina: 50, mentality: 50, magic: 50
 };
 
 let remainingTurns = 5;
+let isNurturing = false; // 🌟 連打防止と演出状態の管理フラグ
 
 const runners = [];
 const effects = [];
@@ -87,11 +84,8 @@ function createExplosion(x, y, color, count, speedMax, sizeBase, type = 'spark')
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * speedMax;
     particles.push({
-      x: x, y: y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - (type === 'fire' ? 2 : 0),
-      life: 1.0, decay: Math.random() * 0.03 + 0.015,
-      color: color, size: Math.random() * sizeBase + sizeBase/2, type: type
+      x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - (type === 'fire' ? 2 : 0),
+      life: 1.0, decay: Math.random() * 0.03 + 0.015, color: color, size: Math.random() * sizeBase + sizeBase/2, type: type
     });
   }
 }
@@ -145,9 +139,7 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
   const isKnockback = zData.knockback > 0;
 
   targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-  targetCtx.beginPath();
-  targetCtx.ellipse(x + width / 2, y + height - 2, (width / 2 - 4) * zData.sizeInfo.scaleX, 5, 0, 0, Math.PI * 2);
-  targetCtx.fill();
+  targetCtx.beginPath(); targetCtx.ellipse(x + width / 2, y + height - 2, (width / 2 - 4) * zData.sizeInfo.scaleX, 5, 0, 0, Math.PI * 2); targetCtx.fill();
 
   if (processedCanvas) {
     targetCtx.translate(x + width / 2, y + height);
@@ -167,51 +159,33 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
 
   if (isExhausted && !isKnockback && !zData.isHard) {
     targetCtx.translate(x + width / 2, y + height);
-    targetCtx.fillStyle = '#38bdf8';
-    targetCtx.fillRect((width / 2 - 4) * zData.sizeInfo.scaleX, -height + 4, 3, 5);
+    targetCtx.fillStyle = '#38bdf8'; targetCtx.fillRect((width / 2 - 4) * zData.sizeInfo.scaleX, -height + 4, 3, 5);
   }
   targetCtx.restore();
 }
 
 function drawJapaneseStreetBackground() {
-  // 札幌（雪道）とその他の都市で背景色を変える
   const isSnow = currentCity.bgType === 'snow';
-  
-  ctx.fillStyle = isSnow ? '#e2e8f0' : '#1e232e';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = isSnow ? '#cbd5e1' : '#131720';
-  ctx.fillRect(0, 0, 12, canvas.height);
-  ctx.fillRect(canvas.width - 12, 0, 12, canvas.height);
-  ctx.fillStyle = isSnow ? '#94a3b8' : '#374151';
-  ctx.fillRect(12, 0, 2, canvas.height);
-  ctx.fillRect(canvas.width - 14, 0, 2, canvas.height);
+  ctx.fillStyle = isSnow ? '#e2e8f0' : '#1e232e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = isSnow ? '#cbd5e1' : '#131720'; ctx.fillRect(0, 0, 12, canvas.height); ctx.fillRect(canvas.width - 12, 0, 12, canvas.height);
+  ctx.fillStyle = isSnow ? '#94a3b8' : '#374151'; ctx.fillRect(12, 0, 2, canvas.height); ctx.fillRect(canvas.width - 14, 0, 2, canvas.height);
 
-  ctx.strokeStyle = isSnow ? '#94a3b8' : '#2d3748';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([12, 18]);
-  for (let x of [90, 170, 250]) {
-    ctx.beginPath(); ctx.moveTo(x, -60 + scrollY); ctx.lineTo(x, canvas.height + 60 + scrollY); ctx.stroke();
-  }
+  ctx.strokeStyle = isSnow ? '#94a3b8' : '#2d3748'; ctx.lineWidth = 1; ctx.setLineDash([12, 18]);
+  for (let x of [90, 170, 250]) { ctx.beginPath(); ctx.moveTo(x, -60 + scrollY); ctx.lineTo(x, canvas.height + 60 + scrollY); ctx.stroke(); }
   ctx.setLineDash([]);
-  ctx.strokeStyle = '#eab308';
-  ctx.lineWidth = 3;
-  ctx.setLineDash([24, 20]);
-  ctx.beginPath(); ctx.moveTo(170, -60 + scrollY); ctx.lineTo(170, canvas.height + 60 + scrollY); ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.strokeStyle = '#eab308'; ctx.lineWidth = 3; ctx.setLineDash([24, 20]);
+  ctx.beginPath(); ctx.moveTo(170, -60 + scrollY); ctx.lineTo(170, canvas.height + 60 + scrollY); ctx.stroke(); ctx.setLineDash([]);
 }
 
 function renderCitySelect() {
   const container = document.getElementById('city-list');
   container.innerHTML = '';
   CITIES.forEach(city => {
-    const btn = document.createElement('div');
-    btn.className = 'city-btn';
+    const btn = document.createElement('div'); btn.className = 'city-btn';
     btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)</span><span class="city-desc">${city.desc}</span>`;
     btn.onclick = () => {
-      currentCity = city;
-      document.getElementById('city-select-screen').classList.add('hidden');
-      document.getElementById('nurture-screen').classList.remove('hidden');
-      generateRandomZombie();
+      currentCity = city; document.getElementById('city-select-screen').classList.add('hidden');
+      document.getElementById('nurture-screen').classList.remove('hidden'); generateRandomZombie();
     };
     container.appendChild(btn);
   });
@@ -220,18 +194,12 @@ function renderCitySelect() {
 function generateRandomZombie() {
   const num = Math.floor(Math.random() * 900) + 100;
   currentZombie = {
-    name: `検体 No.${num}`,
-    colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)],
-    sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)],
-    style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)],
-    speed: Math.floor(Math.random() * 20) + 40,
-    power: Math.floor(Math.random() * 20) + 40,
-    stamina: Math.floor(Math.random() * 20) + 40,
-    mentality: Math.floor(Math.random() * 20) + 40,
-    magic: Math.floor(Math.random() * 20) + 40
+    name: `検体 No.${num}`, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)],
+    sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)],
+    speed: Math.floor(Math.random() * 20) + 40, power: Math.floor(Math.random() * 20) + 40, stamina: Math.floor(Math.random() * 20) + 40,
+    mentality: Math.floor(Math.random() * 20) + 40, magic: Math.floor(Math.random() * 20) + 40
   };
-  remainingTurns = 5;
-  updateNurtureUI();
+  remainingTurns = 5; updateNurtureUI();
 }
 
 function updateNurtureUI() {
@@ -263,20 +231,88 @@ function updateNurtureUI() {
   }
 }
 
+// 🌟 ドラムロールとランダム成功判定の実行
 function executeCommand(type) {
-  if (remainingTurns <= 0) return;
-  if (type === 'spd') { currentZombie.speed += 10; currentZombie.mentality -= 3; }
-  if (type === 'pow') { currentZombie.power += 10; currentZombie.magic -= 3; }
-  if (type === 'stm') { currentZombie.stamina += 10; currentZombie.speed -= 3; }
-  remainingTurns--;
-  updateNurtureUI();
+  if (remainingTurns <= 0 || isNurturing) return; // 実行中や0ターンの時は無効
+  isNurturing = true;
+
+  const overlay = document.getElementById('nurture-result-overlay');
+  const drumrollEl = document.getElementById('drumroll-text');
+  const changesEl = document.getElementById('result-status-changes');
+  const resultLabelEl = document.getElementById('result-label');
+  
+  overlay.classList.remove('hidden');
+  drumrollEl.classList.remove('hidden');
+  resultLabelEl.classList.add('hidden');
+  changesEl.classList.add('hidden');
+
+  // パラパラアニメーション（ドラムロール）
+  let tick = 0;
+  const drumInterval = setInterval(() => {
+    tick++;
+    // 数字が激しく変わる演出
+    drumrollEl.textContent = `調整中 ${Math.floor(Math.random() * 89 + 10)} ...`;
+    if (tick > 12) { // 約1.2秒後に結果発表
+      clearInterval(drumInterval);
+      showNurtureResult(type);
+    }
+  }, 100);
+}
+
+// 🌟 結果の表示とステータスへの反映
+function showNurtureResult(type) {
+  const rand = Math.random();
+  let resultType = 1; // 1: 成功 (65%)
+  if (rand < 0.20) resultType = 2; // 2: 大成功 (20%)
+  else if (rand > 0.85) resultType = 0; // 0: 失敗 (15%)
+
+  let mainStat = ''; let subStat = ''; let mainStatName = ''; let subStatName = '';
+  if (type === 'spd') { mainStat = 'speed'; subStat = 'mentality'; mainStatName = '速さ'; subStatName = '気性'; }
+  else if (type === 'pow') { mainStat = 'power'; subStat = 'magic'; mainStatName = '力強さ'; subStatName = '異能'; }
+  else if (type === 'stm') { mainStat = 'stamina'; subStat = 'speed'; mainStatName = '体力'; subStatName = '速さ'; }
+
+  let mainInc = 0; let subDec = 0;
+  if (resultType === 2) { mainInc = 20; subDec = -5; }
+  else if (resultType === 1) { mainInc = 10; subDec = -3; }
+  else { mainInc = 3; subDec = -1; } // 失敗時はほとんど上がらない
+
+  const drumrollEl = document.getElementById('drumroll-text');
+  const changesEl = document.getElementById('result-status-changes');
+  const resultLabelEl = document.getElementById('result-label');
+
+  drumrollEl.classList.add('hidden');
+  resultLabelEl.classList.remove('hidden');
+  changesEl.classList.remove('hidden');
+
+  if (resultType === 2) {
+    resultLabelEl.textContent = '大成功!!'; resultLabelEl.className = 'result-label lbl-great';
+  } else if (resultType === 1) {
+    resultLabelEl.textContent = '成功'; resultLabelEl.className = 'result-label lbl-good';
+  } else {
+    resultLabelEl.textContent = '失敗...'; resultLabelEl.className = 'result-label lbl-bad';
+  }
+
+  changesEl.innerHTML = `
+    <div>${mainStatName} <span class="change-up">+${mainInc}</span></div>
+    <div>${subStatName} <span class="change-down">${subDec}</span></div>
+  `;
+
+  // 結果を見せてから1.5秒後に実際に数値を加算して画面に戻る
+  setTimeout(() => {
+    currentZombie[mainStat] += mainInc;
+    currentZombie[subStat] += subDec;
+    remainingTurns--;
+    
+    document.getElementById('nurture-result-overlay').classList.add('hidden');
+    isNurturing = false;
+    updateNurtureUI();
+  }, 1500);
 }
 
 function startRace() {
   if (isGameRunning) return;
   document.getElementById('nurture-screen').classList.add('hidden');
 
-  // 🌟 カットイン演出の実行
   const cutin = document.getElementById('cutin-screen');
   const bg = cutin.querySelector('.cutin-bg');
   const enText = document.getElementById('cutin-en');
@@ -288,7 +324,6 @@ function startRace() {
   
   cutin.classList.remove('hidden');
 
-  // アニメーション完了後にレース画面へ
   setTimeout(() => {
     cutin.classList.add('hidden');
     document.getElementById('race-screen').classList.remove('hidden');
@@ -297,15 +332,11 @@ function startRace() {
 }
 
 function setupRaceState() {
-  totalDistance = currentCity.distance;
-  remainingDistance = totalDistance;
-  globalTime = 0;
-  raceState = 'COUNTDOWN';
-  startCountdown = 3.0;
+  totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0;
+  raceState = 'COUNTDOWN'; startCountdown = 3.0;
   document.getElementById('countdown-overlay').classList.remove('hidden');
 
-  runners.length = 0;
-  particles.length = 0;
+  runners.length = 0; particles.length = 0;
 
   runners.push({ 
     id: 0, name: 'YOU', x: 20, y: 220, dist: 0, 
@@ -317,12 +348,9 @@ function setupRaceState() {
 
   for (let i = 1; i < 4; i++) {
     const aiStm = (currentZombie.stamina + (Math.floor(Math.random() * 30) - 15)) * 3;
-    let mntBase = currentZombie.mentality;
-    let powBase = currentZombie.power;
-    
-    // 都市特性の反映
-    if (currentCity.id === 'osaka') mntBase -= 30; // 大阪は気性荒い
-    if (currentCity.id === 'nagoya') powBase += 30; // 名古屋はパワー高い
+    let mntBase = currentZombie.mentality; let powBase = currentZombie.power;
+    if (currentCity.id === 'osaka') mntBase -= 30;
+    if (currentCity.id === 'nagoya') powBase += 30;
 
     runners.push({
       id: i, name: `No.${100 + i * 8}`, x: 20 + i * 80, y: 220, dist: 0,
@@ -364,22 +392,17 @@ function triggerSkill(index, power) {
   const magBonus = player.magAttr > 50 ? (player.magAttr - 50) * 0.5 : 0;
   const effectivePower = isMax ? 100 + magBonus : power * 0.6 + magBonus;
 
-  flashEffect.alpha = isMax ? 0.8 : 0.4;
-  flashEffect.color = '#ffffff';
+  flashEffect.alpha = isMax ? 0.8 : 0.4; flashEffect.color = '#ffffff';
 
   if (flask.id === 'meteor') {
     flashEffect.color = '#ef4444';
     particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 200, radius: isMax ? 50 : 15, power: effectivePower });
-    // ★自分は無事であることをアピール
     createExplosion(player.x + 24, player.y + 16, '#38bdf8', 15, 3, 3, 'spark');
     effects.push({ text: `SAFE`, x: player.x + 24, y: player.y - 12, color: '#38bdf8' });
   } 
   else if (flask.id === 'volcano') {
-    flashEffect.color = '#f97316'; shakeTime = 15;
-    effects.push({ text: `溶岩噴出!`, x: canvas.width/2, y: 200, color: '#f97316' });
-    runners.forEach(r => { 
-      if (r.id !== 0) { applyKnockback(r, effectivePower); r.isHard = false; createExplosion(r.x + 24, r.y + 40, '#f97316', 30, 5, 4, 'fire'); }
-    });
+    flashEffect.color = '#f97316'; shakeTime = 15; effects.push({ text: `溶岩噴出!`, x: canvas.width/2, y: 200, color: '#f97316' });
+    runners.forEach(r => { if (r.id !== 0) { applyKnockback(r, effectivePower); r.isHard = false; createExplosion(r.x + 24, r.y + 40, '#f97316', 30, 5, 4, 'fire'); } });
   } 
   else if (flask.id === 'tornado') {
     shakeTime = 10; effects.push({ text: `竜巻!`, x: canvas.width/2, y: 200, color: '#a3e635' });
@@ -473,7 +496,7 @@ function finishRace() {
 
 function update() {
   if (!isGameRunning) {
-    if (document.getElementById('nurture-screen').classList.contains('hidden') === false) { globalTime++; updateNurtureUI(); }
+    if (document.getElementById('nurture-screen').classList.contains('hidden') === false && !isNurturing) { globalTime++; updateNurtureUI(); }
     requestAnimationFrame(update); return;
   }
   globalTime++;
@@ -514,7 +537,7 @@ function update() {
       }
 
       const progress = r.dist / totalDistance;
-      let stmDrain = currentCity.bgType === 'snow' ? 0.10 : 0.08; // 札幌はスタミナ消費増
+      let stmDrain = currentCity.bgType === 'snow' ? 0.10 : 0.08; 
       
       if (r.style === '逃げ') {
         if (progress < 0.3) { baseSpeed *= 1.3; stmDrain *= 1.5; }
