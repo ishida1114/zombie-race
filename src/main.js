@@ -12,7 +12,6 @@ let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
 
-// ユーザーが置いてくれた4枚の歩行画像だけを使用
 const assets = {
   zombieWalk: [new Image(), new Image(), new Image(), new Image()]
 };
@@ -24,8 +23,8 @@ assets.zombieWalk[3].src = '/zombie_walk4.png';
 let currentZombie = {
   name: '検体 No.101',
   hue: 0,
-  head: 'none',   // none, cap(赤い帽子), worker(ヘルメット)
-  eye: 'none',    // none, sunglasses(サングラス), bandage(目隠し包帯)
+  head: 'none',   // none, cap(キャップ), worker(ヘルメット)
+  eye: 'none',    // none, sunglasses(サングラス), bandage(包帯)
   speed: 50, power: 50, stamina: 50
 };
 
@@ -52,14 +51,14 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🎨 ドット絵画像 ＋ プログラムによる変形・合成処理
+// 🎨 高精度ドットパーツ描画機能付き描画関数
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted, distPhase) {
   targetCtx.save();
-  targetCtx.imageSmoothingEnabled = false; // ドット絵くっきり化
+  targetCtx.imageSmoothingEnabled = false;
 
   let frameIndex = 0;
   let bounce = 0;
-  const isKnockback = zData.knockback > 0; // ★ダメージ中かどうか判定
+  const isKnockback = zData.knockback > 0;
 
   if (!isExhausted && !isKnockback) {
     const animSpeed = distPhase * 0.8; 
@@ -80,64 +79,103 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted,
   if (img.complete && img.naturalWidth > 0) {
     let filterStr = `hue-rotate(${zData.hue}deg)`;
 
-    // ★プログラムによる「のけぞり・ダメージ表現」
     if (isKnockback) {
-      filterStr = 'brightness(150%) sepia(100%) hue-rotate(-50deg) saturate(300%)'; // ダメージで赤くフラッシュ
+      filterStr = 'brightness(150%) sepia(100%) hue-rotate(-50deg) saturate(300%)';
       targetCtx.translate(x + width / 2, y + height);
-      targetCtx.rotate(-0.4); // 重心を軸に大きく後ろへ反けぞる（回転）
+      targetCtx.rotate(-0.4);
       targetCtx.translate(-(x + width / 2), -(y + height));
     } else if (isExhausted) {
       filterStr += ' grayscale(80%) brightness(0.6)';
       targetCtx.translate(x + width / 2, y + height);
-      targetCtx.rotate(0.15); // バテると前に倒れ込む
+      targetCtx.rotate(0.15);
       targetCtx.translate(-(x + width / 2), -(y + height));
     }
 
     targetCtx.filter = filterStr;
 
-    // バウンド位置の計算
     const drawY = y - bounce;
-    
-    // ① 基本画像の描画
     targetCtx.drawImage(img, x, drawY, width, height);
-    targetCtx.filter = 'none'; // フィルターリセット
+    targetCtx.filter = 'none';
 
-    // ② ★画像を使わないプログラム着せ替え（Canvas APIで画像の上に図形を合成）
+    // -------------------------------------------------------------
+    // 🎨 高精度ドットパーツ合成（黒枠＋ハイライト＋影表現）
+    // -------------------------------------------------------------
     
-    // --- 頭の装飾 ---
+    // 1. 赤いキャップ（帽子）
     if (zData.head === 'cap') {
-      targetCtx.fillStyle = '#dc2626'; // 赤いキャップ
-      targetCtx.fillRect(x + 12, drawY - 2, width - 20, 8); // 帽子本体
-      targetCtx.fillRect(x + 4, drawY + 4, width - 16, 3); // つば
-    } else if (zData.head === 'worker') {
-      targetCtx.fillStyle = '#facc15'; // 工事用ヘルメット（黄）
-      targetCtx.beginPath();
-      targetCtx.arc(x + width / 2 - 2, drawY + 6, width / 2 - 6, Math.PI, 0);
-      targetCtx.fill();
-      targetCtx.fillRect(x + 6, drawY + 6, width - 12, 3); // つば
+      // 黒枠（アウトライン）
+      targetCtx.fillStyle = '#0f172a';
+      targetCtx.fillRect(x + 10, drawY - 4, width - 18, 11);
+      targetCtx.fillRect(x + 2, drawY + 3, width - 10, 4);
+
+      // 帽子本体（赤）
+      targetCtx.fillStyle = '#dc2626';
+      targetCtx.fillRect(x + 12, drawY - 2, width - 22, 8);
+      targetCtx.fillRect(x + 4, drawY + 4, width - 14, 2);
+
+      // 上部ハイライト＆かげ
+      targetCtx.fillStyle = '#f87171'; // 光
+      targetCtx.fillRect(x + 14, drawY - 2, width - 26, 2);
+      targetCtx.fillStyle = '#991b1b'; // 影
+      targetCtx.fillRect(x + 12, drawY + 4, 6, 2);
+    } 
+    // 2. 工事用ヘルメット（黄）
+    else if (zData.head === 'worker') {
+      // 黒枠
+      targetCtx.fillStyle = '#0f172a';
+      targetCtx.fillRect(x + 8, drawY - 4, width - 14, 11);
+      targetCtx.fillRect(x + 4, drawY + 4, width - 8, 4);
+
+      // ヘルメット本体（黄色）
+      targetCtx.fillStyle = '#eab308';
+      targetCtx.fillRect(x + 10, drawY - 2, width - 18, 8);
+      targetCtx.fillRect(x + 6, drawY + 5, width - 12, 2);
+
+      // 光沢ハイライト ＆ センターライン
+      targetCtx.fillStyle = '#fef08a'; // 光
+      targetCtx.fillRect(x + 12, drawY - 2, 4, 3);
+      targetCtx.fillStyle = '#ca8a04'; // 中央リブ構造
+      targetCtx.fillRect(x + width / 2 - 2, drawY - 2, 3, 8);
     }
 
-    // --- 目の装飾 ---
+    // 3. サングラス
     if (zData.eye === 'sunglasses') {
-      targetCtx.fillStyle = '#020617'; // サングラス（黒）
-      targetCtx.fillRect(x + 10, drawY + 12, width - 18, 6); // レンズ
-      targetCtx.fillStyle = '#f8fafc'; // レンズの反射光
-      targetCtx.fillRect(x + 12, drawY + 13, 3, 2);
-    } else if (zData.eye === 'bandage') {
-      targetCtx.fillStyle = '#e2e8f0'; // 目隠し包帯
-      targetCtx.fillRect(x + 8, drawY + 10, width - 12, 8);
-      targetCtx.fillStyle = '#94a3b8'; // 包帯の影線
-      targetCtx.fillRect(x + 8, drawY + 14, width - 12, 1);
+      // フレーム（黒枠）
+      targetCtx.fillStyle = '#020617';
+      targetCtx.fillRect(x + 8, drawY + 11, width - 14, 7);
+      
+      // レンズ（ダークグレー）
+      targetCtx.fillStyle = '#1e293b';
+      targetCtx.fillRect(x + 10, drawY + 12, (width - 18) / 2 - 1, 5);
+      targetCtx.fillRect(x + 10 + (width - 18) / 2 + 1, drawY + 12, (width - 18) / 2 - 1, 5);
+
+      // ガラスの白い反射光ドット
+      targetCtx.fillStyle = '#f8fafc';
+      targetCtx.fillRect(x + 11, drawY + 13, 2, 2);
+      targetCtx.fillRect(x + 12 + (width - 18) / 2, drawY + 13, 2, 2);
+    } 
+    // 4. 包帯（目隠し）
+    else if (zData.eye === 'bandage') {
+      // 黒枠
+      targetCtx.fillStyle = '#0f172a';
+      targetCtx.fillRect(x + 6, drawY + 9, width - 8, 8);
+
+      // 包帯布地（オフホワイト）
+      targetCtx.fillStyle = '#e2e8f0';
+      targetCtx.fillRect(x + 7, drawY + 10, width - 10, 6);
+
+      // 汚れ・縫い目ライン
+      targetCtx.fillStyle = '#94a3b8';
+      targetCtx.fillRect(x + 10, drawY + 11, 2, 4);
+      targetCtx.fillRect(x + 20, drawY + 12, 2, 3);
     }
 
   } else {
-    // フォールバック（画像がない場合）
     targetCtx.fillStyle = isExhausted ? '#64748b' : `hsl(${120 + zData.hue}, 60%, 50%)`;
     targetCtx.fillRect(x + 4, y + 10, width - 8, height - 14);
     targetCtx.fillRect(x + 2, y, width - 4, 16);
   }
 
-  // 汗エフェクト
   if (isExhausted && !isKnockback) {
     targetCtx.fillStyle = '#38bdf8';
     targetCtx.fillRect(x + width - 6, y + 4, 3, 5);
@@ -177,7 +215,6 @@ function updateNurtureUI() {
   pCtx.imageSmoothingEnabled = false;
   pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
   
-  // 育成画面でもプログラム着せ替えを反映
   drawZombieCharacter(pCtx, 20, 10, 80, 100, currentZombie, false, globalTime * 0.1);
 
   const cmdBox = document.querySelector('.command-container');
@@ -274,7 +311,7 @@ function triggerSkill(index, power) {
     effects.push({ text: `組織妨害`, x: canvas.width / 2, y: 150, color: '#da3633' });
     for (let i = 1; i < 4; i++) {
       const powResistance = Math.floor(runners[i].powAttr * 0.4);
-      runners[i].knockback = Math.max(15, 60 - powResistance); // ノックバック時間を少し長めに
+      runners[i].knockback = Math.max(15, 60 - powResistance);
     }
   } else if (flask.id === 'heal') {
     playerRunner.stm = Math.min(playerRunner.maxStm, playerRunner.stm + 50);
@@ -355,7 +392,7 @@ function update() {
     else baseSpeed *= 0.3;
 
     if (r.boostTimer > 0) { r.boostTimer--; baseSpeed *= 1.7; }
-    if (r.knockback > 0) { r.knockback--; baseSpeed *= 0; } // ★ダメージ中は完全に足が止まる
+    if (r.knockback > 0) { r.knockback--; baseSpeed *= 0; }
 
     r.dist += baseSpeed;
 
