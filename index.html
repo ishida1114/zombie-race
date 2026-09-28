@@ -13,7 +13,7 @@
       <div class="title-logo-wrapper">
         <img src="/zombielogo.webp" alt="ZOMBIE DERBY 異能survivors" class="title-logo-img" />
       </div>
-      <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="title-btn-group">
         <button id="nav-scout-btn" class="retro-btn"><span>探索 (スカウト)</span></button>
         <button id="nav-garage-btn" class="retro-btn"><span>牧場 (ガレージ)</span></button>
       </div>
@@ -27,8 +27,8 @@
           <label>探索エリア (特化パラメータ)</label>
           <select id="scout-city">
             <option value="tokyo">東京 (バランス)</option>
-            <option value="osaka">大阪 (気性荒め)</option>
-            <option value="nagoya">名古屋 (パワー特化)</option>
+            <option value="osaka">大阪 (気性荒め/サボりやすい)</option>
+            <option value="nagoya">名古屋 (パワー/防御特化)</option>
             <option value="fukuoka">福岡 (スピード特化)</option>
             <option value="sapporo">札幌 (スタミナ特化)</option>
           </select>
@@ -36,10 +36,10 @@
         <div class="form-group">
           <label>希望の脚質</label>
           <select id="scout-style">
-            <option value="逃げ">逃げ (序盤型)</option>
+            <option value="逃げ">逃げ (序盤型・燃費悪)</option>
             <option value="先行">先行 (中盤型)</option>
             <option value="差し">差し (後半型)</option>
-            <option value="追込">追込 (終盤特化)</option>
+            <option value="追込">追込 (終盤特化・燃費良)</option>
           </select>
         </div>
         <div class="form-group">
@@ -49,37 +49,27 @@
         <button id="do-scout-btn" class="retro-btn" style="margin-top: 20px;"><span>探索開始</span></button>
         <button id="back-to-title-1" class="retro-btn-small" style="margin-top: 10px;">戻る</button>
       </div>
-    </div>
 
-    <!-- 🧟 牧場（ガレージ）画面 -->
-    <div id="garage-screen" class="hidden">
-      <div class="screen-title">保有検体 (<span id="garage-count">0</span>/3)</div>
-      <div id="garage-list" class="garage-list">
-        <!-- JSでゾンビリストが生成されます -->
+      <!-- 発見！カットイン演出 -->
+      <div id="found-overlay" class="hidden">
+        <div class="found-light"></div>
+        <div class="found-text">発見！！</div>
       </div>
-      <button id="back-to-title-2" class="retro-btn-small" style="margin-top: 20px;">タイトルへ</button>
     </div>
 
-    <!-- 🏙️ レース出走：都市選択画面 -->
-    <div id="city-select-screen" class="hidden">
-      <div class="screen-title">遠征先を選択</div>
-      <div id="city-list" class="city-container"></div>
-      <button id="back-to-garage-1" class="retro-btn-small" style="margin-top: 20px;">牧場へ戻る</button>
-    </div>
-
-    <!-- 🧪 育成画面 -->
+    <!-- 🧪 育成画面（捕獲直後に強制移動） -->
     <div id="nurture-screen" class="hidden">
       <div class="nurture-header">
         <span class="nurture-turn" id="nurture-turn-txt">残 5 調整</span>
         <span class="nurture-name" id="nurture-zombie-name">検体 No.101</span>
       </div>
       <div class="zombie-preview-box">
-        <canvas id="zombieCanvas" width="120" height="120"></canvas>
+        <canvas id="zombieCanvas" width="160" height="160"></canvas>
       </div>
       <div class="status-box">
         <div class="stat-row"><span>脚質（戦法）</span><span id="stat-style" style="color:#facc15;">先行</span></div>
         <div class="stat-row"><span>速さ</span><span id="stat-spd">50</span></div>
-        <div class="stat-row"><span>力強さ</span><span id="stat-pow">50</span></div>
+        <div class="stat-row"><span>力強さ（防御）</span><span id="stat-pow">50</span></div>
         <div class="stat-row"><span>体力</span><span id="stat-stm">50</span></div>
         <div class="stat-row"><span>気性（ムラ）</span><span id="stat-mnt">50</span></div>
         <div class="stat-row"><span>異能（スキル力）</span><span id="stat-mag">50</span></div>
@@ -89,7 +79,7 @@
         <button class="cmd-btn" data-cmd="pow"><span class="cmd-icon">💥</span><span class="cmd-text">筋組織拡張（力強さ↑ / 異能↓）</span></button>
         <button class="cmd-btn" data-cmd="stm"><span class="cmd-icon">🧪</span><span class="cmd-text">防腐処理（体力↑ / 速さ↓）</span></button>
       </div>
-      <button id="back-to-garage-2" class="retro-btn-small" style="margin-top: 10px;">牧場へ戻る</button>
+      <button id="send-to-garage-btn" class="retro-btn hidden" style="margin-top: 10px;"><span>牧場へ送る</span></button>
 
       <!-- 育成ドラムロール演出 -->
       <div id="nurture-result-overlay" class="hidden">
@@ -99,7 +89,23 @@
       </div>
     </div>
 
-    <!-- ⚡ カットイン画面 -->
+    <!-- 🧟 牧場（ガレージ）画面 -->
+    <div id="garage-screen" class="hidden">
+      <div class="screen-title">保有検体 (<span id="garage-count">0</span>/3)</div>
+      <div id="garage-list" class="garage-list">
+        <!-- JSでゾンビリストが生成されます -->
+      </div>
+      <button id="back-to-title-2" class="retro-btn-small" style="margin-top: 20px;">タイトルへ戻る</button>
+    </div>
+
+    <!-- 🏙️ レース出走：都市選択画面 -->
+    <div id="city-select-screen" class="hidden">
+      <div class="screen-title">遠征先を選択</div>
+      <div id="city-list" class="city-container"></div>
+      <button id="back-to-garage-1" class="retro-btn-small" style="margin-top: 20px;">牧場へ戻る</button>
+    </div>
+
+    <!-- ⚡ 都市カットイン画面 -->
     <div id="cutin-screen" class="hidden">
       <div class="cutin-bg"></div>
       <div class="cutin-content">
@@ -123,13 +129,13 @@
 
       <div id="race-hud">
         <div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位 / 4人</span></div>
-        <div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">1000m</span></div>
+        <div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">400m</span></div>
       </div>
 
       <div class="canvas-wrapper">
-        <canvas id="gameCanvas" width="360" height="420"></canvas>
+        <canvas id="gameCanvas" width="480" height="600"></canvas> <!-- サイズを大型化 -->
         <div id="countdown-overlay" class="hidden">5</div>
-        <!-- 🐸 カエルスキルの「視界ジャックスライム」演出 -->
+        <div id="finish-overlay" class="hidden">FINISH!!</div>
         <div id="slime-overlay" class="hidden"></div>
       </div>
       
@@ -149,12 +155,16 @@
       </div>
     </div>
 
-    <!-- 🏆 リザルト画面 -->
+    <!-- 🏆 表彰台＆リザルト画面 -->
     <div id="result-screen" class="hidden">
       <div class="result-title">RACE RESULT</div>
-      <div id="result-rank-badge" class="rank-badge">1位</div>
-      <div id="result-detail" class="result-detail">走破タイム: 00:00</div>
-      <button id="retry-btn" class="retro-btn">
+      <div class="podium-canvas-wrapper">
+        <canvas id="podiumCanvas" width="360" height="240"></canvas>
+      </div>
+      <div id="result-list" class="result-list-container">
+        <!-- JSで順位リストが生成されます -->
+      </div>
+      <button id="retry-btn" class="retro-btn" style="margin-top: 16px;">
         <span>牧場へ戻る</span>
       </button>
     </div>
