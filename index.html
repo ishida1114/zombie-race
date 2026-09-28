@@ -3,41 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>ZOMBIE RACE</title>
+  <title>ZOMBIE DERBY : 異能survivors</title>
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
   <div id="game-container">
-    <!-- 縦スクロールCanvas -->
-    <canvas id="gameCanvas" width="360" height="500"></canvas>
-    
-    <!-- フラスコエリア -->
-    <div id="flask-container">
-      <div class="flask-card" data-index="0">
-        <div class="flask-wrapper">
-          <div class="flask-fill" id="flask-fill-0"></div>
-          <div class="flask-icon">☄️</div>
-        </div>
-        <span class="flask-name">メテオ</span>
-        <span class="flask-percent" id="flask-percent-0">0%</span>
+    <!-- 🧟 タイトル画面 -->
+    <div id="title-screen">
+      <div class="title-logo-wrapper">
+        <div class="title-sub">DEATH RACE x INOU</div>
+        <img src="/zombielogo.webp" alt="ZOMBIE DERBY 異能survivors" class="title-logo-img" />
       </div>
 
-      <div class="flask-card" data-index="1">
-        <div class="flask-wrapper">
-          <div class="flask-fill" id="flask-fill-1"></div>
-          <div class="flask-icon">⚡</div>
-        </div>
-        <span class="flask-name">マッハ</span>
-        <span class="flask-percent" id="flask-percent-1">0%</span>
-      </div>
+      <button id="start-btn" class="glow-btn">
+        <span>TAP TO START</span>
+      </button>
+    </div>
 
-      <div class="flask-card" data-index="2">
-        <div class="flask-wrapper">
-          <div class="flask-fill" id="flask-fill-2"></div>
-          <div class="flask-icon">🛡️</div>
+    <!-- 🏁 レース画面（初期は非表示） -->
+    <div id="race-screen" class="hidden">
+      <canvas id="gameCanvas" width="360" height="500"></canvas>
+      
+      <!-- フラスコUI -->
+      <div id="flask-container">
+        <div class="flask-card" data-index="0">
+          <div class="flask-wrapper">
+            <div class="flask-fill" id="flask-fill-0"></div>
+            <div class="flask-icon">☄️</div>
+          </div>
+          <span class="flask-name">メテオ</span>
+          <span class="flask-percent" id="flask-percent-0">0%</span>
         </div>
-        <span class="flask-name">バリア</span>
-        <span class="flask-percent" id="flask-percent-2">0%</span>
+
+        <div class="flask-card" data-index="1">
+          <div class="flask-wrapper">
+            <div class="flask-fill" id="flask-fill-1"></div>
+            <div class="flask-icon">⚡</div>
+          </div>
+          <span class="flask-name">マッハ</span>
+          <span class="flask-percent" id="flask-percent-1">0%</span>
+        </div>
+
+        <div class="flask-card" data-index="2">
+          <div class="flask-wrapper">
+            <div class="flask-fill" id="flask-fill-2"></div>
+            <div class="flask-icon">🛡️</div>
+          </div>
+          <span class="flask-name">バリア</span>
+          <span class="flask-percent" id="flask-percent-2">0%</span>
+        </div>
       </div>
     </div>
   </div>
