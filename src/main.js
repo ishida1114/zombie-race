@@ -10,6 +10,18 @@ const baseScrollSpeed = 4;
 let remainingDistance = 1000;
 let startTime = 0;
 
+// 🧪 ゾンビデータ（パーツ・ステータス）
+let currentZombie = {
+  name: '検体 No.13',
+  color: '#4ade80', // 肌の色
+  eyeType: 'normal',
+  speed: 50,
+  power: 50,
+  stamina: 50
+};
+
+let remainingTurns = 5;
+
 // プレイヤー＆ライバル
 const player = { x: 155, y: 380, width: 46, height: 46, color: '#4ade80', isBarrier: false, barrierTimer: 0, boostTimer: 0 };
 const rivals = [
@@ -20,7 +32,6 @@ const rivals = [
 const particles = [];
 const effects = [];
 
-// 全スキルプール
 const ALL_SKILLS = [
   { id: 'meteor', name: 'メテオ', icon: '☄️', speed: 0.12 },
   { id: 'mach', name: 'マッハ', icon: '⚡', speed: 0.20 },
@@ -32,7 +43,115 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// ランダムスキル選択
+// 🎨 ゾンビ描画関数（育成画面 ＆ レース画面で共用）
+function drawZombieCharacter(targetCtx, x, y, width, height, color, eyeType) {
+  // 体
+  targetCtx.fillStyle = color;
+  targetCtx.fillRect(x, y, width, height);
+
+  // 目
+  targetCtx.fillStyle = '#ffffff';
+  targetCtx.fillRect(x + 8, y + 12, 10, 10);
+  targetCtx.fillRect(x + 28, y + 12, 10, 10);
+
+  targetCtx.fillStyle = '#000000';
+  if (eyeType === 'angry') {
+    targetCtx.fillRect(x + 10, y + 14, 6, 6);
+    targetCtx.fillRect(x + 30, y + 14, 6, 6);
+  } else {
+    targetCtx.fillRect(x + 12, y + 14, 4, 4);
+    targetCtx.fillRect(x + 30, y + 14, 4, 4);
+  }
+
+  // 縫い目（ゾンビ感）
+  targetCtx.strokeStyle = '#1e293b';
+  targetCtx.lineWidth = 2;
+  targetCtx.beginPath();
+  targetCtx.moveTo(x + 5, y + 30);
+  targetCtx.lineTo(x + 40, y + 30);
+  targetCtx.stroke();
+}
+
+// 🧪 育成：野良ゾンビ生成（スカウト）
+function generateRandomZombie() {
+  const colors = ['#4ade80', '#38bdf8', '#f43f5e', '#facc15']; // 緑, 青, 赤, 黄
+  const eyes = ['normal', 'angry'];
+  const num = Math.floor(Math.random() * 900) + 100;
+
+  currentZombie = {
+    name: `検体 No.${num}`,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    eyeType: eyes[Math.floor(Math.random() * eyes.length)],
+    speed: Math.floor(Math.random() * 20) + 40,
+    power: Math.floor(Math.random() * 20) + 40,
+    stamina: Math.floor(Math.random() * 20) + 40
+  };
+
+  remainingTurns = 5;
+  updateNurtureUI();
+}
+
+// 🧪 育成画面のUI更新 ＆ ゾンビプレビュー描画
+function updateNurtureUI() {
+  document.getElementById('nurture-turn-txt').textContent = `残 ${remainingTurns} ターン`;
+  document.getElementById('nurture-zombie-name').textContent = currentZombie.name;
+  document.getElementById('stat-spd').textContent = currentZombie.speed;
+  document.getElementById('stat-pow').textContent = currentZombie.power;
+  document.getElementById('stat-stm').textContent = currentZombie.stamina;
+
+  const previewCanvas = document.getElementById('zombieCanvas');
+  const pCtx = previewCanvas.getContext('2d');
+  pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  drawZombieCharacter(pCtx, 30, 30, 60, 60, currentZombie.color, currentZombie.eyeType);
+
+  const cmdBox = document.querySelector('.command-container');
+  const raceBtn = document.getElementById('to-race-btn');
+
+  if (remainingTurns <= 0) {
+    if (cmdBox) cmdBox.classList.add('hidden');
+    if (raceBtn) raceBtn.classList.remove('hidden');
+  } else {
+    if (cmdBox) cmdBox.classList.remove('hidden');
+    if (raceBtn) raceBtn.classList.add('hidden');
+  }
+}
+
+// 🧪 コマンド実行（トレーニング）
+function executeCommand(type) {
+  if (remainingTurns <= 0) return;
+
+  if (type === 'spd') currentZombie.speed += Math.floor(Math.random() * 10) + 10;
+  if (type === 'pow') currentZombie.power += Math.floor(Math.random() * 10) + 10;
+  if (type === 'stm') currentZombie.stamina += Math.floor(Math.random() * 10) + 10;
+
+  remainingTurns--;
+  updateNurtureUI();
+}
+
+// 🏁 レース開始
+function startRace() {
+  if (isGameRunning) return;
+
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('nurture-screen').classList.add('hidden');
+  document.getElementById('result-screen').classList.add('hidden');
+  document.getElementById('race-screen').classList.remove('hidden');
+
+  remainingDistance = 1000;
+  startTime = Date.now();
+  
+  // 育てたステータスを反映
+  player.color = currentZombie.color;
+  player.y = 380;
+  rivals[0].y = 150;
+  rivals[1].y = 220;
+  
+  selectRandomFlasks();
+  
+  isGameRunning = true;
+  requestAnimationFrame(update);
+}
+
 function selectRandomFlasks() {
   const shuffled = [...ALL_SKILLS].sort(() => 0.5 - Math.random());
   currentFlasks = shuffled.slice(0, 3).map(s => ({ ...s, charge: 0, max: 100 }));
@@ -45,31 +164,6 @@ function selectRandomFlasks() {
   });
 }
 
-// レース開始（二重起動を厳格に防止）
-function startRace() {
-  if (isGameRunning) return; // すでに動いている場合はスキップ
-
-  const titleScreen = document.getElementById('title-screen');
-  const resultScreen = document.getElementById('result-screen');
-  const raceScreen = document.getElementById('race-screen');
-
-  if (titleScreen) titleScreen.classList.add('hidden');
-  if (resultScreen) resultScreen.classList.add('hidden');
-  if (raceScreen) raceScreen.classList.remove('hidden');
-
-  remainingDistance = 1000;
-  startTime = Date.now();
-  player.y = 380;
-  rivals[0].y = 150;
-  rivals[1].y = 220;
-  
-  selectRandomFlasks();
-  
-  isGameRunning = true;
-  requestAnimationFrame(update);
-}
-
-// スキル発動処理
 function triggerSkill(index, power) {
   if (!currentFlasks[index]) return;
   const flask = currentFlasks[index];
@@ -96,7 +190,6 @@ function triggerSkill(index, power) {
   flask.charge = 0;
 }
 
-// レース終了処理
 function finishRace() {
   isGameRunning = false;
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -119,11 +212,9 @@ function finishRace() {
   if (resultScreen) resultScreen.classList.remove('hidden');
 }
 
-// メイン描画ループ
 function update() {
   if (!isGameRunning) return;
 
-  // 1. フラスコ充填
   currentFlasks.forEach((flask, index) => {
     if (flask.charge < flask.max) flask.charge = Math.min(flask.max, flask.charge + flask.speed);
     const fillEl = document.getElementById(`flask-fill-${index}`);
@@ -137,9 +228,10 @@ function update() {
     }
   });
 
-  // 2. 移動・距離計算
-  if (player.boostTimer > 0) { player.boostTimer--; currentScrollSpeed = baseScrollSpeed * 2.2; }
-  else { currentScrollSpeed = baseScrollSpeed; }
+  // 育てたスピード値が基本速度に影響
+  const spdBonus = (currentZombie.speed - 50) * 0.02;
+  if (player.boostTimer > 0) { player.boostTimer--; currentScrollSpeed = (baseScrollSpeed + spdBonus) * 2.2; }
+  else { currentScrollSpeed = baseScrollSpeed + spdBonus; }
 
   remainingDistance -= Math.floor(currentScrollSpeed * 0.4);
   if (remainingDistance <= 0) { remainingDistance = 0; finishRace(); return; }
@@ -153,17 +245,14 @@ function update() {
 
   if (player.barrierTimer > 0) { player.barrierTimer--; if (player.barrierTimer === 0) player.isBarrier = false; }
 
-  // 3. Canvas描画
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12); shakeTime--; }
 
-  // アスファルト道路背景
   ctx.fillStyle = '#2b303a';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   scrollY = (scrollY + currentScrollSpeed) % 80;
 
-  // 歩道・ガードレール
   ctx.fillStyle = '#1e232d';
   ctx.fillRect(0, 0, 20, canvas.height);
   ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
@@ -172,7 +261,6 @@ function update() {
   ctx.fillRect(20, 0, 4, canvas.height);
   ctx.fillRect(canvas.width - 24, 0, 4, canvas.height);
 
-  // 昭和道路の黄色いセンターライン
   ctx.strokeStyle = '#facc15';
   ctx.lineWidth = 6;
   ctx.setLineDash([30, 30]);
@@ -182,7 +270,6 @@ function update() {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // レーンガイド
   ctx.strokeStyle = '#475569';
   ctx.lineWidth = 2;
   ctx.setLineDash([15, 20]);
@@ -202,16 +289,14 @@ function update() {
     ctx.fillStyle = r.color; ctx.fillRect(r.x, r.y, r.width, r.height);
   });
 
-  // プレイヤー描画
-  ctx.fillStyle = player.color; ctx.shadowColor = player.color; ctx.shadowBlur = 8;
-  ctx.fillRect(player.x, player.y, player.width, player.height); ctx.shadowBlur = 0;
+  // プレイヤー描画（育てたパーツゾンビ）
+  drawZombieCharacter(ctx, player.x, player.y, player.width, player.height, player.color, currentZombie.eyeType);
 
   if (player.isBarrier) {
     ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 4; ctx.beginPath();
     ctx.arc(player.x + 23, player.y + 23, 35, 0, Math.PI * 2); ctx.stroke();
   }
 
-  // パーティクル（メテオ）
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     if (p.type === 'meteor') {
@@ -224,7 +309,6 @@ function update() {
     }
   }
 
-  // テキスト演出
   for (let i = effects.length - 1; i >= 0; i--) {
     const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(eff.text, eff.x, eff.y); eff.y -= 1.5; if (eff.y < 150) effects.splice(i, 1);
@@ -234,17 +318,36 @@ function update() {
   requestAnimationFrame(update);
 }
 
-// 初期化（クリーンなイベント登録）
 function init() {
   const startBtn = document.getElementById('start-btn');
+  const toRaceBtn = document.getElementById('to-race-btn');
   const retryBtn = document.getElementById('retry-btn');
 
+  // スタート ＞ 育成画面へ
   if (startBtn) {
     startBtn.onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('title-screen').classList.add('hidden');
+      document.getElementById('nurture-screen').classList.remove('hidden');
+      generateRandomZombie();
+    };
+  }
+
+  // 育成終了 ＞ レース画面へ
+  if (toRaceBtn) {
+    toRaceBtn.onclick = (e) => {
       e.preventDefault();
       startRace();
     };
   }
+
+  // 育成コマンドタップ
+  document.querySelectorAll('.cmd-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      executeCommand(btn.dataset.cmd);
+    };
+  });
 
   if (retryBtn) {
     retryBtn.onclick = (e) => {
@@ -252,6 +355,7 @@ function init() {
       isGameRunning = false;
       document.getElementById('result-screen').classList.add('hidden');
       document.getElementById('race-screen').classList.add('hidden');
+      document.getElementById('nurture-screen').classList.add('hidden');
       document.getElementById('title-screen').classList.remove('hidden');
     };
   }

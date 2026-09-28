@@ -8,7 +8,7 @@
 </head>
 <body>
   <div id="game-container">
-    <!-- 🧟 タイトル画面 -->
+    <!-- 🧟 1. タイトル画面 -->
     <div id="title-screen">
       <div class="title-logo-wrapper">
         <div class="title-sub">昭和都心 狂走劇</div>
@@ -16,13 +16,52 @@
       </div>
 
       <button id="start-btn" class="retro-btn">
-        <span>レース開始</span>
+        <span>実験開始（スカウト）</span>
       </button>
     </div>
 
-    <!-- 🏁 レース画面 -->
+    <!-- 🧪 2. 育成画面（NEW） -->
+    <div id="nurture-screen" class="hidden">
+      <div class="nurture-header">
+        <span class="nurture-turn" id="nurture-turn-txt">残 5 ターン</span>
+        <span class="nurture-name" id="nurture-zombie-name">検体 No.13</span>
+      </div>
+
+      <!-- ゾンビプレビュー表示用Canvas -->
+      <div class="zombie-preview-box">
+        <canvas id="zombieCanvas" width="120" height="120"></canvas>
+      </div>
+
+      <!-- ステータス表示 -->
+      <div class="status-box">
+        <div class="stat-row"><span>スピード</span><span id="stat-spd">50</span></div>
+        <div class="stat-row"><span>パワー</span><span id="stat-pow">50</span></div>
+        <div class="stat-row"><span>スタミナ</span><span id="stat-stm">50</span></div>
+      </div>
+
+      <!-- 3択コマンドボタン -->
+      <div class="command-container">
+        <button class="cmd-btn" data-cmd="spd">
+          <span class="cmd-icon">⚡</span>
+          <span class="cmd-text">脚力強化薬</span>
+        </button>
+        <button class="cmd-btn" data-cmd="pow">
+          <span class="cmd-icon">💥</span>
+          <span class="cmd-text">筋力増強剤</span>
+        </button>
+        <button class="cmd-btn" data-cmd="stm">
+          <span class="cmd-icon">🧪</span>
+          <span class="cmd-text">特製生肉</span>
+        </button>
+      </div>
+
+      <button id="to-race-btn" class="retro-btn hidden">
+        <span>出走準備完了！</span>
+      </button>
+    </div>
+
+    <!-- 🏁 3. レース画面 -->
     <div id="race-screen" class="hidden">
-      <!-- レースHUD -->
       <div id="race-hud">
         <div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位</span></div>
         <div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">1000m</span></div>
@@ -30,7 +69,7 @@
 
       <canvas id="gameCanvas" width="360" height="460"></canvas>
       
-      <!-- フラスコUI（ここだけ怪しく発光） -->
+      <!-- フラスコUI -->
       <div id="flask-container">
         <div class="flask-card" data-index="0">
           <div class="flask-wrapper">
@@ -61,7 +100,7 @@
       </div>
     </div>
 
-    <!-- 🏆 リザルト画面 -->
+    <!-- 🏆 4. リザルト画面 -->
     <div id="result-screen" class="hidden">
       <div class="result-title">試合結果</div>
       <div id="result-rank-badge" class="rank-badge">1位</div>
