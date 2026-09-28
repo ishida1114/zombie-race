@@ -58,7 +58,6 @@
 
     <!-- 🏁 3. レース画面 -->
     <div id="race-screen" class="hidden">
-      <!-- 横一列のコース進捗ミニマップ -->
       <div id="progress-bar-container">
         <div class="progress-start">S</div>
         <div class="progress-track">
@@ -70,7 +69,6 @@
         <div class="progress-goal">G</div>
       </div>
 
-      <!-- レースHUD -->
       <div id="race-hud">
         <div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位 / 4人</span></div>
         <div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">1000m</span></div>
@@ -78,32 +76,38 @@
 
       <canvas id="gameCanvas" width="360" height="420"></canvas>
       
-      <!-- フラスコUI -->
+      <!-- フラスコUI（効果テキスト追加） -->
       <div id="flask-container">
+        <!-- スキル1 -->
         <div class="flask-card" data-index="0">
           <div class="flask-wrapper">
             <div class="flask-fill" id="flask-fill-0"></div>
             <div class="flask-icon" id="flask-icon-0">🧪</div>
           </div>
           <span class="flask-name" id="flask-name-0">スキル1</span>
+          <span class="flask-desc" id="flask-desc-0">効果</span>
           <span class="flask-percent" id="flask-percent-0">0%</span>
         </div>
 
+        <!-- スキル2 -->
         <div class="flask-card" data-index="1">
           <div class="flask-wrapper">
             <div class="flask-fill" id="flask-fill-1"></div>
             <div class="flask-icon" id="flask-icon-1">⚡</div>
           </div>
           <span class="flask-name" id="flask-name-1">スキル2</span>
+          <span class="flask-desc" id="flask-desc-1">効果</span>
           <span class="flask-percent" id="flask-percent-1">0%</span>
         </div>
 
+        <!-- スキル3 -->
         <div class="flask-card" data-index="2">
           <div class="flask-wrapper">
             <div class="flask-fill" id="flask-fill-2"></div>
             <div class="flask-icon" id="flask-icon-2">🛡️</div>
           </div>
           <span class="flask-name" id="flask-name-2">スキル3</span>
+          <span class="flask-desc" id="flask-desc-2">効果</span>
           <span class="flask-percent" id="flask-percent-2">0%</span>
         </div>
       </div>

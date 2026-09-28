@@ -4,11 +4,10 @@ const ctx = canvas.getContext('2d');
 let isGameRunning = false;
 let shakeTime = 0;
 let scrollY = 0;
-let globalTime = 0; // 歩行アニメーション用のタイマー
+let globalTime = 0;
 
 let currentScrollSpeed = 0.25;
 const baseScrollSpeed = 0.25;
-
 let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
@@ -16,45 +15,45 @@ let startTime = 0;
 // 🧪 プレイヤー（YOU）
 let currentZombie = {
   name: '検体 No.101',
-  color: '#3fb950',
-  speed: 50,
-  power: 50,
-  stamina: 50
+  color: '#3fb950', // 肌の色
+  clothes: 'none',  // 服の種類 (none, patient:患者服, suit:黒服)
+  head: 'none',     // 頭の装飾 (none, electrode:電極, bandage:包帯)
+  eye: 'hollow',    // 目 (hollow:空洞, glow:光る, stitched:縫合)
+  speed: 50, power: 50, stamina: 50
 };
 
 let remainingTurns = 5;
 
 // 🏃 4人の走者
 const runners = [
-  { id: 0, name: 'YOU', x: 25, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#3fb950', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
-  { id: 1, name: 'No.088', x: 105, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#f85149', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
-  { id: 2, name: 'No.204', x: 185, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#a371f7', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
-  { id: 3, name: 'No.305', x: 265, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#d29922', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
+  { id: 0, name: 'YOU', x: 25, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#3fb950', clothes: 'none', head: 'none', eye: 'hollow', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
+  { id: 1, name: 'No.088', x: 105, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#f85149', clothes: 'patient', head: 'none', eye: 'glow', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
+  { id: 2, name: 'No.204', x: 185, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#a371f7', clothes: 'none', head: 'bandage', eye: 'stitched', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
+  { id: 3, name: 'No.305', x: 265, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#d29922', clothes: 'suit', head: 'electrode', eye: 'hollow', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
 ];
 
 const particles = [];
 const effects = [];
 
+// スキルリスト（効果説明文を追加）
 const ALL_SKILLS = [
-  { id: 'meteor', name: '細胞活性', icon: '🧪', speed: 0.15 },
-  { id: 'mach', name: '神経加速', icon: '⚡', speed: 0.22 },
-  { id: 'barrier', name: '硬化膜', icon: '🛡️', speed: 0.18 },
-  { id: 'volcano', name: '暴走反応', icon: '🔥', speed: 0.12 },
-  { id: 'meat', name: '組織投与', icon: '🥩', speed: 0.16 },
-  { id: 'heal', name: '強心刺激', icon: '💉', speed: 0.20 }
+  { id: 'meteor', name: '細胞活性', icon: '🧪', desc: '前方妨害', speed: 0.15 },
+  { id: 'mach', name: '神経加速', icon: '⚡', desc: '一時加速', speed: 0.22 },
+  { id: 'barrier', name: '硬化膜', icon: '🛡️', desc: '妨害無効', speed: 0.18 },
+  { id: 'volcano', name: '暴走反応', icon: '🔥', desc: '大妨害', speed: 0.12 },
+  { id: 'meat', name: '組織投与', icon: '🥩', desc: '全体妨害', speed: 0.16 },
+  { id: 'heal', name: '強心刺激', icon: '💉', desc: 'スタミナ回復', speed: 0.20 }
 ];
 
 let currentFlasks = [];
 
-// 🎨 ゾンビ描画（歩行アニメーション付き）
-function drawZombieCharacter(targetCtx, x, y, width, height, color, isExhausted, distPhase) {
+// 🎨 ゾンビ描画（パーツ合成の導入）
+function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted, distPhase) {
   targetCtx.save();
-  
-  // バテていない時は前進距離に応じたサイン波で手足を動かす
   const movePhase = isExhausted ? 0 : distPhase * 0.4;
-  const legSway = Math.sin(movePhase) * 6; // 足の振り幅
-  const armSway = Math.sin(movePhase + Math.PI) * 5; // 腕の振り幅（足と逆）
-  const bodyRoll = Math.sin(movePhase * 0.5) * 0.05; // 体の揺れ（ラジアン）
+  const legSway = Math.sin(movePhase) * 6;
+  const armSway = Math.sin(movePhase + Math.PI) * 5;
+  const bodyRoll = Math.sin(movePhase * 0.5) * 0.05;
 
   // 影
   targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
@@ -62,41 +61,83 @@ function drawZombieCharacter(targetCtx, x, y, width, height, color, isExhausted,
   targetCtx.ellipse(x + width / 2, y + height + 2, width / 2, 5, 0, 0, Math.PI * 2);
   targetCtx.fill();
 
-  // 中心を軸にして体を揺らす
   targetCtx.translate(x + width / 2, y + height / 2);
-  targetCtx.rotate(isExhausted ? 0.1 : bodyRoll); // バテると少し前傾
+  targetCtx.rotate(isExhausted ? 0.1 : bodyRoll);
   targetCtx.translate(-(x + width / 2), -(y + height / 2));
 
-  // 左腕・右腕（後ろ側・前側）
-  const bodyColor = isExhausted ? '#64748b' : color;
-  targetCtx.fillStyle = isExhausted ? '#475569' : '#1e293b'; // 服・影の色
+  // --- パーツ合成 ---
+  const skinColor = isExhausted ? '#64748b' : zData.color;
   
-  // 足（左右交互に振る）
+  // 服の色決定
+  let clothesColor = skinColor; // 裸の場合
+  if (zData.clothes === 'patient') clothesColor = '#94a3b8'; // 患者服（水色グレー）
+  else if (zData.clothes === 'suit') clothesColor = '#1e293b'; // スーツ（黒）
+
+  const armColor = isExhausted ? '#475569' : clothesColor;
+
+  // 足（肌色）
+  targetCtx.fillStyle = skinColor;
   targetCtx.fillRect(x + 10, y + height - 8 + legSway, 6, 12);
   targetCtx.fillRect(x + width - 16, y + height - 8 - legSway, 6, 12);
 
-  // 胴体
-  targetCtx.fillStyle = bodyColor;
+  // 胴体（服）
+  targetCtx.fillStyle = clothesColor;
   targetCtx.fillRect(x + 4, y + 10, width - 8, height - 14);
   
-  // 頭
+  // スーツの場合はネクタイ
+  if (zData.clothes === 'suit') {
+    targetCtx.fillStyle = '#64748b';
+    targetCtx.fillRect(x + width / 2 - 2, y + 10, 4, 12);
+  }
+
+  // 頭（肌色）
+  targetCtx.fillStyle = skinColor;
   targetCtx.fillRect(x + 2, y, width - 4, 16);
 
-  // 腕（バテるとだらんと垂れる）
+  // 頭の装飾
+  if (zData.head === 'bandage') {
+    targetCtx.fillStyle = '#cbd5e1'; // 包帯
+    targetCtx.fillRect(x + 2, y + 2, width - 4, 5);
+  } else if (zData.head === 'electrode') {
+    targetCtx.fillStyle = '#ef4444'; // 赤いランプ
+    targetCtx.fillRect(x + width / 2 - 3, y - 4, 6, 4);
+    targetCtx.fillStyle = '#475569'; // 電極基部
+    targetCtx.fillRect(x + width / 2 - 4, y, 8, 2);
+  }
+
+  // 腕
   const armOffset = isExhausted ? 8 : armSway;
-  targetCtx.fillStyle = bodyColor;
-  targetCtx.fillRect(x - 2, y + 12 + armOffset, 6, 16); // 左腕
-  targetCtx.fillRect(x + width - 4, y + 12 - (isExhausted ? -armOffset : armOffset), 6, 16); // 右腕
+  targetCtx.fillStyle = armColor;
+  targetCtx.fillRect(x - 2, y + 12 + armOffset, 6, 16);
+  targetCtx.fillRect(x + width - 4, y + 12 - (isExhausted ? -armOffset : armOffset), 6, 16);
 
-  // 顔パーツ
-  targetCtx.fillStyle = '#090a0f';
-  targetCtx.fillRect(x + 8, y + 4, 7, 7);
-  targetCtx.fillRect(x + 23, y + 4, 7, 7);
+  // 目
+  if (zData.eye === 'glow') {
+    // 光る機械の目
+    targetCtx.fillStyle = '#ef4444';
+    targetCtx.fillRect(x + 10, y + 5, 4, 4);
+    targetCtx.fillRect(x + 25, y + 5, 4, 4);
+  } else if (zData.eye === 'stitched') {
+    // 縫合された目（×印）
+    targetCtx.strokeStyle = '#1e293b';
+    targetCtx.lineWidth = 1;
+    targetCtx.beginPath();
+    targetCtx.moveTo(x + 8, y + 4); targetCtx.lineTo(x + 14, y + 10);
+    targetCtx.moveTo(x + 14, y + 4); targetCtx.lineTo(x + 8, y + 10);
+    targetCtx.moveTo(x + 23, y + 4); targetCtx.lineTo(x + 29, y + 10);
+    targetCtx.moveTo(x + 29, y + 4); targetCtx.lineTo(x + 23, y + 10);
+    targetCtx.stroke();
+  } else {
+    // 空洞（デフォルト）
+    targetCtx.fillStyle = '#090a0f';
+    targetCtx.fillRect(x + 8, y + 4, 7, 7);
+    targetCtx.fillRect(x + 23, y + 4, 7, 7);
+    targetCtx.fillStyle = isExhausted ? '#ef4444' : '#cbd5e1';
+    targetCtx.fillRect(x + 10, y + 6, 2, 2);
+    targetCtx.fillRect(x + 25, y + 6, 2, 2);
+  }
 
-  targetCtx.fillStyle = isExhausted ? '#ef4444' : '#cbd5e1';
-  targetCtx.fillRect(x + 10, y + 6, 2, 2);
-  targetCtx.fillRect(x + 25, y + 6, 2, 2);
-
+  // 口（縫い目）
   targetCtx.fillStyle = '#1e293b';
   targetCtx.fillRect(x + 10, y + 13, 18, 1);
 
@@ -104,7 +145,6 @@ function drawZombieCharacter(targetCtx, x, y, width, height, color, isExhausted,
   targetCtx.fillStyle = '#f87171';
   targetCtx.fillRect(x + 2, y + 15, 3, 5);
 
-  // バテ状態の汗
   if (isExhausted) {
     targetCtx.fillStyle = '#38bdf8';
     targetCtx.fillRect(x + width + 2, y + 2, 3, 5);
@@ -113,16 +153,26 @@ function drawZombieCharacter(targetCtx, x, y, width, height, color, isExhausted,
   targetCtx.restore();
 }
 
+// 🧪 育成：ランダムなパーツを持つゾンビを生成
 function generateRandomZombie() {
-  const corpseColors = ['#3fb950', '#2ea043', '#238636'];
+  const colors = ['#4a584e', '#3d4d5c', '#5a4d4d'];
+  const clothesList = ['none', 'patient', 'suit'];
+  const headList = ['none', 'bandage', 'electrode'];
+  const eyeList = ['hollow', 'glow', 'stitched'];
+  
   const num = Math.floor(Math.random() * 900) + 100;
+
   currentZombie = {
     name: `検体 No.${num}`,
-    color: corpseColors[Math.floor(Math.random() * corpseColors.length)],
+    color: colors[Math.floor(Math.random() * colors.length)],
+    clothes: clothesList[Math.floor(Math.random() * clothesList.length)],
+    head: headList[Math.floor(Math.random() * headList.length)],
+    eye: eyeList[Math.floor(Math.random() * eyeList.length)],
     speed: Math.floor(Math.random() * 20) + 40,
     power: Math.floor(Math.random() * 20) + 40,
     stamina: Math.floor(Math.random() * 20) + 40
   };
+
   remainingTurns = 5;
   updateNurtureUI();
 }
@@ -137,7 +187,7 @@ function updateNurtureUI() {
   const previewCanvas = document.getElementById('zombieCanvas');
   const pCtx = previewCanvas.getContext('2d');
   pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-  drawZombieCharacter(pCtx, 41, 38, 38, 42, currentZombie.color, false, globalTime * 0.5);
+  drawZombieCharacter(pCtx, 41, 38, 38, 42, currentZombie, false, globalTime * 0.5);
 
   const cmdBox = document.querySelector('.command-container');
   const raceBtn = document.getElementById('to-race-btn');
@@ -171,27 +221,26 @@ function startRace() {
   startTime = Date.now();
   globalTime = 0;
   
-  // プレイヤーパラメータ反映
-  runners[0].color = currentZombie.color;
-  runners[0].spdAttr = currentZombie.speed;
-  runners[0].powAttr = currentZombie.power;
-  runners[0].maxStm = currentZombie.stamina * 2.2;
-  runners[0].stm = runners[0].maxStm;
-  runners[0].dist = 0;
-  runners[0].boostTimer = 0;
-  runners[0].knockback = 0;
+  // プレイヤーパラメータ・パーツを反映
+  runners[0] = { ...runners[0], ...currentZombie, maxStm: currentZombie.stamina * 2.2, stm: currentZombie.stamina * 2.2, dist: 0, boostTimer: 0, knockback: 0 };
 
-  // 🤖 ライバルAIのステータス自動調整（プレイヤーの強さに合わせる）
+  // 🤖 ライバルのステータスとランダムパーツ設定
+  const clothesList = ['none', 'patient', 'suit'];
+  const headList = ['none', 'bandage', 'electrode'];
+  const eyeList = ['hollow', 'glow', 'stitched'];
+
   for (let i = 1; i < 4; i++) {
     runners[i].dist = 0;
-    // プレイヤーの値を基準に ±15 の範囲でばらけさせる
+    runners[i].clothes = clothesList[Math.floor(Math.random() * clothesList.length)];
+    runners[i].head = headList[Math.floor(Math.random() * headList.length)];
+    runners[i].eye = eyeList[Math.floor(Math.random() * eyeList.length)];
     runners[i].spdAttr = currentZombie.speed + (Math.floor(Math.random() * 30) - 15);
     runners[i].powAttr = currentZombie.power + (Math.floor(Math.random() * 30) - 15);
     runners[i].maxStm = (currentZombie.stamina + (Math.floor(Math.random() * 30) - 15)) * 2.2;
     runners[i].stm = runners[i].maxStm;
     runners[i].boostTimer = 0;
     runners[i].knockback = 0;
-    runners[i].skillCd = Math.floor(Math.random() * 300) + 300; // スキル使用周期
+    runners[i].skillCd = Math.floor(Math.random() * 300) + 300;
   }
 
   selectRandomFlasks();
@@ -199,14 +248,18 @@ function startRace() {
   requestAnimationFrame(update);
 }
 
+// 🧪 UIにスキル効果説明（desc）をセット
 function selectRandomFlasks() {
   const shuffled = [...ALL_SKILLS].sort(() => 0.5 - Math.random());
   currentFlasks = shuffled.slice(0, 3).map(s => ({ ...s, charge: 0, max: 100 }));
   currentFlasks.forEach((flask, idx) => {
     const iconEl = document.getElementById(`flask-icon-${idx}`);
     const nameEl = document.getElementById(`flask-name-${idx}`);
+    const descEl = document.getElementById(`flask-desc-${idx}`);
+    
     if (iconEl) iconEl.textContent = flask.icon;
     if (nameEl) nameEl.textContent = flask.name;
+    if (descEl) descEl.textContent = flask.desc; // 効果をUIに表示
   });
 }
 
@@ -240,7 +293,6 @@ function triggerSkill(index, power) {
   flask.charge = 0;
 }
 
-// 🤖 CPUのスキル発動処理
 function aiTriggerSkill(runner) {
   const skills = ['mach', 'barrier', 'meat', 'heal'];
   const skill = skills[Math.floor(Math.random() * skills.length)];
@@ -263,8 +315,6 @@ function aiTriggerSkill(runner) {
     runner.stm = Math.min(runner.maxStm, runner.stm + 40);
     effects.push({ text: `回復`, x: runner.x + 19, y: runner.y - 12, color: '#3fb950' });
   }
-  
-  // 次回発動までのクールダウンをセット
   runner.skillCd = Math.floor(Math.random() * 400) + 400;
 }
 
@@ -285,12 +335,11 @@ function update() {
   if (!isGameRunning) {
     if (document.getElementById('nurture-screen').classList.contains('hidden') === false) {
       globalTime++;
-      updateNurtureUI(); // 育成画面中の歩行アニメーション用
+      updateNurtureUI();
     }
     requestAnimationFrame(update);
     return;
   }
-
   globalTime++;
 
   currentFlasks.forEach((flask, index) => {
@@ -317,7 +366,6 @@ function update() {
 
     r.dist += baseSpeed;
 
-    // CPUのスキル発動処理
     if (i !== 0 && remainingDistance < 900) {
       r.skillCd--;
       if (r.skillCd <= 0) aiTriggerSkill(r);
@@ -384,11 +432,10 @@ function update() {
   }
   ctx.setLineDash([]);
 
-  // 描画（アニメーションPhaseとして移動距離を渡す）
+  // 描画（パーツ合成の zData に丸ごとランナー情報を渡す）
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
-    drawZombieCharacter(ctx, r.x, r.y, 38, 42, r.color, r.stm <= 0, r.dist * 0.4);
-
+    drawZombieCharacter(ctx, r.x, r.y, 38, 42, r, r.stm <= 0, r.dist * 0.4);
     if (r.isBarrier) {
       ctx.strokeStyle = '#8957e5';
       ctx.lineWidth = 2;
@@ -418,7 +465,6 @@ function update() {
     const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(eff.text, eff.x, eff.y); eff.y -= 0.8; if (eff.y < 120) effects.splice(i, 1);
   }
-
   ctx.restore();
   requestAnimationFrame(update);
 }
@@ -474,7 +520,6 @@ function init() {
     });
   });
   
-  // タイトル画面用のループ開始
   requestAnimationFrame(update);
 }
 

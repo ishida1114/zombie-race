@@ -35,7 +35,6 @@ html, body {
   display: none !important;
 }
 
-/* 🧟 タイトル画面 */
 #title-screen {
   width: 100%;
   height: 100%;
@@ -86,7 +85,6 @@ html, body {
   color: #f1f5f9;
 }
 
-/* 🧪 育成画面 */
 #nurture-screen {
   width: 100%;
   height: 100%;
@@ -107,12 +105,7 @@ html, body {
   padding-bottom: 8px;
 }
 
-.nurture-turn {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.nurture-name {
+.nurture-turn, .nurture-name {
   color: #e2e8f0;
   font-size: 13px;
 }
@@ -170,22 +163,10 @@ html, body {
   touch-action: manipulation;
 }
 
-.cmd-btn:active {
-  background: #21262d;
-}
+.cmd-btn:active { background: #21262d; }
+.cmd-icon { font-size: 16px; opacity: 0.8; }
+.cmd-text { font-family: 'Hiragino Kaku Gothic ProN', sans-serif; color: #c9d1d9; font-size: 12px; }
 
-.cmd-icon {
-  font-size: 16px;
-  opacity: 0.8;
-}
-
-.cmd-text {
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  color: #c9d1d9;
-  font-size: 12px;
-}
-
-/* 🏁 レース画面 ＆ 横進捗バー */
 #race-screen {
   position: relative;
   width: 100%;
@@ -206,32 +187,9 @@ html, body {
   z-index: 6;
 }
 
-.progress-start, .progress-goal {
-  font-family: sans-serif;
-  font-size: 11px;
-  font-weight: bold;
-  color: #8b949e;
-}
-
-.progress-track {
-  position: relative;
-  flex: 1;
-  height: 6px;
-  background: #21262d;
-  border-radius: 3px;
-}
-
-.runner-marker {
-  position: absolute;
-  top: -5px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid #0d1117;
-  transform: translateX(-50%);
-  transition: left 0.1s linear;
-}
-
+.progress-start, .progress-goal { font-family: sans-serif; font-size: 11px; font-weight: bold; color: #8b949e; }
+.progress-track { position: relative; flex: 1; height: 6px; background: #21262d; border-radius: 3px; }
+.runner-marker { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #0d1117; transform: translateX(-50%); transition: left 0.1s linear; }
 .runner-marker.p-you { background-color: #3fb950; z-index: 4; }
 .runner-marker.p-r1  { background-color: #f85149; z-index: 3; }
 .runner-marker.p-r2  { background-color: #a371f7; z-index: 2; }
@@ -247,35 +205,20 @@ html, body {
   z-index: 5;
 }
 
-.hud-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-}
-
-.hud-label {
-  font-size: 11px;
-  color: #8b949e;
-}
-
-.hud-val {
-  font-size: 13px;
-  color: #f0883e;
-  font-weight: bold;
-}
+.hud-item { display: flex; align-items: center; gap: 6px; font-family: 'Hiragino Kaku Gothic ProN', sans-serif; }
+.hud-label { font-size: 11px; color: #8b949e; }
+.hud-val { font-size: 13px; color: #f0883e; font-weight: bold; }
 
 canvas#gameCanvas {
   width: 100%;
-  height: 70%;
+  height: 68%;
   background-color: #1a1d24;
   display: block;
 }
 
-/* フラスコエリア */
 #flask-container {
   width: 100%;
-  height: 25%;
+  height: 27%;
   background: #0d1117;
   border-top: 1px solid #21262d;
   display: flex;
@@ -289,16 +232,16 @@ canvas#gameCanvas {
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  width: 30%;
-  height: 90%;
+  width: 32%;
+  height: 98%;
   justify-content: center;
   touch-action: manipulation;
 }
 
 .flask-wrapper {
   position: relative;
-  width: 50px;
-  height: 56px;
+  width: 48px;
+  height: 52px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid #484f58;
   border-radius: 4px 4px 14px 14px;
@@ -306,6 +249,7 @@ canvas#gameCanvas {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-bottom: 4px;
 }
 
 .flask-fill {
@@ -319,33 +263,31 @@ canvas#gameCanvas {
   pointer-events: none;
 }
 
-.flask-card.ready .flask-wrapper {
-  border-color: #58a6ff;
-  box-shadow: 0 0 10px rgba(88, 166, 255, 0.4);
-}
-
-.flask-icon {
-  position: relative;
-  z-index: 2;
-  font-size: 20px;
-  pointer-events: none;
-  opacity: 0.85;
-}
+.flask-card.ready .flask-wrapper { border-color: #58a6ff; box-shadow: 0 0 10px rgba(88, 166, 255, 0.4); }
+.flask-icon { position: relative; z-index: 2; font-size: 20px; pointer-events: none; opacity: 0.85; }
 
 .flask-name {
   font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  color: #e2e8f0;
+}
+
+.flask-desc {
+  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
   font-size: 10px;
-  margin-top: 4px;
   color: #8b949e;
+  margin-top: 2px;
+  text-align: center;
 }
 
 .flask-percent {
   font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   color: #58a6ff;
+  margin-top: 2px;
 }
 
-/* 🏆 リザルト画面 */
 #result-screen {
   position: absolute;
   inset: 0;
@@ -358,21 +300,6 @@ canvas#gameCanvas {
   z-index: 20;
 }
 
-.result-title {
-  font-size: 18px;
-  color: #8b949e;
-  letter-spacing: 4px;
-}
-
-.rank-badge {
-  font-size: 52px;
-  color: #f0883e;
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  font-weight: bold;
-}
-
-.result-detail {
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  font-size: 14px;
-  color: #c9d1d9;
-}
+.result-title { font-size: 18px; color: #8b949e; letter-spacing: 4px; }
+.rank-badge { font-size: 52px; color: #f0883e; font-family: 'Hiragino Kaku Gothic ProN', sans-serif; font-weight: bold; }
+.result-detail { font-family: 'Hiragino Kaku Gothic ProN', sans-serif; font-size: 14px; color: #c9d1d9; }
