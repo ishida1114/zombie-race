@@ -20,21 +20,60 @@ assets.zombieWalk[1].src = '/zombie_walk2.png';
 assets.zombieWalk[2].src = '/zombie_walk3.png';
 assets.zombieWalk[3].src = '/zombie_walk4.png';
 
+// 🎨 画像の余白背景（白や黒）を自動で判定して透明化するカラーキーキャッシュ機能
+const transparentCache = {};
+
+function getTransparentSprite(img) {
+  if (!img.complete || img.naturalWidth === 0) return img;
+  if (transparentCache[img.src]) return transparentCache[img.src];
+
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = img.naturalWidth;
+  offCanvas.height = img.naturalHeight;
+  const offCtx = offCanvas.getContext('2d');
+  offCtx.drawImage(img, 0, 0);
+
+  const imgData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+  const data = imgData.data;
+
+  // すでに背景が透明な透過PNGの場合は何もせず返す
+  if (data[3] === 0) {
+    transparentCache[img.src] = img;
+    return img;
+  }
+
+  // 四角い画像の左上（0,0）のピクセル色を背景色とみなす
+  const bgR = data[0];
+  const bgG = data[1];
+  const bgB = data[2];
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    // 背景色に近いピクセルを透明化
+    if (Math.abs(r - bgR) < 35 && Math.abs(g - bgG) < 35 && Math.abs(b - bgB) < 35) {
+      data[i + 3] = 0;
+    }
+  }
+
+  offCtx.putImageData(imgData, 0, 0);
+  transparentCache[img.src] = offCanvas;
+  return offCanvas;
+}
+
 let currentZombie = {
   name: '検体 No.101',
-  hue: 0,
-  head: 'none',   // none, cap(キャップ), worker(ヘルメット)
-  eye: 'none',    // none, sunglasses(サングラス), bandage(包帯)
   speed: 50, power: 50, stamina: 50
 };
 
 let remainingTurns = 5;
 
 const runners = [
-  { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 0, head: 'none', eye: 'none', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
-  { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 90, head: 'worker', eye: 'none', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
-  { id: 2, name: 'No.204', x: 180, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 180, head: 'none', eye: 'bandage', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
-  { id: 3, name: 'No.305', x: 260, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 270, head: 'cap', eye: 'sunglasses', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
+  { id: 0, name: 'YOU', x: 20, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
+  { id: 1, name: 'No.088', x: 100, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
+  { id: 2, name: 'No.204', x: 180, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
+  { id: 3, name: 'No.305', x: 260, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
 ];
 
 const particles = [];
@@ -51,7 +90,7 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🎨 高精度ドットパーツ描画機能付き描画関数
+// 🎨 ゾンビ描画：背景自動透過処理付きのクリーン描画
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted, distPhase) {
   targetCtx.save();
   targetCtx.imageSmoothingEnabled = false;
@@ -68,112 +107,31 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted,
     frameIndex = Math.floor(globalTime * 0.04) % 4;
   }
 
-  // 影
-  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+  // 接地影
+  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   targetCtx.beginPath();
   targetCtx.ellipse(x + width / 2, y + height - 2, width / 2 - 4, 5, 0, 0, Math.PI * 2);
   targetCtx.fill();
 
-  const img = assets.zombieWalk[frameIndex];
+  const rawImg = assets.zombieWalk[frameIndex];
 
-  if (img.complete && img.naturalWidth > 0) {
-    let filterStr = `hue-rotate(${zData.hue}deg)`;
+  if (rawImg.complete && rawImg.naturalWidth > 0) {
+    const drawY = y - bounce;
+
+    // 背景切り抜き処理を通した画像を取得
+    const cleanSprite = getTransparentSprite(rawImg);
 
     if (isKnockback) {
-      filterStr = 'brightness(150%) sepia(100%) hue-rotate(-50deg) saturate(300%)';
       targetCtx.translate(x + width / 2, y + height);
-      targetCtx.rotate(-0.4);
-      targetCtx.translate(-(x + width / 2), -(y + height));
-    } else if (isExhausted) {
-      filterStr += ' grayscale(80%) brightness(0.6)';
-      targetCtx.translate(x + width / 2, y + height);
-      targetCtx.rotate(0.15);
+      targetCtx.rotate(-0.35);
       targetCtx.translate(-(x + width / 2), -(y + height));
     }
 
-    targetCtx.filter = filterStr;
-
-    const drawY = y - bounce;
-    targetCtx.drawImage(img, x, drawY, width, height);
-    targetCtx.filter = 'none';
-
-    // -------------------------------------------------------------
-    // 🎨 高精度ドットパーツ合成（黒枠＋ハイライト＋影表現）
-    // -------------------------------------------------------------
-    
-    // 1. 赤いキャップ（帽子）
-    if (zData.head === 'cap') {
-      // 黒枠（アウトライン）
-      targetCtx.fillStyle = '#0f172a';
-      targetCtx.fillRect(x + 10, drawY - 4, width - 18, 11);
-      targetCtx.fillRect(x + 2, drawY + 3, width - 10, 4);
-
-      // 帽子本体（赤）
-      targetCtx.fillStyle = '#dc2626';
-      targetCtx.fillRect(x + 12, drawY - 2, width - 22, 8);
-      targetCtx.fillRect(x + 4, drawY + 4, width - 14, 2);
-
-      // 上部ハイライト＆かげ
-      targetCtx.fillStyle = '#f87171'; // 光
-      targetCtx.fillRect(x + 14, drawY - 2, width - 26, 2);
-      targetCtx.fillStyle = '#991b1b'; // 影
-      targetCtx.fillRect(x + 12, drawY + 4, 6, 2);
-    } 
-    // 2. 工事用ヘルメット（黄）
-    else if (zData.head === 'worker') {
-      // 黒枠
-      targetCtx.fillStyle = '#0f172a';
-      targetCtx.fillRect(x + 8, drawY - 4, width - 14, 11);
-      targetCtx.fillRect(x + 4, drawY + 4, width - 8, 4);
-
-      // ヘルメット本体（黄色）
-      targetCtx.fillStyle = '#eab308';
-      targetCtx.fillRect(x + 10, drawY - 2, width - 18, 8);
-      targetCtx.fillRect(x + 6, drawY + 5, width - 12, 2);
-
-      // 光沢ハイライト ＆ センターライン
-      targetCtx.fillStyle = '#fef08a'; // 光
-      targetCtx.fillRect(x + 12, drawY - 2, 4, 3);
-      targetCtx.fillStyle = '#ca8a04'; // 中央リブ構造
-      targetCtx.fillRect(x + width / 2 - 2, drawY - 2, 3, 8);
-    }
-
-    // 3. サングラス
-    if (zData.eye === 'sunglasses') {
-      // フレーム（黒枠）
-      targetCtx.fillStyle = '#020617';
-      targetCtx.fillRect(x + 8, drawY + 11, width - 14, 7);
-      
-      // レンズ（ダークグレー）
-      targetCtx.fillStyle = '#1e293b';
-      targetCtx.fillRect(x + 10, drawY + 12, (width - 18) / 2 - 1, 5);
-      targetCtx.fillRect(x + 10 + (width - 18) / 2 + 1, drawY + 12, (width - 18) / 2 - 1, 5);
-
-      // ガラスの白い反射光ドット
-      targetCtx.fillStyle = '#f8fafc';
-      targetCtx.fillRect(x + 11, drawY + 13, 2, 2);
-      targetCtx.fillRect(x + 12 + (width - 18) / 2, drawY + 13, 2, 2);
-    } 
-    // 4. 包帯（目隠し）
-    else if (zData.eye === 'bandage') {
-      // 黒枠
-      targetCtx.fillStyle = '#0f172a';
-      targetCtx.fillRect(x + 6, drawY + 9, width - 8, 8);
-
-      // 包帯布地（オフホワイト）
-      targetCtx.fillStyle = '#e2e8f0';
-      targetCtx.fillRect(x + 7, drawY + 10, width - 10, 6);
-
-      // 汚れ・縫い目ライン
-      targetCtx.fillStyle = '#94a3b8';
-      targetCtx.fillRect(x + 10, drawY + 11, 2, 4);
-      targetCtx.fillRect(x + 20, drawY + 12, 2, 3);
-    }
+    targetCtx.drawImage(cleanSprite, x, drawY, width, height);
 
   } else {
-    targetCtx.fillStyle = isExhausted ? '#64748b' : `hsl(${120 + zData.hue}, 60%, 50%)`;
+    targetCtx.fillStyle = '#475569';
     targetCtx.fillRect(x + 4, y + 10, width - 8, height - 14);
-    targetCtx.fillRect(x + 2, y, width - 4, 16);
   }
 
   if (isExhausted && !isKnockback) {
@@ -184,16 +142,47 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted,
   targetCtx.restore();
 }
 
+// 🏙️ シックでクリーンな日常道路描画（余計な白いノイズペイントを全廃止）
+function drawJapaneseStreetBackground() {
+  ctx.fillStyle = '#1e232e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 左右側溝
+  ctx.fillStyle = '#131720';
+  ctx.fillRect(0, 0, 12, canvas.height);
+  ctx.fillRect(canvas.width - 12, 0, 12, canvas.height);
+
+  ctx.fillStyle = '#374151';
+  ctx.fillRect(12, 0, 2, canvas.height);
+  ctx.fillRect(canvas.width - 14, 0, 2, canvas.height);
+
+  // レーン破線
+  ctx.strokeStyle = '#2d3748';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([12, 18]);
+  for (let x of [90, 170, 250]) {
+    ctx.beginPath();
+    ctx.moveTo(x, -60 + scrollY);
+    ctx.lineTo(x, canvas.height + 60 + scrollY);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // 中央黄線
+  ctx.strokeStyle = '#eab308';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([24, 20]);
+  ctx.beginPath();
+  ctx.moveTo(170, -60 + scrollY);
+  ctx.lineTo(170, canvas.height + 60 + scrollY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
 function generateRandomZombie() {
   const num = Math.floor(Math.random() * 900) + 100;
-  const headList = ['none', 'cap', 'worker'];
-  const eyeList = ['none', 'sunglasses', 'bandage'];
-
   currentZombie = {
     name: `検体 No.${num}`,
-    hue: Math.floor(Math.random() * 360),
-    head: headList[Math.floor(Math.random() * headList.length)],
-    eye: eyeList[Math.floor(Math.random() * eyeList.length)],
     speed: Math.floor(Math.random() * 20) + 40,
     power: Math.floor(Math.random() * 20) + 40,
     stamina: Math.floor(Math.random() * 20) + 40
@@ -249,21 +238,16 @@ function startRace() {
   startTime = Date.now();
   globalTime = 0;
   
+  document.getElementById('countdown-overlay').classList.add('hidden');
+
   runners[0] = { 
     ...runners[0], 
-    spdAttr: currentZombie.speed, powAttr: currentZombie.power, hue: currentZombie.hue,
-    head: currentZombie.head, eye: currentZombie.eye,
+    spdAttr: currentZombie.speed, powAttr: currentZombie.power,
     maxStm: currentZombie.stamina * 2.2, stm: currentZombie.stamina * 2.2, dist: 0, boostTimer: 0, knockback: 0 
   };
 
-  const headList = ['none', 'cap', 'worker'];
-  const eyeList = ['none', 'sunglasses', 'bandage'];
-
   for (let i = 1; i < 4; i++) {
     runners[i].dist = 0;
-    runners[i].hue = Math.floor(Math.random() * 360);
-    runners[i].head = headList[Math.floor(Math.random() * headList.length)];
-    runners[i].eye = eyeList[Math.floor(Math.random() * eyeList.length)];
     runners[i].spdAttr = currentZombie.speed + (Math.floor(Math.random() * 30) - 15);
     runners[i].powAttr = currentZombie.power + (Math.floor(Math.random() * 30) - 15);
     runners[i].maxStm = (currentZombie.stamina + (Math.floor(Math.random() * 30) - 15)) * 2.2;
@@ -302,13 +286,13 @@ function triggerSkill(index, power) {
     if (isMax) shakeTime = 12;
   } else if (flask.id === 'mach') {
     playerRunner.boostTimer = Math.floor((power / 100) * 140);
-    effects.push({ text: `神経加速`, x: playerRunner.x + 24, y: playerRunner.y - 12, color: '#388bfd' });
+    effects.push({ text: `神経加速`, x: playerRunner.x + 24, y: playerRunner.y - 12, color: '#38bdf8' });
   } else if (flask.id === 'barrier') {
     playerRunner.isBarrier = true;
     setTimeout(() => { playerRunner.isBarrier = false; }, (power / 100) * 3500);
-    effects.push({ text: `組織硬化`, x: playerRunner.x + 24, y: playerRunner.y - 12, color: '#8957e5' });
+    effects.push({ text: `組織硬化`, x: playerRunner.x + 24, y: playerRunner.y - 12, color: '#a855f7' });
   } else if (flask.id === 'meat') {
-    effects.push({ text: `組織妨害`, x: canvas.width / 2, y: 150, color: '#da3633' });
+    effects.push({ text: `組織妨害`, x: canvas.width / 2, y: 150, color: '#ef4444' });
     for (let i = 1; i < 4; i++) {
       const powResistance = Math.floor(runners[i].powAttr * 0.4);
       runners[i].knockback = Math.max(15, 60 - powResistance);
@@ -316,7 +300,7 @@ function triggerSkill(index, power) {
   } else if (flask.id === 'heal') {
     playerRunner.stm = Math.min(playerRunner.maxStm, playerRunner.stm + 50);
     playerRunner.boostTimer = 70;
-    effects.push({ text: `強心刺激`, x: playerRunner.x + 24, y: playerRunner.y - 12, color: '#238636' });
+    effects.push({ text: `強心刺激`, x: playerRunner.x + 24, y: playerRunner.y - 12, color: '#22c55e' });
   }
   flask.charge = 0;
 }
@@ -327,13 +311,13 @@ function aiTriggerSkill(runner) {
   
   if (skill === 'mach') {
     runner.boostTimer = 100;
-    effects.push({ text: `加速`, x: runner.x + 24, y: runner.y - 12, color: '#f87171' });
+    effects.push({ text: `加速`, x: runner.x + 24, y: runner.y - 12, color: '#ef4444' });
   } else if (skill === 'barrier') {
     runner.isBarrier = true;
     setTimeout(() => { runner.isBarrier = false; }, 2500);
-    effects.push({ text: `硬化`, x: runner.x + 24, y: runner.y - 12, color: '#a371f7' });
+    effects.push({ text: `硬化`, x: runner.x + 24, y: runner.y - 12, color: '#a855f7' });
   } else if (skill === 'meat') {
-    effects.push({ text: `妨害！`, x: runner.x + 24, y: runner.y - 12, color: '#da3633' });
+    effects.push({ text: `妨害！`, x: runner.x + 24, y: runner.y - 12, color: '#ef4444' });
     runners.forEach(r => {
       if (r.id !== runner.id && !r.isBarrier) {
         r.knockback = Math.max(15, 50 - Math.floor(r.powAttr * 0.3));
@@ -341,13 +325,14 @@ function aiTriggerSkill(runner) {
     });
   } else if (skill === 'heal') {
     runner.stm = Math.min(runner.maxStm, runner.stm + 40);
-    effects.push({ text: `回復`, x: runner.x + 24, y: runner.y - 12, color: '#3fb950' });
+    effects.push({ text: `回復`, x: runner.x + 24, y: runner.y - 12, color: '#22c55e' });
   }
   runner.skillCd = Math.floor(Math.random() * 400) + 400;
 }
 
 function finishRace() {
   isGameRunning = false;
+  document.getElementById('countdown-overlay').classList.add('hidden');
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
   const sorted = [...runners].sort((a, b) => b.dist - a.dist);
   const playerRank = sorted.findIndex(r => r.id === 0) + 1;
@@ -416,6 +401,16 @@ function update() {
   const leadingDist = Math.max(...runners.map(r => r.dist));
   remainingDistance = Math.max(0, totalDistance - leadingDist);
 
+  // ⏱️ 残り200m以下で確実に「5」「4」「3」「2」「1」を画面中央にカウントダウン表示
+  const cdEl = document.getElementById('countdown-overlay');
+  if (remainingDistance <= 200 && remainingDistance > 0) {
+    const countVal = Math.min(5, Math.max(1, Math.ceil(remainingDistance / 40)));
+    cdEl.textContent = countVal;
+    cdEl.classList.remove('hidden');
+  } else {
+    cdEl.classList.add('hidden');
+  }
+
   if (remainingDistance <= 0) { finishRace(); return; }
 
   const avgDist = runners.reduce((acc, r) => acc + r.dist, 0) / 4;
@@ -442,32 +437,17 @@ function update() {
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6); shakeTime--; }
 
-  ctx.fillStyle = '#1e222a';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+  // 道路描画
   scrollY = (scrollY + 0.25) % 60;
+  drawJapaneseStreetBackground();
 
-  ctx.fillStyle = '#12151c';
-  ctx.fillRect(0, 0, 10, canvas.height);
-  ctx.fillRect(canvas.width - 10, 0, 10, canvas.height);
-
-  ctx.strokeStyle = '#333a48';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([10, 15]);
-  for (let x of [90, 170, 250]) {
-    ctx.beginPath();
-    ctx.moveTo(x, -60 + scrollY);
-    ctx.lineTo(x, canvas.height + 60 + scrollY);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
+  // キャラの描画
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
     drawZombieCharacter(ctx, r.x - 4, r.y - 12, 48, 56, r, r.stm <= 0, r.dist);
     
     if (r.isBarrier) {
-      ctx.strokeStyle = '#8957e5';
+      ctx.strokeStyle = '#a855f7';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(r.x + 20, r.y + 16, 28, 0, Math.PI * 2);
@@ -485,14 +465,14 @@ function update() {
           const powResist = Math.floor(runners[j].powAttr * 0.3);
           runners[j].knockback = Math.max(15, 60 - powResist);
         }
-        effects.push({ text: `衝撃波`, x: p.x, y: p.y, color: '#f87171' });
+        effects.push({ text: `衝撃波`, x: p.x, y: p.y, color: '#ef4444' });
         particles.splice(i, 1);
       }
     }
   }
 
   for (let i = effects.length - 1; i >= 0; i--) {
-    const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(eff.text, eff.x, eff.y); eff.y -= 0.8; if (eff.y < 120) effects.splice(i, 1);
   }
   ctx.restore();
