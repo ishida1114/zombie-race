@@ -10,7 +10,7 @@ html, body {
   height: 100%;
   background-color: #08090d;
   color: #e2e8f0;
-  font-family: 'Hiragino Mincho ProN', '游明朝', serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -35,6 +35,7 @@ html, body {
   display: none !important;
 }
 
+/* 🧟 タイトル画面 */
 #title-screen {
   width: 100%;
   height: 100%;
@@ -59,7 +60,7 @@ html, body {
   max-width: 300px;
   height: auto;
   object-fit: contain;
-  filter: grayscale(15%) drop-shadow(0 2px 8px rgba(0,0,0,0.8));
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.9));
 }
 
 .retro-btn {
@@ -79,12 +80,13 @@ html, body {
 }
 
 .retro-btn span {
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
   font-size: clamp(14px, 2vh, 17px);
   letter-spacing: 2px;
   color: #f1f5f9;
+  font-weight: bold;
 }
 
+/* 🧪 育成画面 */
 #nurture-screen {
   width: 100%;
   height: 100%;
@@ -108,14 +110,15 @@ html, body {
 .nurture-turn, .nurture-name {
   color: #e2e8f0;
   font-size: 13px;
+  font-weight: bold;
 }
 
 .zombie-preview-box {
-  width: 110px;
-  height: 110px;
+  width: 120px;
+  height: 120px;
   background: #161b22;
   border: 1px solid #30363d;
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -134,13 +137,12 @@ html, body {
 .stat-row {
   display: flex;
   justify-content: space-between;
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
   font-size: 12px;
   color: #8b949e;
 }
 
 .stat-row span:last-child {
-  color: #58a6ff;
+  color: #38bdf8;
   font-weight: bold;
 }
 
@@ -164,9 +166,10 @@ html, body {
 }
 
 .cmd-btn:active { background: #21262d; }
-.cmd-icon { font-size: 16px; opacity: 0.8; }
-.cmd-text { font-family: 'Hiragino Kaku Gothic ProN', sans-serif; color: #c9d1d9; font-size: 12px; }
+.cmd-icon { font-size: 16px; }
+.cmd-text { color: #c9d1d9; font-size: 12px; font-weight: bold; }
 
+/* 🏁 レース画面 */
 #race-screen {
   position: relative;
   width: 100%;
@@ -187,13 +190,13 @@ html, body {
   z-index: 6;
 }
 
-.progress-start, .progress-goal { font-family: sans-serif; font-size: 11px; font-weight: bold; color: #8b949e; }
+.progress-start, .progress-goal { font-size: 11px; font-weight: bold; color: #8b949e; }
 .progress-track { position: relative; flex: 1; height: 6px; background: #21262d; border-radius: 3px; }
 .runner-marker { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #0d1117; transform: translateX(-50%); transition: left 0.1s linear; }
-.runner-marker.p-you { background-color: #3fb950; z-index: 4; }
-.runner-marker.p-r1  { background-color: #f85149; z-index: 3; }
-.runner-marker.p-r2  { background-color: #a371f7; z-index: 2; }
-.runner-marker.p-r3  { background-color: #d29922; z-index: 1; }
+.runner-marker.p-you { background-color: #38bdf8; z-index: 4; }
+.runner-marker.p-r1  { background-color: #f87171; z-index: 3; }
+.runner-marker.p-r2  { background-color: #a855f7; z-index: 2; }
+.runner-marker.p-r3  { background-color: #facc15; z-index: 1; }
 
 #race-hud {
   height: 32px;
@@ -205,15 +208,41 @@ html, body {
   z-index: 5;
 }
 
-.hud-item { display: flex; align-items: center; gap: 6px; font-family: 'Hiragino Kaku Gothic ProN', sans-serif; }
+.hud-item { display: flex; align-items: center; gap: 6px; }
 .hud-label { font-size: 11px; color: #8b949e; }
-.hud-val { font-size: 13px; color: #f0883e; font-weight: bold; }
+.hud-val { font-size: 13px; color: #facc15; font-weight: bold; }
+
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 68%;
+}
 
 canvas#gameCanvas {
   width: 100%;
-  height: 68%;
-  background-color: #1a1d24;
+  height: 100%;
+  background-color: #1c212b;
   display: block;
+}
+
+/* ⏱️ ラスト5秒カウントダウンのオーバーレイ */
+#countdown-overlay {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 72px;
+  font-weight: 900;
+  color: #ef4444;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 3px 3px 0 #000;
+  pointer-events: none;
+  animation: pulse-cd 0.6s infinite alternate;
+  z-index: 10;
+}
+
+@keyframes pulse-cd {
+  0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
 }
 
 #flask-container {
@@ -258,35 +287,16 @@ canvas#gameCanvas {
   left: 0;
   width: 100%;
   height: 0%;
-  background: linear-gradient(to top, #1f6feb, #388bfd);
+  background: linear-gradient(to top, #0284c7, #38bdf8);
   transition: height 0.1s linear;
   pointer-events: none;
 }
 
-.flask-card.ready .flask-wrapper { border-color: #58a6ff; box-shadow: 0 0 10px rgba(88, 166, 255, 0.4); }
-.flask-icon { position: relative; z-index: 2; font-size: 20px; pointer-events: none; opacity: 0.85; }
-
-.flask-name {
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  font-size: 11px;
-  font-weight: bold;
-  color: #e2e8f0;
-}
-
-.flask-desc {
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  font-size: 10px;
-  color: #8b949e;
-  margin-top: 2px;
-  text-align: center;
-}
-
-.flask-percent {
-  font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-  font-size: 11px;
-  color: #58a6ff;
-  margin-top: 2px;
-}
+.flask-card.ready .flask-wrapper { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
+.flask-icon { position: relative; z-index: 2; font-size: 20px; pointer-events: none; }
+.flask-name { font-size: 11px; font-weight: bold; color: #e2e8f0; }
+.flask-desc { font-size: 10px; color: #8b949e; margin-top: 2px; text-align: center; }
+.flask-percent { font-size: 11px; color: #38bdf8; margin-top: 2px; font-weight: bold; }
 
 #result-screen {
   position: absolute;
@@ -300,6 +310,6 @@ canvas#gameCanvas {
   z-index: 20;
 }
 
-.result-title { font-size: 18px; color: #8b949e; letter-spacing: 4px; }
-.rank-badge { font-size: 52px; color: #f0883e; font-family: 'Hiragino Kaku Gothic ProN', sans-serif; font-weight: bold; }
-.result-detail { font-family: 'Hiragino Kaku Gothic ProN', sans-serif; font-size: 14px; color: #c9d1d9; }
+.result-title { font-size: 18px; color: #8b949e; letter-spacing: 4px; font-weight: bold; }
+.rank-badge { font-size: 52px; color: #facc15; font-weight: bold; }
+.result-detail { font-size: 14px; color: #c9d1d9; }

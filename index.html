@@ -58,6 +58,7 @@
 
     <!-- 🏁 3. レース画面 -->
     <div id="race-screen" class="hidden">
+      <!-- 横進捗バー -->
       <div id="progress-bar-container">
         <div class="progress-start">S</div>
         <div class="progress-track">
@@ -69,16 +70,21 @@
         <div class="progress-goal">G</div>
       </div>
 
+      <!-- レースHUD -->
       <div id="race-hud">
         <div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位 / 4人</span></div>
         <div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">1000m</span></div>
       </div>
 
-      <canvas id="gameCanvas" width="360" height="420"></canvas>
+      <!-- ゲーム描画Canvas -->
+      <div class="canvas-wrapper">
+        <canvas id="gameCanvas" width="360" height="420"></canvas>
+        <!-- ラスト5秒カウントダウン表示オーバーレイ -->
+        <div id="countdown-overlay" class="hidden">5</div>
+      </div>
       
-      <!-- フラスコUI（効果テキスト追加） -->
+      <!-- フラスコUI -->
       <div id="flask-container">
-        <!-- スキル1 -->
         <div class="flask-card" data-index="0">
           <div class="flask-wrapper">
             <div class="flask-fill" id="flask-fill-0"></div>
@@ -89,7 +95,6 @@
           <span class="flask-percent" id="flask-percent-0">0%</span>
         </div>
 
-        <!-- スキル2 -->
         <div class="flask-card" data-index="1">
           <div class="flask-wrapper">
             <div class="flask-fill" id="flask-fill-1"></div>
@@ -100,7 +105,6 @@
           <span class="flask-percent" id="flask-percent-1">0%</span>
         </div>
 
-        <!-- スキル3 -->
         <div class="flask-card" data-index="2">
           <div class="flask-wrapper">
             <div class="flask-fill" id="flask-fill-2"></div>
