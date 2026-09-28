@@ -12,6 +12,8 @@ let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
 
+let flashEffect = { alpha: 0, color: '#ffffff' }; // 画面フラッシュ用
+
 const ZOMBIE_COLORS = [
   { name: '標準', filter: 'none' },
   { name: '猛毒', filter: 'hue-rotate(90deg) saturate(120%)' },
@@ -56,7 +58,6 @@ function updateChromaKeyFrame(targetW, targetH) {
   return offCanvas;
 }
 
-// 🧪 構想通りの全ステータス
 let currentZombie = {
   name: '検体 No.101',
   colorInfo: ZOMBIE_COLORS[0],
@@ -68,10 +69,29 @@ let currentZombie = {
 let remainingTurns = 5;
 
 const runners = [];
-const particles = [];
 const effects = [];
 
-// 🧪 クセ強フラスコ一覧（初期構想を完全網羅）
+// 🎇 本格的なパーティクル（光の粒）配列
+let particles = [];
+
+// 🎇 パーティクル生成エンジン（画像不要で光や爆発を描く）
+function createExplosion(x, y, color, count, speedMax, sizeBase, type = 'spark') {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * speedMax;
+    particles.push({
+      x: x, y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - (type === 'fire' ? 2 : 0), // 炎は上に昇る
+      life: 1.0,
+      decay: Math.random() * 0.03 + 0.015,
+      color: color,
+      size: Math.random() * sizeBase + sizeBase/2,
+      type: type
+    });
+  }
+}
+
 const ALL_SKILLS = [
   { id: 'meteor', name: 'メテオ', icon: '☄️', desc: '全体大ダメージ', speed: 0.035, type: 'attack' },
   { id: 'volcano', name: 'ボルケーノ', icon: '🌋', desc: '全体停止', speed: 0.038, type: 'attack' },
@@ -91,16 +111,17 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🛡️ 防御システム（パワーをノックバック耐性に変換）
 function applyKnockback(runner, baseKnockback) {
   if (runner.isHard) {
     effects.push({ text: `硬化無効!`, x: runner.x + 24, y: runner.y - 12, color: '#94a3b8' });
+    createExplosion(runner.x + 24, runner.y + 16, '#94a3b8', 10, 2, 3, 'spark'); // 弾くエフェクト
     return;
   }
   if (runner.barrierPower > 0) {
     const cut = Math.floor(baseKnockback * (runner.barrierPower / 100));
     baseKnockback -= cut;
     effects.push({ text: `バリア軽減`, x: runner.x + 24, y: runner.y - 12, color: '#a855f7' });
+    createExplosion(runner.x + 24, runner.y + 16, '#a855f7', 15, 3, 4, 'spark'); // バリア発光
   }
 
   const defense = Math.floor(runner.powAttr * 0.8);
@@ -109,9 +130,12 @@ function applyKnockback(runner, baseKnockback) {
   if (finalKnockback <= 0) {
     runner.knockback = 0;
     effects.push({ text: `GUARD!`, x: runner.x + 24, y: runner.y - 12, color: '#facc15' });
+    createExplosion(runner.x + 24, runner.y + 16, '#facc15', 8, 2, 2, 'spark');
   } else {
     runner.knockback = Math.max(runner.knockback, finalKnockback);
-    runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); // 体力も削られる
+    runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5));
+    // ダメージエフェクト（血飛沫）
+    createExplosion(runner.x + 24, runner.y + 16, '#dc2626', 20, 4, 3, 'blood');
   }
 }
 
@@ -132,7 +156,7 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
 
     let filterStr = zData.colorInfo.filter;
     if (isKnockback) filterStr = 'brightness(200%) sepia(100%) hue-rotate(-50deg)';
-    else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)'; // 硬化中は石の色
+    else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)';
     else if (isExhausted) filterStr += ' grayscale(80%) brightness(0.6)';
     
     targetCtx.filter = filterStr;
@@ -240,6 +264,8 @@ function startRace() {
   document.getElementById('countdown-overlay').classList.remove('hidden');
 
   runners.length = 0;
+  particles.length = 0; // パーティクル初期化
+
   runners.push({ 
     id: 0, name: 'YOU', x: 20, y: 220, dist: 0, 
     stm: currentZombie.stamina * 3, maxStm: currentZombie.stamina * 3, 
@@ -283,77 +309,129 @@ function selectRandomFlasks() {
   });
 }
 
-// 💥 フラスコ効果の発動（全14種再現）
+// 💥 ド派手スキル演出の実装
 function triggerSkill(index, power) {
   if (!currentFlasks[index] || raceState !== 'RACING') return;
   const flask = currentFlasks[index];
   const isMax = power >= 100;
   const player = runners[0];
 
-  // 異能（magic）による補正
   const magBonus = player.magAttr > 50 ? (player.magAttr - 50) * 0.5 : 0;
   const effectivePower = isMax ? 100 + magBonus : power * 0.6 + magBonus;
 
+  // 全体フラッシュ
+  flashEffect.alpha = isMax ? 0.8 : 0.4;
+  flashEffect.color = '#ffffff';
+
   if (flask.id === 'meteor') {
-    particles.push({ type: 'meteor', x: canvas.width / 2, y: -50, targetY: 200, radius: isMax ? 50 : 15, power: effectivePower });
-    if (isMax) { shakeTime = 20; effects.push({ text: `大隕石!!`, x: canvas.width/2, y: 150, color: '#ef4444' }); }
-  } else if (flask.id === 'volcano') {
+    flashEffect.color = '#ef4444'; // 赤フラッシュ
+    particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 200, radius: isMax ? 50 : 15, power: effectivePower });
+  } 
+  else if (flask.id === 'volcano') {
+    flashEffect.color = '#f97316';
+    shakeTime = 15;
     effects.push({ text: `溶岩噴出!`, x: canvas.width/2, y: 200, color: '#f97316' });
-    runners.forEach(r => { if (r.id !== 0) { applyKnockback(r, effectivePower); r.isHard = false; } });
-  } else if (flask.id === 'tornado') {
+    runners.forEach(r => { 
+      if (r.id !== 0) {
+        applyKnockback(r, effectivePower); r.isHard = false;
+        createExplosion(r.x + 24, r.y + 40, '#f97316', 30, 5, 4, 'fire'); // 足元から炎
+      }
+    });
+  } 
+  else if (flask.id === 'tornado') {
+    shakeTime = 10;
     effects.push({ text: `竜巻!`, x: canvas.width/2, y: 200, color: '#a3e635' });
+    createExplosion(canvas.width/2, 200, '#a3e635', 50, 8, 3, 'spark'); // 緑の嵐
     runners.forEach(r => { if (r.id !== 0) r.dist -= effectivePower * 0.2; });
-  } else if (flask.id === 'frog') {
+  } 
+  else if (flask.id === 'frog') {
     effects.push({ text: `ゲコゲコ...`, x: canvas.width/2, y: 200, color: '#4ade80' });
-    // TODO: 画面いっぱいにカエル描画のエフェクト追加
-  } else if (flask.id === 'psycho') {
-    effects.push({ text: `追尾レーザー!`, x: player.x, y: player.y, color: '#38bdf8' });
+    createExplosion(canvas.width/2, -20, '#4ade80', 60, 4, 5, 'frog'); // 緑の四角（カエル代わり）が降る
+  } 
+  else if (flask.id === 'psycho') {
     let target = runners[1];
     runners.forEach(r => { if (r.id !== 0 && Math.abs(r.dist - player.dist) < Math.abs(target.dist - player.dist)) target = r; });
+    effects.push({ text: `レーザー!`, x: player.x, y: player.y, color: '#38bdf8' });
+    createExplosion(target.x + 24, target.y + 16, '#38bdf8', 40, 6, 4, 'spark'); // 青い大爆発
     applyKnockback(target, effectivePower * 1.5);
-  } else if (flask.id === 'poison') {
+  } 
+  else if (flask.id === 'poison') {
     effects.push({ text: isMax ? `極太毒ゲロ!` : `ペッ`, x: player.x, y: player.y - 30, color: '#a3e635' });
+    createExplosion(player.x + 24, player.y - 10, '#a3e635', isMax ? 50 : 10, 5, 4, 'spark');
     runners.forEach(r => { if (r.id !== 0 && r.dist > player.dist && r.x === player.x) applyKnockback(r, effectivePower); });
-  } else if (flask.id === 'stone') {
+  } 
+  else if (flask.id === 'stone') {
     effects.push({ text: `小石...`, x: player.x, y: player.y - 20, color: '#94a3b8' });
     runners.forEach(r => { if (r.id !== 0 && Math.abs(r.dist - player.dist) < 20) applyKnockback(r, 10); });
-  } else if (flask.id === 'hard') {
+  } 
+  else if (flask.id === 'hard') {
     player.isHard = true;
-    player.knockback = effectivePower; // 停止するが無敵
+    player.knockback = effectivePower;
     effects.push({ text: `完全硬化`, x: player.x + 24, y: player.y - 12, color: '#94a3b8' });
+    createExplosion(player.x + 24, player.y + 16, '#cbd5e1', 20, 2, 3, 'spark');
     setTimeout(() => { player.isHard = false; }, effectivePower * 30);
-  } else if (flask.id === 'barrier') {
+  } 
+  else if (flask.id === 'barrier') {
+    flashEffect.color = '#a855f7';
     player.barrierPower = effectivePower;
     effects.push({ text: `透過バリア`, x: player.x + 24, y: player.y - 12, color: '#a855f7' });
+    createExplosion(player.x + 24, player.y + 16, '#a855f7', 30, 4, 3, 'spark');
     setTimeout(() => { player.barrierPower = 0; }, 3000);
-  } else if (flask.id === 'slip') {
+  } 
+  else if (flask.id === 'slip') {
     effects.push({ text: `謎ポーズ`, x: player.x + 24, y: player.y - 12, color: '#facc15' });
     if (Math.random() > 0.5) player.barrierPower = 50;
-  } else if (flask.id === 'heal') {
+  } 
+  else if (flask.id === 'heal') {
+    flashEffect.color = '#22c55e';
     player.stm = Math.min(player.maxStm, player.stm + effectivePower * 1.5);
     effects.push({ text: `超回復`, x: player.x + 24, y: player.y - 12, color: '#22c55e' });
-  } else if (flask.id === 'mach') {
+    createExplosion(player.x + 24, player.y + 16, '#4ade80', 40, 2, 3, 'fire'); // 上に昇る回復の光
+  } 
+  else if (flask.id === 'mach') {
+    flashEffect.color = '#facc15';
     player.boostTimer = effectivePower * 1.5;
     effects.push({ text: `マッハ!!`, x: player.x + 24, y: player.y - 12, color: '#facc15' });
-  } else if (flask.id === 'meat') {
+    createExplosion(player.x + 24, player.y + 16, '#facc15', 50, 6, 4, 'spark'); // 電撃スパーク
+  } 
+  else if (flask.id === 'meat') {
     effects.push({ text: `生肉散布!`, x: canvas.width/2, y: 150, color: '#ef4444' });
+    createExplosion(canvas.width/2, 150, '#dc2626', 60, 7, 5, 'blood'); // 大量の肉（血）
     runners.forEach(r => { if (r.id !== 0) r.knockback = Math.random() * effectivePower; });
-  } else if (flask.id === 'curse') {
+  } 
+  else if (flask.id === 'curse') {
+    flashEffect.color = '#7c3aed';
     effects.push({ text: `呪い...`, x: canvas.width/2, y: 150, color: '#7c3aed' });
+    createExplosion(canvas.width/2, 150, '#7c3aed', 40, 3, 3, 'fire');
   }
 
   flask.charge = 0;
 }
 
 function aiTriggerSkill(runner) {
-  // CPUも簡易的にスキルを使う
   const skills = ['mach', 'barrier', 'meat', 'heal'];
   const skill = skills[Math.floor(Math.random() * skills.length)];
   
-  if (skill === 'mach') { runner.boostTimer = 80; effects.push({ text: `加速`, x: runner.x + 24, y: runner.y - 12, color: '#ef4444' }); }
-  else if (skill === 'barrier') { runner.barrierPower = 100; setTimeout(() => { runner.barrierPower = 0; }, 2000); effects.push({ text: `バリア`, x: runner.x + 24, y: runner.y - 12, color: '#a855f7' }); }
-  else if (skill === 'meat') { runners.forEach(r => { if (r.id !== runner.id) applyKnockback(r, 40); }); effects.push({ text: `妨害!`, x: runner.x + 24, y: runner.y - 12, color: '#ef4444' }); }
-  else if (skill === 'heal') { runner.stm = Math.min(runner.maxStm, runner.stm + 40); effects.push({ text: `回復`, x: runner.x + 24, y: runner.y - 12, color: '#22c55e' }); }
+  if (skill === 'mach') {
+    runner.boostTimer = 80;
+    effects.push({ text: `加速`, x: runner.x + 24, y: runner.y - 12, color: '#ef4444' });
+    createExplosion(runner.x + 24, runner.y + 16, '#facc15', 20, 4, 3, 'spark');
+  } 
+  else if (skill === 'barrier') { 
+    runner.barrierPower = 100; setTimeout(() => { runner.barrierPower = 0; }, 2000); 
+    effects.push({ text: `バリア`, x: runner.x + 24, y: runner.y - 12, color: '#a855f7' }); 
+    createExplosion(runner.x + 24, runner.y + 16, '#a855f7', 20, 3, 3, 'spark');
+  }
+  else if (skill === 'meat') { 
+    runners.forEach(r => { if (r.id !== runner.id) applyKnockback(r, 40); }); 
+    effects.push({ text: `妨害!`, x: runner.x + 24, y: runner.y - 12, color: '#ef4444' }); 
+    createExplosion(canvas.width/2, 150, '#dc2626', 30, 5, 4, 'blood');
+  }
+  else if (skill === 'heal') { 
+    runner.stm = Math.min(runner.maxStm, runner.stm + 40); 
+    effects.push({ text: `回復`, x: runner.x + 24, y: runner.y - 12, color: '#22c55e' }); 
+    createExplosion(runner.x + 24, runner.y + 16, '#4ade80', 20, 2, 3, 'fire');
+  }
   
   runner.skillCd = Math.floor(Math.random() * 400) + 600;
 }
@@ -393,7 +471,7 @@ function update() {
 
   if (raceState === 'RACING') {
     const player = runners[0];
-    const magBonusSpeed = player.magAttr > 50 ? (player.magAttr - 50) * 0.001 : 0; // 異能が高いとチャージが早い
+    const magBonusSpeed = player.magAttr > 50 ? (player.magAttr - 50) * 0.001 : 0;
 
     currentFlasks.forEach((flask, index) => {
       if (flask.charge < flask.max) flask.charge = Math.min(flask.max, flask.charge + flask.speed + magBonusSpeed);
@@ -410,31 +488,32 @@ function update() {
       const r = runners[i];
       let baseSpeed = 0.20 + (r.spdAttr - 50) * 0.003;
       
-      // 気性による速度ムラ
       if (Math.random() < 0.05) {
         const mntPenalty = r.mntAttr < 50 ? (50 - r.mntAttr) * 0.01 : 0;
         baseSpeed -= Math.random() * mntPenalty;
       }
 
-      // 脚質による補正（距離に応じて変化）
       const progress = r.dist / totalDistance;
-      let stmDrain = 0.08; // デフォルト消費
+      let stmDrain = 0.08; 
       
       if (r.style === '逃げ') {
-        if (progress < 0.3) { baseSpeed *= 1.3; stmDrain = 0.15; } // 序盤激早、消費激しい
-        else if (progress > 0.7) { baseSpeed *= 0.8; } // 終盤バテる
+        if (progress < 0.3) { baseSpeed *= 1.3; stmDrain = 0.15; }
+        else if (progress > 0.7) { baseSpeed *= 0.8; }
       } else if (r.style === '先行') {
         if (progress > 0.2 && progress < 0.6) { baseSpeed *= 1.15; stmDrain = 0.10; }
       } else if (r.style === '差し') {
         if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.2; stmDrain = 0.10; }
       } else if (r.style === '追込') {
-        if (progress > 0.7) { baseSpeed *= 1.4; stmDrain = 0.05; } // 終盤激早、燃費良し
+        if (progress > 0.7) { baseSpeed *= 1.4; stmDrain = 0.05; }
       }
 
       if (r.stm > 0) r.stm -= stmDrain;
-      else baseSpeed *= 0.3; // スタミナ切れは一気に遅くなる
+      else baseSpeed *= 0.3;
 
-      if (r.boostTimer > 0) { r.boostTimer--; baseSpeed *= 2.0; }
+      if (r.boostTimer > 0) { 
+        r.boostTimer--; baseSpeed *= 2.0; 
+        if (globalTime % 5 === 0) createExplosion(r.x + 24, r.y + 24, '#facc15', 2, 2, 2, 'spark'); // 加速中のエフェクト
+      }
       if (r.knockback > 0) { r.knockback--; baseSpeed *= 0; }
 
       r.dist += Math.max(0, baseSpeed);
@@ -487,7 +566,7 @@ function update() {
   }
 
   ctx.save();
-  if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6); shakeTime--; }
+  if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime--; }
 
   if (raceState === 'RACING') scrollY = (scrollY + 0.25) % 60;
   drawJapaneseStreetBackground();
@@ -503,28 +582,57 @@ function update() {
     }
   });
 
-  if (raceState === 'RACING') {
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      if (p.type === 'meteor') {
-        p.y += 8; ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
-        if (p.y >= p.targetY) {
-          shakeTime = 8;
-          for (let j = 1; j < 4; j++) applyKnockback(runners[j], p.power);
-          effects.push({ text: `ドゴォン!`, x: p.x, y: p.y, color: '#ef4444' });
-          particles.splice(i, 1);
-        }
+  // 🎇 パーティクルの更新と描画（加算合成で光らせる）
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    if (p.type === 'meteor_drop') {
+      // 隕石の落下
+      p.y += 12;
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+      if (p.y >= p.targetY) {
+        shakeTime = 20;
+        createExplosion(p.x, p.y, '#f97316', 100, 10, 8, 'spark'); // 大爆発エフェクト
+        for (let j = 1; j < 4; j++) applyKnockback(runners[j], p.power);
+        effects.push({ text: `大爆発!!`, x: p.x, y: p.y, color: '#ef4444' });
+        particles.splice(i, 1);
+      }
+    } else {
+      // 光の粒子の飛散
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.beginPath();
+        if (p.type === 'frog') ctx.fillRect(p.x, p.y, p.size, p.size); // カエル（四角）
+        else ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
-    for (let i = effects.length - 1; i >= 0; i--) {
-      const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(eff.text, eff.x, eff.y); eff.y -= 0.8; if (eff.y < 120) effects.splice(i, 1);
-    }
-  } else {
-    for (let i = effects.length - 1; i >= 0; i--) {
-      const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(eff.text, eff.x, eff.y);
-    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1.0;
+
+  // テキストエフェクト
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const eff = effects[i]; ctx.fillStyle = eff.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(eff.text, eff.x, eff.y);
+    if (raceState === 'RACING') eff.y -= 0.8;
+    if (eff.y < 80) effects.splice(i, 1);
+  }
+
+  // 画面フラッシュ
+  if (flashEffect.alpha > 0) {
+    ctx.fillStyle = flashEffect.color;
+    ctx.globalAlpha = flashEffect.alpha;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    flashEffect.alpha -= 0.05;
+    ctx.globalAlpha = 1.0;
   }
 
   ctx.restore();
