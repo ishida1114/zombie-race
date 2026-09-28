@@ -11,20 +11,19 @@
     <!-- 🧟 1. タイトル画面 -->
     <div id="title-screen">
       <div class="title-logo-wrapper">
-        <div class="title-sub">昭和都心 狂走劇</div>
         <img src="/zombielogo.webp" alt="ZOMBIE DERBY 異能survivors" class="title-logo-img" />
       </div>
 
       <button id="start-btn" class="retro-btn">
-        <span>実験開始（スカウト）</span>
+        <span>START</span>
       </button>
     </div>
 
-    <!-- 🧪 2. 育成画面（NEW） -->
+    <!-- 🧪 2. 育成画面 -->
     <div id="nurture-screen" class="hidden">
       <div class="nurture-header">
         <span class="nurture-turn" id="nurture-turn-txt">残 5 ターン</span>
-        <span class="nurture-name" id="nurture-zombie-name">検体 No.13</span>
+        <span class="nurture-name" id="nurture-zombie-name">No.101</span>
       </div>
 
       <!-- ゾンビプレビュー表示用Canvas -->
@@ -43,20 +42,20 @@
       <div class="command-container">
         <button class="cmd-btn" data-cmd="spd">
           <span class="cmd-icon">⚡</span>
-          <span class="cmd-text">脚力強化薬</span>
+          <span class="cmd-text">脚力ドーピング</span>
         </button>
         <button class="cmd-btn" data-cmd="pow">
           <span class="cmd-icon">💥</span>
-          <span class="cmd-text">筋力増強剤</span>
+          <span class="cmd-text">筋力強化</span>
         </button>
         <button class="cmd-btn" data-cmd="stm">
-          <span class="cmd-icon">🧪</span>
-          <span class="cmd-text">特製生肉</span>
+          <span class="cmd-icon">🥩</span>
+          <span class="cmd-text">生肉を与える</span>
         </button>
       </div>
 
       <button id="to-race-btn" class="retro-btn hidden">
-        <span>出走準備完了！</span>
+        <span>レース出走！</span>
       </button>
     </div>
 
@@ -94,7 +93,7 @@
             <div class="flask-fill" id="flask-fill-2"></div>
             <div class="flask-icon" id="flask-icon-2">🛡️</div>
           </div>
-          <span class="flask-name" id="flask-name-2">スキル3</span>
+          <span class="flask-name" id="flask-name-3">スキル3</span>
           <span class="flask-percent" id="flask-percent-2">0%</span>
         </div>
       </div>
@@ -102,7 +101,7 @@
 
     <!-- 🏆 4. リザルト画面 -->
     <div id="result-screen" class="hidden">
-      <div class="result-title">試合結果</div>
+      <div class="result-title">RACE RESULT</div>
       <div id="result-rank-badge" class="rank-badge">1位</div>
       <div id="result-detail" class="result-detail">タイム: 00:00</div>
 
