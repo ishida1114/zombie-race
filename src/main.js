@@ -1,31 +1,41 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// 画面揺れ（Screen Shake）用
+let shakeTime = 0;
+
 // レース状態
 let scrollY = 0;
-const scrollSpeed = 5;
+const scrollSpeed = 4;
 
-// ゾンビ（プレイヤー）
-const zombie = {
+// プレイヤー（緑）
+const player = {
   x: 155,
   y: 380,
-  width: 50,
-  height: 50
+  width: 46,
+  height: 46,
+  color: '#4ade80'
 };
 
-// 画面上に表示する技発動テキスト演出
-const effects = [];
-
-// フラスコ（スキル）データ
-const flasks = [
-  { name: 'メテオ', charge: 0, max: 100, speed: 0.5 },
-  { name: 'マッハ', charge: 0, max: 100, speed: 0.8 },
-  { name: 'バリア', charge: 0, max: 100, speed: 0.4 }
+// ライバルAI（赤・青）
+const rivals = [
+  { x: 55, y: 150, width: 46, height: 46, color: '#f43f5e', speed: 3.8, name: 'ライバルA' },
+  { x: 255, y: 220, width: 46, height: 46, color: '#3b82f6', speed: 4.2, name: 'ライバルB' }
 ];
 
-// メイン描画ループ
+// テキスト演出
+const effects = [];
+
+// フラスコデータ（チャージスピードを約10〜12秒でMAXになるように調整）
+const flasks = [
+  { name: 'メテオ', charge: 0, max: 100, speed: 0.12 }, // 約13秒
+  { name: 'マッハ', charge: 0, max: 100, speed: 0.20 }, // 約8秒
+  { name: 'バリア', charge: 0, max: 100, speed: 0.15 }  // 約11秒
+];
+
+// メインループ
 function update() {
-  // 1. フラスコ充電 & UI反映
+  // 1. フラスコ充填
   flasks.forEach((flask, index) => {
     if (flask.charge < flask.max) {
       flask.charge = Math.min(flask.max, flask.charge + flask.speed);
@@ -47,9 +57,18 @@ function update() {
     }
   });
 
-  // 2. 背景（縦スクロール）描画
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // 2. 画面描画準備（画面揺れの計算）
+  ctx.save();
+  if (shakeTime > 0) {
+    const shakeX = (Math.random() - 0.5) * 12;
+    const shakeY = (Math.random() - 0.5) * 12;
+    ctx.translate(shakeX, shakeY);
+    shakeTime--;
+  }
 
+  ctx.clearRect(-20, -20, canvas.width + 40, canvas.height + 40);
+
+  // 3. 背景（縦スクロール）
   scrollY = (scrollY + scrollSpeed) % 60;
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 3;
@@ -63,32 +82,42 @@ function update() {
   }
   ctx.setLineDash([]);
 
-  // 3. ゾンビ（緑の四角）
-  ctx.fillStyle = '#4ade80';
-  ctx.shadowColor = '#4ade80';
+  // 4. ライバルAIの描画と移動（上下にゆらゆら）
+  rivals.forEach(r => {
+    r.y += (Math.random() - 0.48) * 2; // 少し位置が前後する
+    if (r.y < 80) r.y = 80;
+    if (r.y > 350) r.y = 350;
+
+    ctx.fillStyle = r.color;
+    ctx.fillRect(r.x, r.y, r.width, r.height);
+  });
+
+  // 5. プレイヤーゾンビ（緑）
+  ctx.fillStyle = player.color;
+  ctx.shadowColor = player.color;
   ctx.shadowBlur = 10;
-  ctx.fillRect(zombie.x, zombie.y, zombie.width, zombie.height);
+  ctx.fillRect(player.x, player.y, player.width, player.height);
   ctx.shadowBlur = 0;
 
-  // 4. スキル発動テキストアニメーション
+  // 6. テキスト演出
   for (let i = effects.length - 1; i >= 0; i--) {
     const eff = effects[i];
     ctx.fillStyle = eff.color;
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = eff.isMax ? 'bold 22px sans-serif' : 'bold 16px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(eff.text, eff.x, eff.y);
     
-    eff.y -= 1.5; // ふわっと上に浮き上がる
-    eff.alpha -= 0.02;
-    if (eff.y < 200) {
+    eff.y -= 1.2;
+    if (eff.y < 180) {
       effects.splice(i, 1);
     }
   }
 
+  ctx.restore();
   requestAnimationFrame(update);
 }
 
-// --- フラスコタップイベント ---
+// タップイベント
 function initEvents() {
   document.querySelectorAll('.flask-card').forEach((card) => {
     card.addEventListener('pointerdown', (e) => {
@@ -96,31 +125,36 @@ function initEvents() {
       const index = parseInt(card.dataset.index);
       const flask = flasks[index];
 
-      if (flask.charge >= 10) { // 10%以上で途中撃ち可能
+      if (flask.charge >= 10) {
         const power = Math.floor(flask.charge);
-        
-        // 画面上にポップテキストを生成
+        const isMax = power >= 100;
+
+        // MAX発動なら画面揺れ発生！
+        if (isMax) {
+          shakeTime = 15; // 15フレーム揺らす
+        }
+
         effects.push({
-          text: `🧪 ${flask.name} (${power}%)!`,
+          text: isMax ? `💥 FULL POWER: ${flask.name}!!` : `🧪 ${flask.name} (${power}%)`,
           x: canvas.width / 2,
-          y: zombie.y - 15,
-          color: power >= 100 ? '#38bdf8' : '#facc15'
+          y: player.y - 20,
+          color: isMax ? '#f43f5e' : '#facc15',
+          isMax: isMax
         });
 
-        // ゲージリセット
         flask.charge = 0;
       } else {
         effects.push({
-          text: 'まだ液が足りない！',
+          text: 'まだ溜まってない！',
           x: canvas.width / 2,
-          y: zombie.y - 15,
-          color: '#ef4444'
+          y: player.y - 20,
+          color: '#94a3b8',
+          isMax: false
         });
       }
     });
   });
 }
 
-// イベント初期化 & ループ開始
 initEvents();
 update();
