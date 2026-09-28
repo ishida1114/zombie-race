@@ -7,17 +7,41 @@
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
-  <div id="app">
-    <!-- レース用Canvas画面 -->
-    <canvas id="gameCanvas" width="360" height="640"></canvas>
+  <div id="game-container">
+    <!-- 縦スクロール用Canvas -->
+    <canvas id="gameCanvas" width="360" height="520"></canvas>
     
-    <!-- フラスコUIエリア -->
-    <div id="flask-ui">
-      <div class="flask" data-index="0"><div class="fill"></div><span>スキル1</span></div>
-      <div class="flask" data-index="1"><div class="fill"></div><span>スキル2</span></div>
-      <div class="flask" data-index="2"><div class="fill"></div><span>スキル3</span></div>
+    <!-- フラスコUI（下部固定） -->
+    <div id="flask-container">
+      <div class="flask-card" data-index="0">
+        <div class="flask-wrapper">
+          <div class="flask-fill" id="flask-fill-0"></div>
+          <div class="flask-icon">☄️</div>
+        </div>
+        <span class="flask-name">メテオ</span>
+        <span class="flask-percent" id="flask-percent-0">0%</span>
+      </div>
+
+      <div class="flask-card" data-index="1">
+        <div class="flask-wrapper">
+          <div class="flask-fill" id="flask-fill-1"></div>
+          <div class="flask-icon">⚡</div>
+        </div>
+        <span class="flask-name">マッハ</span>
+        <span class="flask-percent" id="flask-percent-1">0%</span>
+      </div>
+
+      <div class="flask-card" data-index="2">
+        <div class="flask-wrapper">
+          <div class="flask-fill" id="flask-fill-2"></div>
+          <div class="flask-icon">🛡️</div>
+        </div>
+        <span class="flask-name">バリア</span>
+        <span class="flask-percent" id="flask-percent-2">0%</span>
+      </div>
     </div>
   </div>
+
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
