@@ -1,55 +1,56 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- レース状態管理 ---
+// レース状態
 let scrollY = 0;
 const scrollSpeed = 5;
 
-// ゾンビ（プレイヤー）の位置
+// ゾンビ（プレイヤー）
 const zombie = {
   x: 155,
   y: 380,
   width: 50,
-  height: 50,
-  speed: 5
+  height: 50
 };
 
-// --- フラスコ（スキル）管理 ---
+// 画面上に表示する技発動テキスト演出
+const effects = [];
+
+// フラスコ（スキル）データ
 const flasks = [
-  { name: 'メテオ', charge: 0, max: 100, speed: 0.4 },
-  { name: 'マッハ', charge: 0, max: 100, speed: 0.6 },
-  { name: 'バリア', charge: 0, max: 100, speed: 0.3 }
+  { name: 'メテオ', charge: 0, max: 100, speed: 0.5 },
+  { name: 'マッハ', charge: 0, max: 100, speed: 0.8 },
+  { name: 'バリア', charge: 0, max: 100, speed: 0.4 }
 ];
 
-// 画面の更新処理（メインループ）
+// メイン描画ループ
 function update() {
-  // 1. フラスコのゲージ充填処理
+  // 1. フラスコ充電 & UI反映
   flasks.forEach((flask, index) => {
     if (flask.charge < flask.max) {
       flask.charge = Math.min(flask.max, flask.charge + flask.speed);
     }
 
-    // UI反映
     const fillEl = document.getElementById(`flask-fill-${index}`);
     const percentEl = document.getElementById(`flask-percent-${index}`);
-    const cardEl = fillEl.closest('.flask-card');
+    
+    if (fillEl && percentEl) {
+      fillEl.style.height = `${flask.charge}%`;
+      percentEl.textContent = `${Math.floor(flask.charge)}%`;
 
-    fillEl.style.height = `${flask.charge}%`;
-    percentEl.textContent = `${Math.floor(flask.charge)}%`;
-
-    if (flask.charge >= 100) {
-      cardEl.classList.add('ready');
-    } else {
-      cardEl.classList.remove('ready');
+      const cardEl = fillEl.closest('.flask-card');
+      if (flask.charge >= 100) {
+        cardEl.classList.add('ready');
+      } else {
+        cardEl.classList.remove('ready');
+      }
     }
   });
 
-  // 2. コースの背景描画（縦スクロール）
+  // 2. 背景（縦スクロール）描画
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   scrollY = (scrollY + scrollSpeed) % 60;
-  
-  // レーン境界線
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 3;
   ctx.setLineDash([20, 20]);
@@ -62,33 +63,64 @@ function update() {
   }
   ctx.setLineDash([]);
 
-  // 3. ゾンビ（仮描画）
+  // 3. ゾンビ（緑の四角）
   ctx.fillStyle = '#4ade80';
   ctx.shadowColor = '#4ade80';
   ctx.shadowBlur = 10;
   ctx.fillRect(zombie.x, zombie.y, zombie.width, zombie.height);
   ctx.shadowBlur = 0;
 
+  // 4. スキル発動テキストアニメーション
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const eff = effects[i];
+    ctx.fillStyle = eff.color;
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(eff.text, eff.x, eff.y);
+    
+    eff.y -= 1.5; // ふわっと上に浮き上がる
+    eff.alpha -= 0.02;
+    if (eff.y < 200) {
+      effects.splice(i, 1);
+    }
+  }
+
   requestAnimationFrame(update);
 }
 
-// --- フラスコタップ（途中撃ち）イベント ---
-document.querySelectorAll('.flask-card').forEach((card) => {
-  card.addEventListener('click', () => {
-    const index = parseInt(card.dataset.index);
-    const flask = flasks[index];
+// --- フラスコタップイベント ---
+function initEvents() {
+  document.querySelectorAll('.flask-card').forEach((card) => {
+    card.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const index = parseInt(card.dataset.index);
+      const flask = flasks[index];
 
-    if (flask.charge > 10) { // 10%以上あれば撃てる
-      const power = Math.floor(flask.charge);
-      console.log(`🧪 ${flask.name} を ${power}% の威力で発動！`);
-      
-      // ゲージリセット
-      flask.charge = 0;
-    } else {
-      console.log('まだ液体の量が足りない！');
-    }
+      if (flask.charge >= 10) { // 10%以上で途中撃ち可能
+        const power = Math.floor(flask.charge);
+        
+        // 画面上にポップテキストを生成
+        effects.push({
+          text: `🧪 ${flask.name} (${power}%)!`,
+          x: canvas.width / 2,
+          y: zombie.y - 15,
+          color: power >= 100 ? '#38bdf8' : '#facc15'
+        });
+
+        // ゲージリセット
+        flask.charge = 0;
+      } else {
+        effects.push({
+          text: 'まだ液が足りない！',
+          x: canvas.width / 2,
+          y: zombie.y - 15,
+          color: '#ef4444'
+        });
+      }
+    });
   });
-});
+}
 
-// ループ開始
+// イベント初期化 & ループ開始
+initEvents();
 update();
