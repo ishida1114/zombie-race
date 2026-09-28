@@ -12,16 +12,13 @@ let remainingDistance = 1000;
 const totalDistance = 1000;
 let startTime = 0;
 
-// 🖼️ 1. 画像アセットの読み込み（ここにパーツ画像などを追加していきます）
-const assets = {
-  zombieBase: new Image()
-};
-assets.zombieBase.src = '/zombie_base.png'; // ユーザーが配置した透過PNG
-
-// 🧪 プレイヤー（YOU）のデータ（hue: 色相バリエーションを追加）
+// 🧪 プレイヤー（YOU）
 let currentZombie = {
   name: '検体 No.101',
-  hue: 0, // 0=元の色, 120=青系, 240=赤系など色を回転させる
+  color: '#86efac', // ゾンビらしい青緑色
+  clothes: 'none',  // 服の種類 (none, patient, suit)
+  head: 'none',     // 頭の装飾 (none, electrode, bandage)
+  eye: 'hollow',    // 目の状態 (hollow, glow, stitched)
   speed: 50, power: 50, stamina: 50
 };
 
@@ -29,10 +26,10 @@ let remainingTurns = 5;
 
 // 🏃 4人の走者
 const runners = [
-  { id: 0, name: 'YOU', x: 25, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 0, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
-  { id: 1, name: 'No.088', x: 105, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 60, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
-  { id: 2, name: 'No.204', x: 185, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 180, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
-  { id: 3, name: 'No.305', x: 265, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, hue: 300, boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
+  { id: 0, name: 'YOU', x: 25, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#86efac', clothes: 'none', head: 'none', eye: 'hollow', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 9999 },
+  { id: 1, name: 'No.088', x: 105, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#fca5a5', clothes: 'patient', head: 'none', eye: 'glow', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 300 },
+  { id: 2, name: 'No.204', x: 185, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#c4b5fd', clothes: 'none', head: 'bandage', eye: 'stitched', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 450 },
+  { id: 3, name: 'No.305', x: 265, y: 220, dist: 0, stm: 100, maxStm: 100, spdAttr: 50, powAttr: 50, color: '#fde047', clothes: 'suit', head: 'electrode', eye: 'hollow', boostTimer: 0, isBarrier: false, knockback: 0, skillCd: 600 }
 ];
 
 const particles = [];
@@ -49,76 +46,118 @@ const ALL_SKILLS = [
 
 let currentFlasks = [];
 
-// 🎨 ゾンビ描画（画像対応 ＆ 色バリエーション合成）
+// 🎨 ドット絵生成エンジン（16x16ピクセルマップ）
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, isExhausted, distPhase) {
   targetCtx.save();
-  const movePhase = isExhausted ? 0 : distPhase * 0.5;
-  const bodyRoll = Math.sin(movePhase * 0.5) * 0.08; // 体の揺れ
-  const bounce = isExhausted ? 0 : Math.abs(Math.sin(movePhase)) * 3; // 歩行時の上下バウンド
+  const movePhase = isExhausted ? 0 : distPhase * 0.6;
+  const bounce = isExhausted ? 0 : Math.abs(Math.sin(movePhase)) * 4;
+  const bodyRoll = Math.sin(movePhase * 0.5) * 0.05;
 
-  // 影の描画
+  // 足元の影
   targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
   targetCtx.beginPath();
-  targetCtx.ellipse(x + width / 2, y + height, width / 2 - 2, 4, 0, 0, Math.PI * 2);
+  targetCtx.ellipse(x + width / 2, y + height, width / 2 - 4, 4, 0, 0, Math.PI * 2);
   targetCtx.fill();
 
-  // 歩行の揺れとバウンドをCanvasの描画軸に適用
+  // 歩行バウンドと揺れ
   targetCtx.translate(x + width / 2, y + height - bounce);
-  targetCtx.rotate(isExhausted ? 0.1 : bodyRoll); // バテると前傾姿勢
+  targetCtx.rotate(isExhausted ? 0.1 : bodyRoll);
   targetCtx.translate(-(x + width / 2), -(y + height));
 
-  // 🖼️ 画像が読み込まれている場合はドット絵を描画
-  if (assets.zombieBase.complete && assets.zombieBase.naturalWidth > 0) {
-    
-    // 🎨 CSSフィルターを使った動的カラーバリエーション
-    let filterStr = `hue-rotate(${zData.hue}deg)`;
-    if (isExhausted) {
-      filterStr += ' grayscale(70%) brightness(0.6)'; // バテると色褪せて暗くなる
-    }
-    targetCtx.filter = filterStr;
+  // 🧟 参考画像をリスペクトした16x16のゾンビドット絵配列
+  const spriteMap = [
+    "0000011111100000",
+    "0000122222210000",
+    "0001222222221000",
+    "0012442224422100", // 大きな目
+    "0014544245442100", // 瞳
+    "0014444244442100",
+    "0001222222221000",
+    "0000115555110000", // 口
+    "00001B5BB5B10000", // 歯と暗がり
+    "0000011661100000", // 垂れた舌・血
+    "0011177777711100", // 肩・服
+    "0122177777712210", // 腕と胴体
+    "0122119999112210", // 手とズボン
+    "0011019999101100",
+    "0000122112210000", // 足
+    "0000111001110000"
+  ];
 
-    // 画像を描画
-    targetCtx.drawImage(assets.zombieBase, x, y - 10, width, height + 10);
-    
-    // フィルターをリセット
-    targetCtx.filter = 'none';
-
-    /* 
-      ※ 今後、ここに服や帽子などのパーツを描画するコードを追加します
-      例:
-      if (zData.hat === 'cap') targetCtx.drawImage(assets.cap, x, y, width, height);
-    */
-
-  } else {
-    // 画像がない場合の仮四角形描画（フォールバック）
-    targetCtx.fillStyle = `hsl(${120 + zData.hue}, 50%, 50%)`;
-    targetCtx.fillRect(x + 4, y + 10, width - 8, height - 14); // 胴
-    targetCtx.fillRect(x + 2, y, width - 4, 16); // 頭
-    targetCtx.fillStyle = '#090a0f';
-    targetCtx.fillRect(x + 8, y + 4, 7, 7);
-    targetCtx.fillRect(x + 23, y + 4, 7, 7);
-    targetCtx.fillStyle = '#1e293b';
-    targetCtx.fillRect(x + 10, y + 13, 18, 1);
+  // パーツによるドット絵の上書き（装飾）
+  if (zData.head === 'bandage') {
+    spriteMap[1] = "00001DDDDDD10000"; // 包帯
+    spriteMap[2] = "00012DDDDDD21000";
+  } else if (zData.head === 'electrode') {
+    spriteMap[0] = "0000011661100000"; // 赤いランプ
+    spriteMap[1] = "0000111111110000"; // 装置基部
   }
 
-  // バテ状態のアイコン（汗）
+  // 🎨 カラーパレット設定
+  let skinColor = isExhausted ? '#64748b' : zData.color; // バテると血の気が引く
+  let clothesColor = skinColor;
+  if (zData.clothes === 'patient') clothesColor = '#94a3b8'; // 患者服
+  else if (zData.clothes === 'suit') clothesColor = '#1e293b'; // 黒スーツ
+  if (isExhausted) clothesColor = '#475569';
+
+  const palette = {
+    '0': null,
+    '1': '#0f172a', // 輪郭線
+    '2': skinColor, // 肌色
+    '4': (zData.eye === 'glow') ? '#fca5a5' : (zData.eye === 'stitched' ? skinColor : '#f8fafc'), // 白目
+    '5': (zData.eye === 'glow') ? '#ef4444' : (zData.eye === 'stitched' ? '#0f172a' : '#1e293b'), // 瞳
+    '6': '#e11d48', // 舌・血
+    '7': clothesColor, // 服
+    '9': '#334155', // ズボン
+    'B': '#cbd5e1', // 歯
+    'D': '#e2e8f0'  // 包帯
+  };
+
+  // 16x16の配列をCanvasにピクセルとして描画
+  const pixelSize = width / 16;
+  for (let row = 0; row < 16; row++) {
+    for (let col = 0; col < 16; col++) {
+      const char = spriteMap[row][col];
+      if (char !== '0' && palette[char]) {
+        targetCtx.fillStyle = palette[char];
+        targetCtx.fillRect(
+          x + col * pixelSize, 
+          y + row * pixelSize, 
+          Math.ceil(pixelSize), 
+          Math.ceil(pixelSize)
+        );
+      }
+    }
+  }
+
+  // バテ状態の汗エフェクト
   if (isExhausted) {
     targetCtx.fillStyle = '#38bdf8';
-    targetCtx.fillRect(x + width - 4, y + 2, 3, 5);
+    targetCtx.fillRect(x + width - 4, y + 4, 3, 5);
   }
 
   targetCtx.restore();
 }
 
 function generateRandomZombie() {
+  const colors = ['#86efac', '#6ee7b7', '#93c5fd', '#fca5a5', '#d8b4fe'];
+  const clothesList = ['none', 'patient', 'suit'];
+  const headList = ['none', 'bandage', 'electrode'];
+  const eyeList = ['hollow', 'glow', 'stitched'];
+  
   const num = Math.floor(Math.random() * 900) + 100;
+
   currentZombie = {
     name: `検体 No.${num}`,
-    hue: Math.floor(Math.random() * 360), // ランダムな色相を生成
+    color: colors[Math.floor(Math.random() * colors.length)],
+    clothes: clothesList[Math.floor(Math.random() * clothesList.length)],
+    head: headList[Math.floor(Math.random() * headList.length)],
+    eye: eyeList[Math.floor(Math.random() * eyeList.length)],
     speed: Math.floor(Math.random() * 20) + 40,
     power: Math.floor(Math.random() * 20) + 40,
     stamina: Math.floor(Math.random() * 20) + 40
   };
+
   remainingTurns = 5;
   updateNurtureUI();
 }
@@ -134,8 +173,8 @@ function updateNurtureUI() {
   const pCtx = previewCanvas.getContext('2d');
   pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
   
-  // 育成画面のプレビュー描画
-  drawZombieCharacter(pCtx, 40, 36, 40, 48, currentZombie, false, globalTime * 0.5);
+  // 育成画面に大きくドット絵を表示
+  drawZombieCharacter(pCtx, 20, 16, 80, 80, currentZombie, false, globalTime * 0.5);
 
   const cmdBox = document.querySelector('.command-container');
   const raceBtn = document.getElementById('to-race-btn');
@@ -169,16 +208,26 @@ function startRace() {
   startTime = Date.now();
   globalTime = 0;
   
-  // プレイヤーパラメータ反映
+  // プレイヤーパラメータ・パーツを反映
   runners[0] = { 
     ...runners[0], 
-    spdAttr: currentZombie.speed, powAttr: currentZombie.power, hue: currentZombie.hue,
+    spdAttr: currentZombie.speed, powAttr: currentZombie.power, color: currentZombie.color,
+    clothes: currentZombie.clothes, head: currentZombie.head, eye: currentZombie.eye,
     maxStm: currentZombie.stamina * 2.2, stm: currentZombie.stamina * 2.2, dist: 0, boostTimer: 0, knockback: 0 
   };
 
+  const clothesList = ['none', 'patient', 'suit'];
+  const headList = ['none', 'bandage', 'electrode'];
+  const eyeList = ['hollow', 'glow', 'stitched'];
+  const colors = ['#86efac', '#6ee7b7', '#93c5fd', '#fca5a5', '#d8b4fe'];
+
   for (let i = 1; i < 4; i++) {
     runners[i].dist = 0;
-    runners[i].hue = Math.floor(Math.random() * 360); // ライバルもランダムカラー
+    runners[i].color = colors[Math.floor(Math.random() * colors.length)];
+    runners[i].clothes = clothesList[Math.floor(Math.random() * clothesList.length)];
+    runners[i].head = headList[Math.floor(Math.random() * headList.length)];
+    runners[i].eye = eyeList[Math.floor(Math.random() * eyeList.length)];
+    
     runners[i].spdAttr = currentZombie.speed + (Math.floor(Math.random() * 30) - 15);
     runners[i].powAttr = currentZombie.power + (Math.floor(Math.random() * 30) - 15);
     runners[i].maxStm = (currentZombie.stamina + (Math.floor(Math.random() * 30) - 15)) * 2.2;
@@ -375,16 +424,16 @@ function update() {
   }
   ctx.setLineDash([]);
 
-  // 描画（Y座標順）
+  // 描画（ドット絵エンジン）
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
-    // 描画サイズを少し大きく（40x48）
-    drawZombieCharacter(ctx, r.x - 2, r.y - 6, 40, 48, r, r.stm <= 0, r.dist * 0.4);
+    // 40x40のサイズでドット絵を描画
+    drawZombieCharacter(ctx, r.x - 2, r.y, 40, 40, r, r.stm <= 0, r.dist);
     if (r.isBarrier) {
       ctx.strokeStyle = '#8957e5';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(r.x + 19, r.y + 20, 28, 0, Math.PI * 2);
+      ctx.arc(r.x + 18, r.y + 20, 28, 0, Math.PI * 2);
       ctx.stroke();
     }
   });
