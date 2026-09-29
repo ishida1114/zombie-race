@@ -104,16 +104,34 @@
       <div class="screen-title">対戦部屋 (PvP)</div>
       <div class="pvp-box">
         <div class="pvp-status">ステータス: <span id="pvp-net-status" style="color:#facc15;">接続中...</span></div>
+        
+        <!-- 🌟 出走ゾンビ ＆ 会場選択フォーム -->
+        <div class="form-group">
+          <label>出走する検体</label>
+          <select id="pvp-zombie-select"></select>
+        </div>
+        <div class="form-group">
+          <label>レース会場 (ホスト決定)</label>
+          <select id="pvp-city-select">
+            <option value="tokyo">東京 (400m / 標準)</option>
+            <option value="osaka">大阪 (400m / 乱戦)</option>
+            <option value="nagoya">名古屋 (400m / 鉄壁)</option>
+            <option value="fukuoka">福岡 (300m / 短距離)</option>
+            <option value="sapporo">札幌 (500m / 雪道)</option>
+          </select>
+        </div>
+
         <div class="pvp-btn-group">
           <button id="create-room-btn" class="retro-btn"><span>公開部屋を作成</span></button>
           <div class="join-input-group">
-            <input type="text" id="room-id-input" placeholder="部屋IDを入力" maxlength="6">
+            <input type="text" id="room-id-input" placeholder="部屋IDを入力" maxlength="12">
             <button id="join-room-btn" class="retro-btn-small" style="width: auto; padding: 0 16px;">参加</button>
           </div>
         </div>
 
         <div id="room-lobby" class="room-lobby-box hidden">
           <div style="font-size:14px; color:#94a3b8;">部屋ID: <span id="lobby-room-id" style="color:#38bdf8; font-weight:bold;">----</span></div>
+          <div style="font-size:14px; color:#facc15; font-weight:bold; margin-top:4px;">会場: <span id="lobby-city-name">東京</span></div>
           <div class="member-list" id="member-list">
             <!-- 参加メンバー -->
           </div>

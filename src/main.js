@@ -72,7 +72,6 @@ VIDEO_SOURCES.forEach(src => {
   offCtxs.push(cx);
 });
 
-// 🌟 頭部が切れないようにカット率を5%へマイルドに調整
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
   if (!v || v.readyState < 2 || v.paused) return null;
@@ -81,10 +80,7 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   cx.clearRect(0, 0, targetW, targetH);
   
   const vw = v.videoWidth || 100; const vh = v.videoHeight || 100;
-  const cropX = vw * 0.03; 
-  const cropY = vh * 0.05;  // 🌟 12%→5%に緩和して頭を切らせない
-  const cropW = vw * 0.94; 
-  const cropH = vh * 0.95;
+  const cropX = vw * 0.03; const cropY = vh * 0.05; const cropW = vw * 0.94; const cropH = vh * 0.95;
 
   cx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
   const data = cx.getImageData(0, 0, targetW, targetH);
@@ -130,12 +126,20 @@ function setupConnEvents(conn) {
     if (data.type === 'JOIN_ROOM') {
       pvpMembers.push({ id: conn.peer, name: data.zombieName });
       updateLobbyUI();
-      broadcast({ type: 'UPDATE_MEMBERS', members: pvpMembers });
+      broadcast({ type: 'UPDATE_MEMBERS', members: pvpMembers, cityId: currentCity.id });
     } else if (data.type === 'UPDATE_MEMBERS') {
       pvpMembers = data.members;
+      if(data.cityId) {
+        const foundCity = CITIES.find(c => c.id === data.cityId);
+        if(foundCity) currentCity = foundCity;
+      }
       updateLobbyUI();
     } else if (data.type === 'START_RACE') {
       isPvpMode = true;
+      if(data.cityId) {
+        const foundCity = CITIES.find(c => c.id === data.cityId);
+        if(foundCity) currentCity = foundCity;
+      }
       document.getElementById('pvp-screen').classList.add('hidden');
       showPaddock();
     } else if (data.type === 'SYNC_SKILL') {
@@ -149,8 +153,24 @@ function broadcast(data) {
   peerConnections.forEach(c => { if(c.open) c.send(data); });
 }
 
+// 🌐 PvPドロップダウンUIの更新
+function updatePvpSelectUI() {
+  const zSelect = document.getElementById('pvp-zombie-select'); zSelect.innerHTML = '';
+  if (myZombies.length === 0) {
+    zSelect.innerHTML = '<option value="-1">検体が居ません（探索してください）</option>';
+  } else {
+    myZombies.forEach((z, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${z.name} (速${z.speed} 体${z.stamina} ${z.style})`;
+      zSelect.appendChild(opt);
+    });
+  }
+}
+
 function updateLobbyUI() {
   const list = document.getElementById('member-list'); list.innerHTML = '';
+  document.getElementById('lobby-city-name').textContent = currentCity.name;
   pvpMembers.forEach(m => {
     const row = document.createElement('div'); row.className = 'member-row';
     row.innerHTML = `<span>🧟 ${m.name}</span><span style="color:#94a3b8;">ID: ${m.id}</span>`;
@@ -160,7 +180,14 @@ function updateLobbyUI() {
 
 document.getElementById('create-room-btn').onclick = () => {
   if (!myPeerId) { alert('通信の初期化中です...'); return; }
-  const z = myZombies[activeZombieIndex || 0];
+  const zIdx = parseInt(document.getElementById('pvp-zombie-select').value);
+  if (isNaN(zIdx) || zIdx < 0) { alert('出走させるゾンビを選んでください！'); return; }
+  
+  activeZombieIndex = zIdx;
+  const cityVal = document.getElementById('pvp-city-select').value;
+  currentCity = CITIES.find(c => c.id === cityVal) || CITIES[0];
+  
+  const z = myZombies[activeZombieIndex];
   pvpMembers = [{ id: myPeerId, name: z ? z.name : 'ホスト' }];
   document.getElementById('lobby-room-id').textContent = myPeerId;
   document.getElementById('room-lobby').classList.remove('hidden');
@@ -170,11 +197,15 @@ document.getElementById('create-room-btn').onclick = () => {
 document.getElementById('join-room-btn').onclick = () => {
   const targetId = document.getElementById('room-id-input').value.trim();
   if (!targetId || !peer) return;
+  const zIdx = parseInt(document.getElementById('pvp-zombie-select').value);
+  if (isNaN(zIdx) || zIdx < 0) { alert('出走させるゾンビを選んでください！'); return; }
+  
+  activeZombieIndex = zIdx;
   const conn = peer.connect(targetId);
   peerConnections.push(conn);
   setupConnEvents(conn);
   conn.on('open', () => {
-    const z = myZombies[activeZombieIndex || 0];
+    const z = myZombies[activeZombieIndex];
     conn.send({ type: 'JOIN_ROOM', zombieName: z ? z.name : 'ゲスト' });
     document.getElementById('lobby-room-id').textContent = targetId;
     document.getElementById('room-lobby').classList.remove('hidden');
@@ -182,7 +213,7 @@ document.getElementById('join-room-btn').onclick = () => {
 };
 
 document.getElementById('start-pvp-race-btn').onclick = () => {
-  broadcast({ type: 'START_RACE' });
+  broadcast({ type: 'START_RACE', cityId: currentCity.id });
   isPvpMode = true;
   document.getElementById('pvp-screen').classList.add('hidden');
   showPaddock();
@@ -382,7 +413,9 @@ function showPaddock() {
   const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
   
   runners.length = 0; const laneW = canvas.width / 4;
-  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 15, maxStm: z.stamina * 15, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
+  
+  // 🌟 スタミナ初期値と消費計算の適正化 (z.stamina * 6)
+  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 6, maxStm: z.stamina * 6, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
   for (let i = 1; i < 4; i++) {
     let mntBase = z.mentality; let powBase = z.power; if (currentCity.id === 'osaka') mntBase -= 30; if (currentCity.id === 'nagoya') powBase += 30;
@@ -391,13 +424,14 @@ function showPaddock() {
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
-    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 15, maxStm: 0, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
-    cpuZ.maxStm = cpuZ.stm; runners.push(cpuZ);
+    const cpuStm = (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 6;
+    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
+    runners.push(cpuZ);
   }
 
   runners.forEach((r, i) => {
     const card = document.createElement('div'); card.className = `pd-card c-${i}`; card.style.animationDelay = `${i * 0.2}s`;
-    card.innerHTML = `<div class="pd-name"><span class="pd-title">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/15) + r.mntAttr + r.magAttr}</div>`;
+    card.innerHTML = `<div class="pd-name"><span class="pd-title">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/6) + r.mntAttr + r.magAttr}</div>`;
     grid.appendChild(card);
   });
   
@@ -554,11 +588,15 @@ function update() {
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
       if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) { if (Math.random() < (70 - r.mntAttr) * 0.01) { r.isSlacking = true; r.knockback = 60; setTimeout(() => { r.isSlacking = false; }, 1000); } }
-      let baseSpeed = 0.08 + (r.spdAttr - 50) * 0.001; const progress = r.dist / totalDistance; let stmDrain = currentCity.bgType === 'snow' ? 0.025 : 0.018; 
+      let baseSpeed = 0.08 + (r.spdAttr - 50) * 0.001; const progress = r.dist / totalDistance; 
+      
+      // 🌟 スタミナ消費バランスの調整（通常 0.05 / 雪道 0.08）
+      let stmDrain = currentCity.bgType === 'snow' ? 0.08 : 0.05; 
       if (r.style === '逃げ') { if (progress < 0.4) { baseSpeed *= 1.5; stmDrain *= 1.8; } else if (progress > 0.7) { baseSpeed *= 0.8; } } 
       else if (r.style === '先行') { if (progress > 0.2 && progress < 0.6) { baseSpeed *= 1.2; stmDrain *= 1.2; } } 
       else if (r.style === '差し') { if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.3; stmDrain *= 1.1; } } 
       else if (r.style === '追込') { if (progress > 0.7) { baseSpeed *= 1.6; stmDrain *= 0.8; } }
+      
       if (r.stm > 0) r.stm -= stmDrain * dt; else baseSpeed *= 0.3;
       if (r.boostTimer > 0) { r.boostTimer -= dt; baseSpeed *= 2.5; if (globalTime % 5 === 0) createExplosion(r.x, r.y, '#facc15', 2, 2, 2, 'spark'); }
       if (r.knockback > 0) { r.knockback -= dt; baseSpeed *= 0; }
@@ -656,7 +694,11 @@ function init() {
   
   document.getElementById('nav-scout-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
   document.getElementById('nav-garage-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
-  document.getElementById('nav-pvp-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('pvp-screen').classList.remove('hidden'); };
+  document.getElementById('nav-pvp-btn').onclick = () => { 
+    updatePvpSelectUI(); 
+    document.getElementById('title-screen').classList.add('hidden'); 
+    document.getElementById('pvp-screen').classList.remove('hidden'); 
+  };
   
   document.getElementById('do-scout-btn').onclick = doScout;
   document.getElementById('back-to-title-1').onclick = () => { document.getElementById('scout-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); };
