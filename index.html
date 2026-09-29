@@ -53,7 +53,7 @@
         <div class="stat-row"><span>脚質</span><span id="stat-style" style="color:#facc15;">先行</span></div>
         <div class="stat-row"><span>速さ</span><span id="stat-spd">50</span></div><div class="stat-row"><span>力強さ</span><span id="stat-pow">50</span></div>
         <div class="stat-row"><span>体力</span><span id="stat-stm">50</span></div><div class="stat-row"><span>気性</span><span id="stat-mnt">50</span></div>
-        <div class="stat-row"><span>異能</span><span id="stat-mag">50</span></div>
+        <div class="stat-row"><span>異能 (威力/速度)</span><span id="stat-mag">50</span></div>
       </div>
       <div class="command-container">
         <button class="cmd-btn" data-cmd="spd"><span class="cmd-icon">⚡</span><span class="cmd-text">神経投与（速↑ / 気↓）</span></button>
@@ -105,7 +105,6 @@
       <div class="pvp-box">
         <div class="pvp-status">ステータス: <span id="pvp-net-status" style="color:#facc15;">接続中...</span></div>
         
-        <!-- 🌟 出走ゾンビ ＆ 会場選択フォーム -->
         <div class="form-group">
           <label>出走する検体</label>
           <select id="pvp-zombie-select"></select>
@@ -179,7 +178,7 @@
         <div id="countdown-overlay" class="hidden">5</div><div id="finish-overlay" class="hidden">FINISH!!</div><div id="slime-overlay" class="hidden"></div>
       </div>
       
-      <!-- 下部UI -->
+      <!-- 下部UI（🌟 スキル説明文を追加） -->
       <div id="player-hud-container">
         <div class="player-info-bar">
           <div class="p-name" id="p-name-disp">名前</div>
@@ -187,10 +186,27 @@
         </div>
         <div id="skill-container">
           <div class="syringe-card" id="syringe-btn">
-            <div class="s-icon-bg">💉</div><div class="s-info"><span class="s-name" id="syringe-name">???</span><span class="s-tag">手動 1回</span></div>
+            <div class="s-icon-bg">💉</div>
+            <div class="s-info">
+              <span class="s-name" id="syringe-name">???</span>
+              <span class="s-desc" id="syringe-desc">タップで発動</span>
+              <span class="s-tag">手動 1回</span>
+            </div>
           </div>
-          <div class="flask-card"><div class="flask-fill" id="flask-fill-0"></div><div class="f-icon">🧪</div><span class="f-name" id="flask-name-0">スキル1</span><span class="f-tag">AUTO</span></div>
-          <div class="flask-card"><div class="flask-fill" id="flask-fill-1"></div><div class="f-icon">🧪</div><span class="f-name" id="flask-name-1">スキル2</span><span class="f-tag">AUTO</span></div>
+          <div class="flask-card">
+            <div class="flask-fill" id="flask-fill-0"></div>
+            <div class="f-icon">🧪</div>
+            <span class="f-name" id="flask-name-0">スキル1</span>
+            <span class="f-desc" id="flask-desc-0">効果</span>
+            <span class="f-tag">AUTO</span>
+          </div>
+          <div class="flask-card">
+            <div class="flask-fill" id="flask-fill-1"></div>
+            <div class="f-icon">🧪</div>
+            <span class="f-name" id="flask-name-1">スキル2</span>
+            <span class="f-desc" id="flask-desc-1">効果</span>
+            <span class="f-tag">AUTO</span>
+          </div>
         </div>
       </div>
     </div>
