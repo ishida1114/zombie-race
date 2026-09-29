@@ -72,7 +72,6 @@ VIDEO_SOURCES.forEach(src => {
   offCtxs.push(cx);
 });
 
-// 🌟 ロゴ自動カット・クロマキー処理
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
   if (!v || v.readyState < 2 || v.paused) return null;
@@ -80,15 +79,10 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   cx.imageSmoothingEnabled = false;
   cx.clearRect(0, 0, targetW, targetH);
   
-  const vw = v.videoWidth || 100;
-  const vh = v.videoHeight || 100;
-  const cropX = vw * 0.05;
-  const cropY = vh * 0.12;  // ロゴ（DeeVid AI等）カット
-  const cropW = vw * 0.90;
-  const cropH = vh * 0.88;
+  const vw = v.videoWidth || 100; const vh = v.videoHeight || 100;
+  const cropX = vw * 0.05; const cropY = vh * 0.12; const cropW = vw * 0.90; const cropH = vh * 0.88;
 
   cx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
-  
   const data = cx.getImageData(0, 0, targetW, targetH);
   for (let i = 0; i < data.data.length; i += 4) { 
     if (data.data[i+1] > 75 && data.data[i+1] > data.data[i]*1.15 && data.data[i+1] > data.data[i+2]*1.15) {
@@ -190,11 +184,13 @@ document.getElementById('start-pvp-race-btn').onclick = () => {
   showPaddock();
 };
 
+// 💬 吹き出し描画
 function drawSpeechBalloon(targetCtx, text, x, y, bgColor='#ffffff', textColor='#000') {
-  targetCtx.save(); targetCtx.font = 'bold 12px sans-serif';
-  const tw = targetCtx.measureText(text).width; const w = tw + 12; const h = 20;
-  targetCtx.fillStyle = bgColor; targetCtx.beginPath(); targetCtx.roundRect(x - w/2, y - h, w, h, 4); targetCtx.fill();
-  targetCtx.beginPath(); targetCtx.moveTo(x-4, y); targetCtx.lineTo(x+4, y); targetCtx.lineTo(x, y+6); targetCtx.fill();
+  targetCtx.save(); targetCtx.font = 'bold 13px sans-serif';
+  const tw = targetCtx.measureText(text).width; const w = tw + 16; const h = 24;
+  targetCtx.fillStyle = bgColor; targetCtx.beginPath(); targetCtx.roundRect(x - w/2, y - h, w, h, 6); targetCtx.fill();
+  targetCtx.strokeStyle = '#000'; targetCtx.lineWidth = 2; targetCtx.stroke();
+  targetCtx.beginPath(); targetCtx.moveTo(x-4, y); targetCtx.lineTo(x+4, y); targetCtx.lineTo(x, y+6); targetCtx.fill(); targetCtx.stroke();
   targetCtx.fillStyle = textColor; targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'middle'; targetCtx.fillText(text, x, y - h/2);
   targetCtx.restore();
 }
@@ -207,11 +203,11 @@ function createExplosion(x, y, color, count, speedMax, sizeBase, type = 'spark')
 }
 
 function applyKnockback(runner, baseKnockback) {
-  if (runner.isHard) { effects.push({ text: `硬化!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#94a3b8', 10, 2, 3, 'spark'); return; }
-  if (runner.barrierPower > 0) { baseKnockback -= Math.floor(baseKnockback * (runner.barrierPower / 100)); effects.push({ text: `弾いた!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#a855f7', 15, 3, 4, 'spark'); }
+  if (runner.isHard) { effects.push({ text: `硬化!`, runner: runner, isBalloon: true, life: 40, bgColor: '#cbd5e1', textColor: '#000' }); createExplosion(runner.x, runner.y, '#94a3b8', 10, 2, 3, 'spark'); return; }
+  if (runner.barrierPower > 0) { baseKnockback -= Math.floor(baseKnockback * (runner.barrierPower / 100)); effects.push({ text: `弾いた!`, runner: runner, isBalloon: true, life: 40, bgColor: '#a855f7', textColor: '#fff' }); createExplosion(runner.x, runner.y, '#a855f7', 15, 3, 4, 'spark'); }
   const defense = Math.floor(runner.powAttr * 0.8); const finalKnockback = baseKnockback - defense;
-  if (finalKnockback <= 0) { runner.knockback = 0; effects.push({ text: `GUARD!`, x: runner.x, y: runner.y, isBalloon: true }); }
-  else { runner.knockback = Math.max(runner.knockback, finalKnockback); runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); effects.push({ text: `ギャッ!`, x: runner.x, y: runner.y, isBalloon: true }); createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); }
+  if (finalKnockback <= 0) { runner.knockback = 0; effects.push({ text: `GUARD!`, runner: runner, isBalloon: true, life: 40, bgColor: '#38bdf8', textColor: '#000' }); }
+  else { runner.knockback = Math.max(runner.knockback, finalKnockback); runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); effects.push({ text: `ギャッ!`, runner: runner, isBalloon: true, life: 40, bgColor: '#ef4444', textColor: '#fff' }); createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); }
 }
 
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCanvas, isExhausted, isRacing = false) {
@@ -383,7 +379,7 @@ function showPaddock() {
   const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
   
   runners.length = 0; const laneW = canvas.width / 4;
-  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 15, maxStm: z.stamina * 15, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex });
+  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 15, maxStm: z.stamina * 15, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
   for (let i = 1; i < 4; i++) {
     let mntBase = z.mentality; let powBase = z.power; if (currentCity.id === 'osaka') mntBase -= 30; if (currentCity.id === 'nagoya') powBase += 30;
@@ -392,7 +388,7 @@ function showPaddock() {
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
-    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 15, maxStm: 0, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx };
+    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 15, maxStm: 0, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
     cpuZ.maxStm = cpuZ.stm; runners.push(cpuZ);
   }
 
@@ -434,20 +430,27 @@ function setupRaceState() {
   isGameRunning = true; requestAnimationFrame(update);
 }
 
-// 💥 スキル実行 (🌟 CPU含む全員の頭上に発動吹き出しを出す)
+// 💥 スキル実行 (🌟 発動者足元のオーラ爆発 ＆ 超派手カエル襲来)
 function triggerSkill(skillData, userRunner) {
   if (raceState !== 'RACING') return; const isPlayer = userRunner.id === 0;
   const magBonus = userRunner.magAttr > 50 ? (userRunner.magAttr - 50) * 0.5 : 0; const effectivePower = 100 + magBonus;
   
-  // 🌟 発動者全員（CPUも含む）の頭上に「メテオ！！」等のトゲトゲ吹き出しを表示！
-  effects.push({ text: `${skillData.name}!!`, x: userRunner.x, y: userRunner.y, isBalloon: true });
+  // 🌟 発動者（CPU含む）の足元からドカンと輝く光のオーラを発生させて誰が使ったか明示！
+  createExplosion(userRunner.x, userRunner.y + 20, isPlayer ? '#38bdf8' : '#ef4444', 25, 6, 4, 'fire');
+  effects.push({ text: `【異能】${skillData.name}!!`, runner: userRunner, isBalloon: true, life: 70, bgColor: isPlayer ? '#0284c7' : '#b91c1c', textColor: '#ffffff' });
 
   if (isPvpMode && isPlayer) broadcast({ type: 'SYNC_SKILL', runnerId: 0, skill: skillData });
 
-  if (skillData.id === 'meteor') { particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 300, radius: 60, power: effectivePower, user: userRunner }); if(isPlayer) { createExplosion(userRunner.x, userRunner.y, '#38bdf8', 15, 3, 3, 'spark'); effects.push({ text: `SAFE`, x: userRunner.x, y: userRunner.y, isBalloon: true }); } } 
-  else if (skillData.id === 'volcano') { shakeTime = 15; effects.push({ text: `溶岩噴出!`, x: canvas.width/2, y: 300, color: '#f97316' }); runners.forEach(r => { if (r.id !== userRunner.id) { applyKnockback(r, effectivePower); r.isHard = false; createExplosion(r.x, r.y+20, '#f97316', 30, 5, 4, 'fire'); } }); } 
-  else if (skillData.id === 'tornado') { shakeTime = 10; effects.push({ text: `竜巻!`, x: canvas.width/2, y: 300, color: '#a3e635' }); createExplosion(canvas.width/2, 300, '#a3e635', 50, 8, 3, 'spark'); runners.forEach(r => { if (r.id !== userRunner.id) r.dist -= effectivePower * 0.3; }); } 
-  else if (skillData.id === 'frog') { if(isPlayer || Math.random()<0.5) { document.getElementById('slime-overlay').classList.add('active'); setTimeout(() => { document.getElementById('slime-overlay').classList.remove('active'); }, 4000); } } 
+  if (skillData.id === 'meteor') { particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 300, radius: 60, power: effectivePower, user: userRunner }); createExplosion(userRunner.x, userRunner.y, '#38bdf8', 15, 3, 3, 'spark'); } 
+  else if (skillData.id === 'volcano') { shakeTime = 15; effects.push({ text: `溶岩噴出!`, runner: userRunner, color: '#f97316', life: 50 }); runners.forEach(r => { if (r.id !== userRunner.id) { applyKnockback(r, effectivePower); r.isHard = false; createExplosion(r.x, r.y+20, '#f97316', 30, 5, 4, 'fire'); } }); } 
+  else if (skillData.id === 'tornado') { shakeTime = 10; effects.push({ text: `竜巻!`, runner: userRunner, color: '#a3e635', life: 50 }); createExplosion(canvas.width/2, 300, '#a3e635', 50, 8, 3, 'spark'); runners.forEach(r => { if (r.id !== userRunner.id) r.dist -= effectivePower * 0.3; }); } 
+  else if (skillData.id === 'frog') { 
+    // 🌟 超派手カエル演出：画面下に巨大なカエルがドカンとジャンプして出現！
+    particles.push({ type: 'giant_frog', y: canvas.height + 150, targetY: canvas.height / 2 + 50, scale: 0.2, life: 120 });
+    shakeTime = 15;
+    document.getElementById('slime-overlay').classList.add('active'); 
+    setTimeout(() => { document.getElementById('slime-overlay').classList.remove('active'); }, 3500); 
+  } 
   else if (skillData.id === 'psycho') { let target = runners.find(r=>r.id!==userRunner.id); runners.forEach(r => { if (r.id !== userRunner.id && Math.abs(r.dist - userRunner.dist) < Math.abs(target.dist - userRunner.dist)) target = r; }); createExplosion(target.x, target.y, '#38bdf8', 40, 6, 4, 'spark'); applyKnockback(target, effectivePower * 1.5); } 
   else if (skillData.id === 'poison') { const targets = runners.filter(r => r.id !== userRunner.id && r.dist > userRunner.dist && r.dist - userRunner.dist < 300); if (targets.length > 0) { targets.forEach(t => { particles.push({ type: 'poison_line', startX: userRunner.x, startY: userRunner.y, targetX: t.x, targetY: t.y, width: 20, life: 1.0 }); applyKnockback(t, effectivePower); }); } else { particles.push({ type: 'poison_laser', x: userRunner.x, y: userRunner.y, width: 40, life: 1.0 }); } } 
   else if (skillData.id === 'stone') { let target = runners.find(r=>r.id!==userRunner.id); runners.forEach(r => { if (r.id !== userRunner.id && Math.abs(r.dist - userRunner.dist) < Math.abs(target.dist - userRunner.dist)) target = r; }); particles.push({ type: 'stone_throw', startX: userRunner.x, startY: userRunner.y, targetX: target.x, targetY: target.y, progress: 0, targetRunner: target }); } 
@@ -537,9 +540,15 @@ function update() {
       const fillEl = document.getElementById(`flask-fill-${index}`); if (fillEl) fillEl.style.height = `${flask.charge}%`;
     });
 
+    // 🌟 CPUがより積極的にスキルを撃つように調整
     runners.forEach((r, i) => {
-      if (i !== 0 && remainingDistance < 350) {
-        r.skillCd -= dt; if (r.skillCd <= 0) { triggerSkill(ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)], r); r.skillCd = Math.floor(Math.random() * 400) + 600; }
+      if (i !== 0 && remainingDistance < 380) {
+        r.skillCd -= dt; 
+        if (r.skillCd <= 0) { 
+          const cpuSkill = ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)];
+          triggerSkill(cpuSkill, r); 
+          r.skillCd = Math.floor(Math.random() * 250) + 200; 
+        }
       }
     });
 
@@ -599,13 +608,27 @@ function update() {
     const p = particles[i];
     if (p.type === 'meteor_drop') {
       p.y += 12 * dt; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
-      if (p.y >= p.targetY) { shakeTime = 20; createExplosion(p.x, p.y, '#f97316', 100, 10, 8, 'spark'); runners.forEach(r => { if(r.id !== p.user.id) applyKnockback(r, p.power); }); effects.push({ text: `大爆発!!`, x: p.x, y: p.y, isBalloon: true }); particles.splice(i, 1); }
+      if (p.y >= p.targetY) { shakeTime = 20; createExplosion(p.x, p.y, '#f97316', 100, 10, 8, 'spark'); runners.forEach(r => { if(r.id !== p.user.id) applyKnockback(r, p.power); }); particles.splice(i, 1); }
+    } else if (p.type === 'giant_frog') {
+      // 🌟 ドデカカエル手前演出の描画
+      p.y += (p.targetY - p.y) * 0.1 * dt;
+      if (p.scale < 3.0) p.scale += 0.08 * dt;
+      p.life -= dt;
+      ctx.save();
+      ctx.translate(canvas.width / 2, p.y);
+      ctx.scale(p.scale, p.scale);
+      ctx.font = '60px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🐸', 0, 0);
+      ctx.restore();
+      if (p.life <= 0) particles.splice(i, 1);
     } else if (p.type === 'poison_laser') { ctx.fillStyle = '#84cc16'; ctx.fillRect(p.x - p.width/2, 0, p.width, p.y); p.life -= 0.05 * dt; if (p.life <= 0) particles.splice(i, 1);
     } else if (p.type === 'poison_line') { ctx.strokeStyle = '#84cc16'; ctx.lineWidth = p.width; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.moveTo(p.startX, p.startY); ctx.lineTo(p.targetX, p.targetY); ctx.stroke(); ctx.globalAlpha = 1.0; p.life -= 0.05 * dt; if (p.life <= 0) particles.splice(i, 1);
     } else if (p.type === 'stone_throw') {
       p.progress += 0.03 * dt; const currentX = p.startX + (p.targetX - p.startX) * p.progress; const currentY = p.startY + (p.targetY - p.startY) * p.progress - Math.sin(p.progress * Math.PI) * 50; 
       ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(currentX, currentY, 6, 0, Math.PI * 2); ctx.fill();
-      if (p.progress >= 1) { applyKnockback(p.targetRunner, 40); effects.push({ text: `イテッ`, x: currentX, y: currentY, isBalloon: true }); createExplosion(currentX, currentY, '#f8fafc', 5, 2, 2, 'spark'); particles.splice(i, 1); }
+      if (p.progress >= 1) { applyKnockback(p.targetRunner, 40); createExplosion(currentX, currentY, '#f8fafc', 5, 2, 2, 'spark'); particles.splice(i, 1); }
     } else {
       p.x += p.vx * dt; p.y += p.vy * dt; p.life -= p.decay * dt;
       if (p.life <= 0) { particles.splice(i, 1); } else { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); if (p.type === 'frog') ctx.fillRect(p.x, p.y, p.size, p.size); else ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
@@ -613,11 +636,17 @@ function update() {
   }
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1.0;
 
+  // 🌟 吹き出しをゾンビ頭上（y - 70）に正確に配置
   for (let i = effects.length - 1; i >= 0; i--) {
     const eff = effects[i]; 
-    if (eff.isBalloon) { drawSpeechBalloon(ctx, eff.text, eff.x, eff.y); }
-    else { ctx.fillStyle = eff.color || '#fff'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(eff.text, eff.x, eff.y); }
-    if (raceState === 'RACING' || raceState === 'FINISH_SLOW') eff.y -= 0.8 * dt; if (eff.y < 80) effects.splice(i, 1);
+    eff.life -= dt;
+    if (eff.runner && eff.isBalloon) {
+      drawSpeechBalloon(ctx, eff.text, eff.runner.x, eff.runner.y - 70, eff.bgColor || '#facc15', eff.textColor || '#000');
+    } else if (!eff.runner) {
+      ctx.fillStyle = eff.color || '#fff'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(eff.text, eff.x, eff.y);
+      if (raceState === 'RACING' || raceState === 'FINISH_SLOW') eff.y -= 0.8 * dt;
+    }
+    if (eff.life <= 0) effects.splice(i, 1);
   }
   if (flashEffect.alpha > 0) { ctx.fillStyle = flashEffect.color; ctx.globalAlpha = flashEffect.alpha; ctx.fillRect(0, 0, canvas.width, canvas.height); flashEffect.alpha -= 0.05 * dt; ctx.globalAlpha = 1.0; }
 
