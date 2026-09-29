@@ -72,6 +72,7 @@ VIDEO_SOURCES.forEach(src => {
   offCtxs.push(cx);
 });
 
+// 🌟 ロゴピンポイント消去＆頭部保持クロマキー処理
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
   if (!v || v.readyState < 2 || v.paused) return null;
@@ -80,15 +81,33 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   cx.clearRect(0, 0, targetW, targetH);
   
   const vw = v.videoWidth || 100; const vh = v.videoHeight || 100;
-  const cropX = vw * 0.03; const cropY = vh * 0.05; const cropW = vw * 0.94; const cropH = vh * 0.95;
+  const cropX = vw * 0.03; 
+  const cropY = vh * 0.08;  // 8%設定で頭部をしっかりキープ
+  const cropW = vw * 0.94; 
+  const cropH = vh * 0.92;
 
   cx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
   const data = cx.getImageData(0, 0, targetW, targetH);
-  for (let i = 0; i < data.data.length; i += 4) { 
-    if (data.data[i+1] > 75 && data.data[i+1] > data.data[i]*1.15 && data.data[i+1] > data.data[i+2]*1.15) {
-      data.data[i+3] = 0; 
+  
+  for (let y = 0; y < targetH; y++) {
+    for (let x = 0; x < targetW; x++) {
+      const i = (y * targetW + x) * 4;
+      const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
+      
+      // 1. 緑背景の透明化
+      if (g > 75 && g > r * 1.15 && g > b * 1.15) {
+        data.data[i+3] = 0; 
+      }
+      
+      // 🌟 2. ロゴ用追加フィルター：画像上部（y < 12px）で、緑抜きをすり抜けた明るい白/灰色文字（ロゴ）を消去
+      if (y < targetH * 0.12 && (x > targetW * 0.5 || x < targetW * 0.2)) {
+        if (r > 150 && g > 150 && b > 150) {
+          data.data[i+3] = 0; // ロゴ文字を強制透明化
+        }
+      }
     }
   }
+  
   cx.putImageData(data, 0, 0); return c;
 }
 
@@ -153,7 +172,6 @@ function broadcast(data) {
   peerConnections.forEach(c => { if(c.open) c.send(data); });
 }
 
-// 🌐 PvPドロップダウンUIの更新
 function updatePvpSelectUI() {
   const zSelect = document.getElementById('pvp-zombie-select'); zSelect.innerHTML = '';
   if (myZombies.length === 0) {
@@ -414,8 +432,8 @@ function showPaddock() {
   
   runners.length = 0; const laneW = canvas.width / 4;
   
-  // 🌟 スタミナ初期値と消費計算の適正化 (z.stamina * 6)
-  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 6, maxStm: z.stamina * 6, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
+  // 🌟 スタミナ容量の適正化 (z.stamina * 10)
+  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
   for (let i = 1; i < 4; i++) {
     let mntBase = z.mentality; let powBase = z.power; if (currentCity.id === 'osaka') mntBase -= 30; if (currentCity.id === 'nagoya') powBase += 30;
@@ -424,14 +442,14 @@ function showPaddock() {
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
-    const cpuStm = (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 6;
+    const cpuStm = (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 10;
     const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
     runners.push(cpuZ);
   }
 
   runners.forEach((r, i) => {
     const card = document.createElement('div'); card.className = `pd-card c-${i}`; card.style.animationDelay = `${i * 0.2}s`;
-    card.innerHTML = `<div class="pd-name"><span class="pd-title">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/6) + r.mntAttr + r.magAttr}</div>`;
+    card.innerHTML = `<div class="pd-name"><span class="pd-title">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/10) + r.mntAttr + r.magAttr}</div>`;
     grid.appendChild(card);
   });
   
@@ -590,14 +608,16 @@ function update() {
       if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) { if (Math.random() < (70 - r.mntAttr) * 0.01) { r.isSlacking = true; r.knockback = 60; setTimeout(() => { r.isSlacking = false; }, 1000); } }
       let baseSpeed = 0.08 + (r.spdAttr - 50) * 0.001; const progress = r.dist / totalDistance; 
       
-      // 🌟 スタミナ消費バランスの調整（通常 0.05 / 雪道 0.08）
-      let stmDrain = currentCity.bgType === 'snow' ? 0.08 : 0.05; 
+      // 🌟 スタミナ消費バランスの調整（通常 0.028 / 雪道 0.045）
+      let stmDrain = currentCity.bgType === 'snow' ? 0.045 : 0.028; 
       if (r.style === '逃げ') { if (progress < 0.4) { baseSpeed *= 1.5; stmDrain *= 1.8; } else if (progress > 0.7) { baseSpeed *= 0.8; } } 
       else if (r.style === '先行') { if (progress > 0.2 && progress < 0.6) { baseSpeed *= 1.2; stmDrain *= 1.2; } } 
       else if (r.style === '差し') { if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.3; stmDrain *= 1.1; } } 
       else if (r.style === '追込') { if (progress > 0.7) { baseSpeed *= 1.6; stmDrain *= 0.8; } }
       
-      if (r.stm > 0) r.stm -= stmDrain * dt; else baseSpeed *= 0.3;
+      // 🌟 スタミナ切れ（0以下）時の失速倍率を0.35から0.65に緩和！ノロノロになりません
+      if (r.stm > 0) r.stm -= stmDrain * dt; else baseSpeed *= 0.65;
+      
       if (r.boostTimer > 0) { r.boostTimer -= dt; baseSpeed *= 2.5; if (globalTime % 5 === 0) createExplosion(r.x, r.y, '#facc15', 2, 2, 2, 'spark'); }
       if (r.knockback > 0) { r.knockback -= dt; baseSpeed *= 0; }
       r.dist += Math.max(0, baseSpeed) * dt;
