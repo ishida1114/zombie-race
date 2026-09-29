@@ -72,6 +72,7 @@ VIDEO_SOURCES.forEach(src => {
   offCtxs.push(cx);
 });
 
+// 🌟 頭部が切れないようにカット率を5%へマイルドに調整
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
   if (!v || v.readyState < 2 || v.paused) return null;
@@ -80,7 +81,10 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   cx.clearRect(0, 0, targetW, targetH);
   
   const vw = v.videoWidth || 100; const vh = v.videoHeight || 100;
-  const cropX = vw * 0.05; const cropY = vh * 0.12; const cropW = vw * 0.90; const cropH = vh * 0.88;
+  const cropX = vw * 0.03; 
+  const cropY = vh * 0.05;  // 🌟 12%→5%に緩和して頭を切らせない
+  const cropW = vw * 0.94; 
+  const cropH = vh * 0.95;
 
   cx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
   const data = cx.getImageData(0, 0, targetW, targetH);
@@ -184,7 +188,6 @@ document.getElementById('start-pvp-race-btn').onclick = () => {
   showPaddock();
 };
 
-// 💬 吹き出し描画
 function drawSpeechBalloon(targetCtx, text, x, y, bgColor='#ffffff', textColor='#000') {
   targetCtx.save(); targetCtx.font = 'bold 13px sans-serif';
   const tw = targetCtx.measureText(text).width; const w = tw + 16; const h = 24;
@@ -430,12 +433,10 @@ function setupRaceState() {
   isGameRunning = true; requestAnimationFrame(update);
 }
 
-// 💥 スキル実行 (🌟 発動者足元のオーラ爆発 ＆ 超派手カエル襲来)
 function triggerSkill(skillData, userRunner) {
   if (raceState !== 'RACING') return; const isPlayer = userRunner.id === 0;
   const magBonus = userRunner.magAttr > 50 ? (userRunner.magAttr - 50) * 0.5 : 0; const effectivePower = 100 + magBonus;
   
-  // 🌟 発動者（CPU含む）の足元からドカンと輝く光のオーラを発生させて誰が使ったか明示！
   createExplosion(userRunner.x, userRunner.y + 20, isPlayer ? '#38bdf8' : '#ef4444', 25, 6, 4, 'fire');
   effects.push({ text: `【異能】${skillData.name}!!`, runner: userRunner, isBalloon: true, life: 70, bgColor: isPlayer ? '#0284c7' : '#b91c1c', textColor: '#ffffff' });
 
@@ -445,7 +446,6 @@ function triggerSkill(skillData, userRunner) {
   else if (skillData.id === 'volcano') { shakeTime = 15; effects.push({ text: `溶岩噴出!`, runner: userRunner, color: '#f97316', life: 50 }); runners.forEach(r => { if (r.id !== userRunner.id) { applyKnockback(r, effectivePower); r.isHard = false; createExplosion(r.x, r.y+20, '#f97316', 30, 5, 4, 'fire'); } }); } 
   else if (skillData.id === 'tornado') { shakeTime = 10; effects.push({ text: `竜巻!`, runner: userRunner, color: '#a3e635', life: 50 }); createExplosion(canvas.width/2, 300, '#a3e635', 50, 8, 3, 'spark'); runners.forEach(r => { if (r.id !== userRunner.id) r.dist -= effectivePower * 0.3; }); } 
   else if (skillData.id === 'frog') { 
-    // 🌟 超派手カエル演出：画面下に巨大なカエルがドカンとジャンプして出現！
     particles.push({ type: 'giant_frog', y: canvas.height + 150, targetY: canvas.height / 2 + 50, scale: 0.2, life: 120 });
     shakeTime = 15;
     document.getElementById('slime-overlay').classList.add('active'); 
@@ -540,7 +540,6 @@ function update() {
       const fillEl = document.getElementById(`flask-fill-${index}`); if (fillEl) fillEl.style.height = `${flask.charge}%`;
     });
 
-    // 🌟 CPUがより積極的にスキルを撃つように調整
     runners.forEach((r, i) => {
       if (i !== 0 && remainingDistance < 380) {
         r.skillCd -= dt; 
@@ -610,7 +609,6 @@ function update() {
       p.y += 12 * dt; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
       if (p.y >= p.targetY) { shakeTime = 20; createExplosion(p.x, p.y, '#f97316', 100, 10, 8, 'spark'); runners.forEach(r => { if(r.id !== p.user.id) applyKnockback(r, p.power); }); particles.splice(i, 1); }
     } else if (p.type === 'giant_frog') {
-      // 🌟 ドデカカエル手前演出の描画
       p.y += (p.targetY - p.y) * 0.1 * dt;
       if (p.scale < 3.0) p.scale += 0.08 * dt;
       p.life -= dt;
@@ -636,7 +634,6 @@ function update() {
   }
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1.0;
 
-  // 🌟 吹き出しをゾンビ頭上（y - 70）に正確に配置
   for (let i = effects.length - 1; i >= 0; i--) {
     const eff = effects[i]; 
     eff.life -= dt;
