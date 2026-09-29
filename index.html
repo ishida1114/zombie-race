@@ -18,6 +18,39 @@
         <button id="nav-scout-btn" class="retro-btn"><span>探索 (スカウト)</span></button>
         <button id="nav-garage-btn" class="retro-btn"><span>牧場 (ガレージ)</span></button>
         <button id="nav-pvp-btn" class="retro-btn btn-pvp"><span>🌐 オンライン対戦部屋</span></button>
+        <button id="nav-howto-btn" class="retro-btn-small" style="margin-top: 12px; border-color: #facc15; color: #facc15;">📖 遊び方＆パラメータ</button>
+      </div>
+    </div>
+
+    <!-- 📖 遊び方モーダル -->
+    <div id="howto-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <button class="modal-close-btn" id="close-howto-btn">✕</button>
+        
+        <div class="howto-section">
+          <h3>📖 ゾンビマスターへの道</h3>
+          <ol>
+            <li><strong>検体をスカウト（探索）</strong><br>タイトル画面の「探索 (スカウト)」をクリック！エリア（タイプ）と希望の脚質を選び、名前をつけたら探索開始！</li>
+            <li><strong>5ターンのドーピング育成</strong><br>3種類の調整コマンド（神経投与／筋組織拡張／防腐処理）でパラメータを強化！「大成功」を狙って最強の個体に育て上げよう！</li>
+            <li><strong>牧場からレースへ遠征</strong><br>育成が完了したら「牧場 (ガレージ)」へ。出走させたいゾンビを選び、全国の会場（コース）へいざ遠征！</li>
+            <li><strong>一発逆転の「注射」を打ち込め！</strong><br>レース中、左下の「注射」カードは<strong>1レースにつき1度だけ</strong>手動で発動可能！ここぞという勝負所でタップして大逆転を狙え！</li>
+          </ol>
+        </div>
+
+        <div class="howto-section">
+          <h3>🧪 各パラメータの意味</h3>
+          <p class="howto-desc">スピードだけじゃ勝てない！？パラメータの仕組みを理解して最強のゾンビを育てよう！</p>
+          <ul>
+            <li><strong>脚質（きゃくしつ）</strong><br>ゾンビの走り方のタイプ。<br>
+              <span class="sub-list">- 逃げ：序盤から突っ走るがスタミナ消費が激しい。<br>- 先行：中盤から安定して上位をキープするバランス型。<br>- 差し：後半から一気に追い上げて前を捉える。<br>- 追込：終盤まで体力を温存し、ゴール前で超スパート（省エネ）。</span>
+            </li>
+            <li><strong>速さ（スピード）</strong><br>ゾンビの基本走行速度。直線での最高速度に直結します。</li>
+            <li><strong>力強さ（パワー）</strong><br><strong>ゾンビ同士の競り合い（押し引き）の強さ</strong>と、敵のスキル攻撃を食らった時の<strong>防御力</strong>。<br><span class="howto-note">※パワーが低いと、集団で揉まれた時に押し出されたり、スキルを喰らって大ノックバックして沈んでしまいます！</span></li>
+            <li><strong>体力（スタミナ）</strong><br>走り続けるためのエネルギー。<br><span class="howto-note">※ゼロになるとバテて（「ニク…」と表示）失速してしまいます。長距離戦や雪道（札幌など）では超重要！</span></li>
+            <li><strong>気性（メンタリティ）</strong><br>ゾンビの集中力。<br><span class="howto-note">※低いと走っている途中でサボって急ブレーキ（「？」と表示）をかけてしまいます。「大阪」など乱戦会場ではメンタルが命！</span></li>
+            <li><strong>異能（呪力）</strong><br>特殊スキルの秘められたパワー。<br><span class="howto-note">※高いほど<strong>発動するスキルの威力がド派手に強化</strong>され、自動スキルの<strong>ゲージが溜まるスピードもアップ</strong>します！</span></li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -53,7 +86,7 @@
         <div class="stat-row"><span>脚質</span><span id="stat-style" style="color:#facc15;">先行</span></div>
         <div class="stat-row"><span>速さ</span><span id="stat-spd">50</span></div><div class="stat-row"><span>力強さ</span><span id="stat-pow">50</span></div>
         <div class="stat-row"><span>体力</span><span id="stat-stm">50</span></div><div class="stat-row"><span>気性</span><span id="stat-mnt">50</span></div>
-        <div class="stat-row"><span>異能 (威力/速度)</span><span id="stat-mag">50</span></div>
+        <div class="stat-row"><span>異能 (呪力)</span><span id="stat-mag">50</span></div>
       </div>
       <div class="command-container">
         <button class="cmd-btn" data-cmd="spd"><span class="cmd-icon">⚡</span><span class="cmd-text">神経投与（速↑ / 気↓）</span></button>
@@ -178,7 +211,7 @@
         <div id="countdown-overlay" class="hidden">5</div><div id="finish-overlay" class="hidden">FINISH!!</div><div id="slime-overlay" class="hidden"></div>
       </div>
       
-      <!-- 下部UI（🌟 スキル説明文を追加） -->
+      <!-- 下部UI -->
       <div id="player-hud-container">
         <div class="player-info-bar">
           <div class="p-name" id="p-name-disp">名前</div>

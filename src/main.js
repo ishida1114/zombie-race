@@ -105,7 +105,6 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
 
 const runners = []; const effects = []; let particles = [];
 
-// 🧪 スキル（異能）定義 ＆ 説明文プロパティ追加
 const ALL_SKILLS = [
   { id: 'meteor', name: 'メテオ', desc: '隕石爆発でライバル大打撃', type: 'auto', speed: 0.045 },
   { id: 'volcano', name: '溶岩', desc: '全体ノックバック＆吹き飛ばし', type: 'auto', speed: 0.048 },
@@ -115,7 +114,6 @@ const ALL_SKILLS = [
   { id: 'stone', name: '小石', desc: '最寄りの敵に石を投げつけ', type: 'auto', speed: 0.090 },
   { id: 'meat', name: '生肉', desc: '足止め罠で足止め', type: 'auto', speed: 0.040 }
 ];
-
 const SYRINGE_SKILLS = [
   { id: 'mach', name: 'マッハ', desc: '一定時間超絶ダッシュ！' },
   { id: 'heal', name: 'ヒール', desc: 'スタミナを大幅超回復！' },
@@ -477,7 +475,6 @@ function setupRaceState() {
   const shuffledAuto = [...ALL_SKILLS].sort(() => 0.5 - Math.random());
   currentAutoFlasks = shuffledAuto.slice(0, 2).map(s => ({ ...s, charge: 0, max: 100 }));
   
-  // 🌟 UIへスキル名と「説明文」をセット
   document.getElementById('flask-name-0').textContent = currentAutoFlasks[0].name; 
   document.getElementById('flask-desc-0').textContent = currentAutoFlasks[0].desc;
   document.getElementById('flask-name-1').textContent = currentAutoFlasks[1].name; 
@@ -725,6 +722,14 @@ function init() {
     document.getElementById('pvp-screen').classList.remove('hidden'); 
   };
   
+  // 🌟 遊び方モーダルの開閉処理
+  document.getElementById('nav-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.remove('hidden'); };
+  document.getElementById('close-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.add('hidden'); };
+  // モーダル背景クリックでも閉じる
+  document.getElementById('howto-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'howto-modal') document.getElementById('howto-modal').classList.add('hidden');
+  });
+
   document.getElementById('do-scout-btn').onclick = doScout;
   document.getElementById('back-to-title-1').onclick = () => { document.getElementById('scout-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); };
   document.getElementById('back-to-title-2').onclick = () => { document.getElementById('garage-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); };

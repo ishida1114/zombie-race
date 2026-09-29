@@ -203,3 +203,26 @@ canvas#podiumCanvas { width: 100%; height: 100%; display: block; }
 .result-row { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 12px; border-radius: 6px; border-left: 4px solid transparent; }
 .result-row.rank-1 { border-left-color: #facc15; background: rgba(250,204,21,0.1); }
 .res-rank { font-size: 20px; font-weight: bold; width: 30px; } .res-name { flex: 1; font-size: 16px; font-weight: bold; } .res-time { font-size: 16px; color: #38bdf8; }
+
+/* 🌟 遊び方モーダル用スタイル */
+.modal-overlay {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85); z-index: 100;
+  display: flex; justify-content: center; align-items: center; padding: 20px;
+  animation: fadeIn 0.2s forwards;
+}
+.modal-content {
+  background: #0d1117; border: 2px solid #334155; border-radius: 8px;
+  width: 100%; max-width: 500px; max-height: 90%; overflow-y: auto; padding: 24px;
+  position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.8); text-align: left;
+}
+.modal-close-btn {
+  position: absolute; top: 12px; right: 16px; background: transparent; border: none;
+  color: #94a3b8; font-size: 24px; cursor: pointer;
+}
+.howto-section { margin-bottom: 24px; }
+.howto-section h3 { color: #facc15; border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 12px; font-size: 18px; font-weight: bold; }
+.howto-section ol, .howto-section ul { padding-left: 20px; color: #e2e8f0; font-size: 14px; line-height: 1.6; display: flex; flex-direction: column; gap: 12px; }
+.howto-section strong { color: #38bdf8; }
+.howto-desc { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.5; }
+.howto-note { font-size: 12px; color: #f87171; display: block; margin-top: 4px; }
+.sub-list { font-size: 12px; color: #cbd5e1; display: block; margin-top: 6px; line-height: 1.5; margin-left: -8px; }
