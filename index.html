@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0" />
   <title>ZOMBIE DERBY : 異能survivors</title>
   <link rel="stylesheet" href="./src/style.css" />
+  <!-- 🌐 P2Pリアルタイム対戦用ライブラリ -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
   <div id="game-container">
@@ -15,6 +17,7 @@
       <div class="title-btn-group">
         <button id="nav-scout-btn" class="retro-btn"><span>探索 (スカウト)</span></button>
         <button id="nav-garage-btn" class="retro-btn"><span>牧場 (ガレージ)</span></button>
+        <button id="nav-pvp-btn" class="retro-btn btn-pvp"><span>🌐 オンライン対戦部屋</span></button>
       </div>
     </div>
 
@@ -59,7 +62,6 @@
       </div>
       <button id="send-to-garage-btn" class="retro-btn hidden" style="margin-top: 10px;"><span>完了</span></button>
       
-      <!-- ドラムロール演出 -->
       <div id="nurture-result-overlay" class="hidden">
         <div id="drumroll-text" class="drumroll-text">調整中...</div>
         <div id="result-label" class="result-label hidden">成功</div>
@@ -97,6 +99,30 @@
       <button id="close-shop-btn" class="retro-btn-small" style="margin-top: 20px;">牧場へ戻る</button>
     </div>
 
+    <!-- 🌐 PvP 対戦部屋ロビー -->
+    <div id="pvp-screen" class="hidden">
+      <div class="screen-title">対戦部屋 (PvP)</div>
+      <div class="pvp-box">
+        <div class="pvp-status">ステータス: <span id="pvp-net-status" style="color:#facc15;">接続中...</span></div>
+        <div class="pvp-btn-group">
+          <button id="create-room-btn" class="retro-btn"><span>公開部屋を作成</span></button>
+          <div class="join-input-group">
+            <input type="text" id="room-id-input" placeholder="部屋IDを入力" maxlength="6">
+            <button id="join-room-btn" class="retro-btn-small" style="width: auto; padding: 0 16px;">参加</button>
+          </div>
+        </div>
+
+        <div id="room-lobby" class="room-lobby-box hidden">
+          <div style="font-size:14px; color:#94a3b8;">部屋ID: <span id="lobby-room-id" style="color:#38bdf8; font-weight:bold;">----</span></div>
+          <div class="member-list" id="member-list">
+            <!-- 参加メンバー -->
+          </div>
+          <button id="start-pvp-race-btn" class="retro-btn" style="margin-top: 16px;"><span>CPUを補完してレース開始！</span></button>
+        </div>
+      </div>
+      <button id="back-to-title-pvp" class="retro-btn-small" style="margin-top: 20px;">タイトルへ戻る</button>
+    </div>
+
     <!-- 🏙️ 都市選択 -->
     <div id="city-select-screen" class="hidden">
       <div class="screen-title">遠征先を選択</div>
@@ -131,7 +157,6 @@
       <div id="race-hud"><div class="hud-item"><span class="hud-label">順位</span><span id="hud-rank" class="hud-val">1位</span></div><div class="hud-item"><span class="hud-label">残り</span><span id="hud-dist" class="hud-val">400m</span></div></div>
       
       <div class="canvas-wrapper">
-        <!-- 🌟 真っ暗回避：Canvasの解像度を固定 -->
         <canvas id="gameCanvas" width="480" height="600"></canvas>
         <div id="countdown-overlay" class="hidden">5</div><div id="finish-overlay" class="hidden">FINISH!!</div><div id="slime-overlay" class="hidden"></div>
       </div>
@@ -155,6 +180,7 @@
     <!-- 🏆 リザルト -->
     <div id="result-screen" class="hidden">
       <div class="result-title">RACE RESULT</div>
+      <div id="champ-notice" class="champ-notice hidden">👑 今週のチャンピオンタイム更新！！</div>
       <div class="podium-canvas-wrapper"><canvas id="podiumCanvas" width="360" height="240"></canvas></div>
       <div id="result-list" class="result-list-container"></div>
       <div id="prize-money" style="font-size:24px; color:#facc15; font-weight:bold; margin: 16px 0;">賞金: 0 Z$</div>
