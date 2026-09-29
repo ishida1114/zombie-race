@@ -16,6 +16,7 @@ myZombies.forEach(z => {
   if (z.mentality === undefined) z.mentality = 50; if (z.magic === undefined) z.magic = 50;
   if (z.remainingTurns === undefined) z.remainingTurns = 0;
   if (z.matches === undefined) z.matches = 0; if (z.wins === undefined) z.wins = 0;
+  if (z.videoIndex === undefined) z.videoIndex = 0;
 });
 let activeZombieIndex = null; let isNurturing = false;
 
@@ -43,21 +44,30 @@ const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨
 const RUNNING_STYLES = ['逃げ', '先行', '差し', '追込'];
 const CPU_NAMES = ['田中', '鈴木', '山田', '店長', '部長', '課長', 'バイト', '新人', '先輩'];
 
-const zombieVideo = document.createElement('video'); zombieVideo.src = '/zombie1.mp4'; zombieVideo.loop = true; zombieVideo.muted = true; zombieVideo.playsInline = true; zombieVideo.autoplay = true;
-zombieVideo.addEventListener('canplay', () => zombieVideo.play().catch(() => {}));
-const offCanvas = document.createElement('canvas'); const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
-function updateChromaKeyFrame(targetW, targetH) {
-  if (zombieVideo.readyState < 2 || zombieVideo.paused) return null;
-  if (offCanvas.width !== targetW) offCanvas.width = targetW; if (offCanvas.height !== targetH) offCanvas.height = targetH;
-  offCtx.clearRect(0, 0, targetW, targetH); offCtx.drawImage(zombieVideo, 0, 0, targetW, targetH);
-  const data = offCtx.getImageData(0, 0, targetW, targetH);
+const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4'];
+const zombieVideos = []; const offCanvases = []; const offCtxs = [];
+
+VIDEO_SOURCES.forEach(src => {
+  const v = document.createElement('video');
+  v.src = src; v.loop = true; v.muted = true; v.playsInline = true; v.autoplay = true;
+  v.addEventListener('canplay', () => v.play().catch(() => {}));
+  zombieVideos.push(v);
+  const c = document.createElement('canvas');
+  offCanvases.push(c); offCtxs.push(c.getContext('2d', { willReadFrequently: true }));
+});
+
+function updateChromaKeyFrame(idx, targetW, targetH) {
+  const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
+  if (!v || v.readyState < 2 || v.paused) return null;
+  if (c.width !== targetW) c.width = targetW; if (c.height !== targetH) c.height = targetH;
+  cx.clearRect(0, 0, targetW, targetH); cx.drawImage(v, 0, 0, targetW, targetH);
+  const data = cx.getImageData(0, 0, targetW, targetH);
   for (let i = 0; i < data.data.length; i += 4) { if (data.data[i+1] > 80 && data.data[i+1] > data.data[i]*1.2 && data.data[i+1] > data.data[i+2]*1.2) data.data[i+3] = 0; }
-  offCtx.putImageData(data, 0, 0); return offCanvas;
+  cx.putImageData(data, 0, 0); return c;
 }
 
 const runners = []; const effects = []; let particles = [];
 
-// 🧪 スキル定義 (オート2つ、手動注射1つ)
 const ALL_SKILLS = [
   { id: 'meteor', name: 'メテオ', type: 'auto', speed: 0.045 }, { id: 'volcano', name: '溶岩', type: 'auto', speed: 0.048 },
   { id: 'tornado', name: '竜巻', type: 'auto', speed: 0.050 }, { id: 'frog', name: 'カエル', type: 'auto', speed: 0.070 },
@@ -69,7 +79,6 @@ const SYRINGE_SKILLS = [
 ];
 let currentAutoFlasks = []; let currentSyringe = null; let syringeUsed = false;
 
-// 💬 吹き出し描画
 function drawSpeechBalloon(targetCtx, text, x, y, bgColor='#ffffff', textColor='#000') {
   targetCtx.save(); targetCtx.font = 'bold 12px sans-serif';
   const tw = targetCtx.measureText(text).width; const w = tw + 12; const h = 20;
@@ -95,24 +104,49 @@ function applyKnockback(runner, baseKnockback) {
 }
 
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCanvas, isExhausted, isRacing = false) {
-  targetCtx.save(); const isKnockback = zData.knockback > 0;
-  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)'; targetCtx.beginPath(); targetCtx.ellipse(x, y + height - 5, (width / 2 - 4) * zData.sizeInfo.scaleX, 6, 0, 0, Math.PI * 2); targetCtx.fill();
+  targetCtx.save(); 
+  const isKnockback = zData.knockback > 0;
+  
+  // 影の描画
+  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
+  targetCtx.beginPath(); 
+  targetCtx.ellipse(x, y + height - 5, (width / 2 - 4) * zData.sizeInfo.scaleX, 6, 0, 0, Math.PI * 2); 
+  targetCtx.fill();
+
+  // 🌟 原点をキャラクターの足元に一度だけ移動（これが重複していたバグを修正）
+  targetCtx.translate(x, y + height);
+  
   if (processedCanvas) {
-    targetCtx.translate(x, y + height); targetCtx.scale(zData.sizeInfo.scaleX, zData.sizeInfo.scaleY);
+    targetCtx.save();
+    targetCtx.scale(zData.sizeInfo.scaleX, zData.sizeInfo.scaleY);
     if (isKnockback) targetCtx.rotate(-0.35);
     let filterStr = zData.colorInfo.filter;
-    if (isKnockback) filterStr = 'brightness(200%) sepia(100%) hue-rotate(-50deg)'; else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)'; else if (isExhausted) filterStr += ' grayscale(80%) brightness(0.6)';
-    targetCtx.filter = filterStr; targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); targetCtx.filter = 'none';
+    if (isKnockback) filterStr = 'brightness(200%) sepia(100%) hue-rotate(-50deg)'; 
+    else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)'; 
+    else if (isExhausted) filterStr += ' grayscale(80%) brightness(0.6)';
+    targetCtx.filter = filterStr; 
+    targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); 
+    targetCtx.restore();
   }
+  
   if (isRacing) {
-    targetCtx.translate(x, y + height); targetCtx.textAlign = 'center';
+    targetCtx.textAlign = 'center';
     if (isExhausted && !isKnockback && !zData.isHard) drawSpeechBalloon(targetCtx, 'ニク…', 0, -height - 10, '#fff', '#000');
     else if (zData.isSlacking) drawSpeechBalloon(targetCtx, '？', 0, -height - 10, '#facc15', '#000');
     
-    let dispName = zData.name; if(dispName.length > 5) dispName = dispName.substring(0,4) + '…';
-    targetCtx.fillStyle = zData.id === 0 ? '#38bdf8' : '#cbd5e1'; targetCtx.font = 'bold 11px sans-serif';
+    let dispName = zData.name; 
+    if(dispName.length > 5) dispName = dispName.substring(0,4) + '…';
+    
+    // 🌟 名前に黒いフチドリをつけて白線と被っても読めるようにする
+    targetCtx.font = 'bold 12px sans-serif';
+    targetCtx.lineWidth = 3;
+    targetCtx.strokeStyle = '#000';
+    targetCtx.strokeText(dispName, 0, -5);
+    
+    targetCtx.fillStyle = zData.id === 0 ? '#38bdf8' : '#cbd5e1'; 
     targetCtx.fillText(dispName, 0, -5);
   }
+  
   targetCtx.restore();
 }
 
@@ -174,9 +208,9 @@ function doScout() {
   let nameVal = document.getElementById('scout-name').value || '名無し';
   let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
   if(cityVal==='osaka') mnt+=15; if(cityVal==='nagoya') pow+=15; if(cityVal==='fukuoka') spd+=15; if(cityVal==='sapporo') stm+=15;
-  const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0 };
+  const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
+  const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
   myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
-  
   const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
   setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
 }
@@ -187,7 +221,7 @@ function updateNurtureUI() {
   document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`; document.getElementById('nurture-zombie-name').textContent = z.name;
   document.getElementById('stat-style').textContent = z.style; document.getElementById('stat-spd').textContent = z.speed; document.getElementById('stat-pow').textContent = z.power; document.getElementById('stat-stm').textContent = z.stamina; document.getElementById('stat-mnt').textContent = z.mentality; document.getElementById('stat-mag').textContent = z.magic;
   const pCtx = document.getElementById('zombieCanvas').getContext('2d'); pCtx.clearRect(0, 0, 160, 160);
-  drawZombieCharacter(pCtx, 80, 20, 80, 110, { ...z, knockback: 0 }, updateChromaKeyFrame(80, 110), false);
+  drawZombieCharacter(pCtx, 80, 20, 80, 110, { ...z, knockback: 0 }, updateChromaKeyFrame(z.videoIndex, 80, 110), false);
   if (z.remainingTurns <= 0) { document.querySelector('.command-container').classList.add('hidden'); document.getElementById('send-to-garage-btn').classList.remove('hidden'); } else { document.querySelector('.command-container').classList.remove('hidden'); document.getElementById('send-to-garage-btn').classList.add('hidden'); }
 }
 
@@ -230,24 +264,25 @@ function renderCitySelect() {
   const container = document.getElementById('city-list'); container.innerHTML = '';
   CITIES.forEach(city => {
     const btn = document.createElement('div'); btn.className = 'city-btn';
-    // 🌟 色とデザインを元に戻しました
     btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)</span><span class="city-desc">${city.desc}</span>`;
     btn.onclick = () => { currentCity = city; document.getElementById('city-select-screen').classList.add('hidden'); showPaddock(); };
     container.appendChild(btn);
   });
 }
 
-// 🐎 パドック演出（手動で進むように変更）
+// 🐎 パドック演出
 function showPaddock() {
   const z = myZombies[activeZombieIndex]; if(!z) return;
   const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
   
   runners.length = 0; const laneW = canvas.width / 4;
-  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 15, maxStm: z.stamina * 15, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false });
+  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 15, maxStm: z.stamina * 15, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex });
+  
   for (let i = 1; i < 4; i++) {
     let mntBase = z.mentality; let powBase = z.power; if (currentCity.id === 'osaka') mntBase -= 30; if (currentCity.id === 'nagoya') powBase += 30;
     const cpuName = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
-    const cpuZ = { id: i, name: cpuName, title: '名もなき', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 15, maxStm: 0, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false };
+    const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
+    const cpuZ = { id: i, name: cpuName, title: '名もなき', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 15, maxStm: 0, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx };
     cpuZ.maxStm = cpuZ.stm; runners.push(cpuZ);
   }
 
@@ -257,20 +292,12 @@ function showPaddock() {
     grid.appendChild(card);
   });
   
-  // 🌟 ここで「レースへ向かう」ボタンを追加（じっくり読めるように）
-  const btnWrapper = document.createElement('div');
-  btnWrapper.style.marginTop = '24px';
-  btnWrapper.style.animation = 'fadeIn 0.5s 1.2s forwards';
-  btnWrapper.style.opacity = '0'; 
+  const btnWrapper = document.createElement('div'); btnWrapper.style.marginTop = '24px'; btnWrapper.style.animation = 'fadeIn 0.5s 1.2s forwards'; btnWrapper.style.opacity = '0'; 
   btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう</span></button>`;
   grid.appendChild(btnWrapper);
   
   document.getElementById('paddock-screen').classList.remove('hidden');
-  
-  document.getElementById('start-cutin-btn').onclick = () => {
-    document.getElementById('paddock-screen').classList.add('hidden');
-    startRaceCutin();
-  };
+  document.getElementById('start-cutin-btn').onclick = () => { document.getElementById('paddock-screen').classList.add('hidden'); startRaceCutin(); };
 }
 
 function startRaceCutin() {
@@ -282,7 +309,6 @@ function startRaceCutin() {
 }
 
 function setupRaceState() {
-  // 🌟 キャンバスリサイズ処理を撤廃し、真っ暗バグを完全解消
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
   document.getElementById('countdown-overlay').classList.remove('hidden'); document.getElementById('finish-overlay').classList.add('hidden'); document.getElementById('slime-overlay').classList.remove('active');
   particles.length = 0; effects.length = 0; syringeUsed = false;
@@ -340,10 +366,12 @@ function renderPodium(sortedRunners, winningTime) {
   pCtx.clearRect(0, 0, podiumCanvas.width, podiumCanvas.height);
   pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
   pCtx.fillStyle = '#0f131a'; pCtx.font = 'bold 36px sans-serif'; pCtx.textAlign = 'center'; pCtx.fillText('1', 180, 150); pCtx.fillText('2', 100, 180); pCtx.fillText('3', 260, 200);
-  const processedCanvas = updateChromaKeyFrame(64, 80);
-  drawZombieCharacter(pCtx, 140+40, 100-80, 64, 80, sortedRunners[0], processedCanvas, false, false);
-  if(sortedRunners[1]) drawZombieCharacter(pCtx, 60+40, 140-80, 64, 80, sortedRunners[1], processedCanvas, false, false);
-  if(sortedRunners[2]) drawZombieCharacter(pCtx, 220+40, 160-80, 64, 80, sortedRunners[2], processedCanvas, false, false);
+  
+  const pc0 = updateChromaKeyFrame(0, 64, 80); const pc1 = updateChromaKeyFrame(1, 64, 80); const pc2 = updateChromaKeyFrame(2, 64, 80); const pcs = [pc0, pc1, pc2];
+
+  drawZombieCharacter(pCtx, 140+40, 100-80, 64, 80, sortedRunners[0], pcs[sortedRunners[0].videoIndex]||pcs[0], false, false);
+  if(sortedRunners[1]) drawZombieCharacter(pCtx, 60+40, 140-80, 64, 80, sortedRunners[1], pcs[sortedRunners[1].videoIndex]||pcs[0], false, false);
+  if(sortedRunners[2]) drawZombieCharacter(pCtx, 220+40, 160-80, 64, 80, sortedRunners[2], pcs[sortedRunners[2].videoIndex]||pcs[0], false, false);
 
   const listContainer = document.getElementById('result-list'); listContainer.innerHTML = '';
   sortedRunners.forEach((r, idx) => {
@@ -410,17 +438,24 @@ function update() {
   }
 
   const avgDist = runners.reduce((acc, r) => acc + r.dist, 0) / 4;
-  for (let i = 0; i < 4; i++) { const r = runners[i]; const diffFromAvg = r.dist - avgDist; r.y = (canvas.height/2) - diffFromAvg * 6.0; }
+  for (let i = 0; i < 4; i++) {
+    const r = runners[i]; const diffFromAvg = r.dist - avgDist; r.y = (canvas.height/2) - diffFromAvg * 6.0;
+  }
 
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime -= dt; }
   if (raceState === 'RACING' || raceState === 'FINISH_SLOW') scrollY = (scrollY + 0.15 * dt) % 100;
   drawJapaneseStreetBackground();
 
-  const processedCanvas = updateChromaKeyFrame(72, 90);
+  const processedCanvases = [
+    updateChromaKeyFrame(0, 72, 90) || updateChromaKeyFrame(0, 72, 90),
+    updateChromaKeyFrame(1, 72, 90) || updateChromaKeyFrame(1, 72, 90),
+    updateChromaKeyFrame(2, 72, 90) || updateChromaKeyFrame(2, 72, 90)
+  ];
+
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
-    drawZombieCharacter(ctx, r.x, r.y, 72, 90, r, processedCanvas, r.stm <= 0, true);
+    drawZombieCharacter(ctx, r.x, r.y, 72, 90, r, processedCanvases[r.videoIndex] || processedCanvases[0], r.stm <= 0, true);
     if (r.barrierPower > 0) { ctx.strokeStyle = `rgba(168, 85, 247, ${r.barrierPower / 100})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(r.x, r.y + 20, 36 * r.sizeInfo.scaleX, 0, Math.PI * 2); ctx.stroke(); }
   });
 
