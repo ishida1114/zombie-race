@@ -12,7 +12,6 @@ let zombieMoney = parseInt(localStorage.getItem('zombieMoney')) || 0;
 let weeklyChamps = JSON.parse(localStorage.getItem('weeklyChamps')) || {};
 let weekStart = parseInt(localStorage.getItem('weekStart')) || Date.now();
 
-// 🌟 週次リセットチェック（月曜午前0時、または7日経過でリセット）
 if (Date.now() - weekStart > 7 * 24 * 60 * 60 * 1000) {
   weeklyChamps = {};
   weekStart = Date.now();
@@ -73,14 +72,29 @@ VIDEO_SOURCES.forEach(src => {
   offCtxs.push(cx);
 });
 
+// 🌟 ロゴ自動カット・クロマキー処理
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
   if (!v || v.readyState < 2 || v.paused) return null;
   if (c.width !== targetW) c.width = targetW; if (c.height !== targetH) c.height = targetH;
-  cx.imageSmoothingEnabled = false; // 🌟 ぼやけ防止
-  cx.clearRect(0, 0, targetW, targetH); cx.drawImage(v, 0, 0, targetW, targetH);
+  cx.imageSmoothingEnabled = false;
+  cx.clearRect(0, 0, targetW, targetH);
+  
+  const vw = v.videoWidth || 100;
+  const vh = v.videoHeight || 100;
+  const cropX = vw * 0.05;
+  const cropY = vh * 0.12;  // ロゴ（DeeVid AI等）カット
+  const cropW = vw * 0.90;
+  const cropH = vh * 0.88;
+
+  cx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
+  
   const data = cx.getImageData(0, 0, targetW, targetH);
-  for (let i = 0; i < data.data.length; i += 4) { if (data.data[i+1] > 80 && data.data[i+1] > data.data[i]*1.2 && data.data[i+1] > data.data[i+2]*1.2) data.data[i+3] = 0; }
+  for (let i = 0; i < data.data.length; i += 4) { 
+    if (data.data[i+1] > 75 && data.data[i+1] > data.data[i]*1.15 && data.data[i+1] > data.data[i+2]*1.15) {
+      data.data[i+3] = 0; 
+    }
+  }
   cx.putImageData(data, 0, 0); return c;
 }
 
@@ -97,7 +111,6 @@ const SYRINGE_SKILLS = [
 ];
 let currentAutoFlasks = []; let currentSyringe = null; let syringeUsed = false;
 
-// 🌐 PeerJS 通信用
 let peer = null; let peerConnections = []; let myPeerId = null; let isPvpMode = false; let pvpMembers = [];
 
 function initPeerJS() {
@@ -353,7 +366,6 @@ document.getElementById('send-to-garage-btn').onclick = () => {
 };
 window.doRelease = (idx) => { myZombies.splice(idx, 1); saveGame(); document.getElementById('release-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
-// 🏙️ 都市選択（週次チャンピオン表示）
 function renderCitySelect() {
   const container = document.getElementById('city-list'); container.innerHTML = '';
   CITIES.forEach(city => {
@@ -376,7 +388,6 @@ function showPaddock() {
   for (let i = 1; i < 4; i++) {
     let mntBase = z.mentality; let powBase = z.power; if (currentCity.id === 'osaka') mntBase -= 30; if (currentCity.id === 'nagoya') powBase += 30;
     
-    // PvP接続時は他のプレイヤーのZombie名が入る
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
 
@@ -423,10 +434,13 @@ function setupRaceState() {
   isGameRunning = true; requestAnimationFrame(update);
 }
 
+// 💥 スキル実行 (🌟 CPU含む全員の頭上に発動吹き出しを出す)
 function triggerSkill(skillData, userRunner) {
   if (raceState !== 'RACING') return; const isPlayer = userRunner.id === 0;
   const magBonus = userRunner.magAttr > 50 ? (userRunner.magAttr - 50) * 0.5 : 0; const effectivePower = 100 + magBonus;
-  if (isPlayer) effects.push({ text: `${skillData.name}!!`, x: userRunner.x, y: userRunner.y, isBalloon: true });
+  
+  // 🌟 発動者全員（CPUも含む）の頭上に「メテオ！！」等のトゲトゲ吹き出しを表示！
+  effects.push({ text: `${skillData.name}!!`, x: userRunner.x, y: userRunner.y, isBalloon: true });
 
   if (isPvpMode && isPlayer) broadcast({ type: 'SYNC_SKILL', runnerId: 0, skill: skillData });
 
@@ -462,7 +476,6 @@ function doFinish() {
       if(z) z.wins++; prize = 500; 
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
-      // 🌟 週次チャンピオン判定
       const currentChamp = weeklyChamps[currentCity.id];
       if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
         weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
@@ -504,7 +517,6 @@ function renderPodium(sortedRunners, winningTime) {
 function update() {
   if (!isGameRunning) { requestAnimationFrame(update); return; }
   
-  // 🌟 エイリアス（ぼやけ）完全防止の常時設定
   ctx.imageSmoothingEnabled = false;
   
   globalTime++; const cdEl = document.getElementById('countdown-overlay');
