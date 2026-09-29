@@ -1,12 +1,15 @@
 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
 const podiumCanvas = document.getElementById('podiumCanvas'); const pCtx = podiumCanvas.getContext('2d');
 
+// 🌟 Canvasのぼかし（アンチエイリアス）を無効化してドット絵をくっきり表示させる
+ctx.imageSmoothingEnabled = false;
+pCtx.imageSmoothingEnabled = false;
+
 let isGameRunning = false; let raceState = 'INIT'; let startCountdown = 3.0;
 let shakeTime = 0; let scrollY = 0; let globalTime = 0;
 let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
-// 📦 データ管理
 let myZombies = JSON.parse(localStorage.getItem('myZombies')) || [];
 let zombieMoney = parseInt(localStorage.getItem('zombieMoney')) || 0;
 myZombies.forEach(z => {
@@ -22,7 +25,6 @@ let activeZombieIndex = null; let isNurturing = false;
 
 function saveGame() { localStorage.setItem('myZombies', JSON.stringify(myZombies)); localStorage.setItem('zombieMoney', zombieMoney.toString()); }
 
-// 🌟 二つ名生成
 function getTitle(z) {
   if (z.wins >= 50) return ['生ける伝説', '世紀末覇者', '神速のバケモノ'][Math.floor(Math.random()*3)];
   if (z.wins >= 10) return ['常勝の', '不沈艦', '音速の'][Math.floor(Math.random()*3)];
@@ -53,7 +55,10 @@ VIDEO_SOURCES.forEach(src => {
   v.addEventListener('canplay', () => v.play().catch(() => {}));
   zombieVideos.push(v);
   const c = document.createElement('canvas');
-  offCanvases.push(c); offCtxs.push(c.getContext('2d', { willReadFrequently: true }));
+  offCanvases.push(c); 
+  const cx = c.getContext('2d', { willReadFrequently: true });
+  cx.imageSmoothingEnabled = false; // 🌟 オフスクリーンCanvasでも無効化
+  offCtxs.push(cx);
 });
 
 function updateChromaKeyFrame(idx, targetW, targetH) {
@@ -107,13 +112,11 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
   targetCtx.save(); 
   const isKnockback = zData.knockback > 0;
   
-  // 影の描画
   targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)'; 
   targetCtx.beginPath(); 
   targetCtx.ellipse(x, y + height - 5, (width / 2 - 4) * zData.sizeInfo.scaleX, 6, 0, 0, Math.PI * 2); 
   targetCtx.fill();
 
-  // 🌟 原点をキャラクターの足元に一度だけ移動（これが重複していたバグを修正）
   targetCtx.translate(x, y + height);
   
   if (processedCanvas) {
@@ -137,7 +140,6 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     let dispName = zData.name; 
     if(dispName.length > 5) dispName = dispName.substring(0,4) + '…';
     
-    // 🌟 名前に黒いフチドリをつけて白線と被っても読めるようにする
     targetCtx.font = 'bold 12px sans-serif';
     targetCtx.lineWidth = 3;
     targetCtx.strokeStyle = '#000';
@@ -160,7 +162,6 @@ function drawJapaneseStreetBackground() {
   for (let i=1; i<4; i++) { ctx.beginPath(); ctx.moveTo(laneW*i, -100 + scrollY); ctx.lineTo(laneW*i, canvas.height + 100 + scrollY); ctx.stroke(); } ctx.setLineDash([]);
 }
 
-// --- 🏠 UIナビゲーション ---
 function updateMoneyDisp() { document.getElementById('title-money').textContent = zombieMoney; document.getElementById('garage-money').textContent = zombieMoney; document.getElementById('shop-money').textContent = zombieMoney; }
 
 function renderGarage() {
@@ -187,7 +188,6 @@ function renderGarage() {
 window.openCitySelect = (idx) => { activeZombieIndex = idx; document.getElementById('garage-screen').classList.add('hidden'); renderCitySelect(); document.getElementById('city-select-screen').classList.remove('hidden'); };
 window.deleteZombie = (idx) => { if(confirm('本当に逃がしますか？')) { myZombies.splice(idx, 1); saveGame(); renderGarage(); } };
 
-// 🛒 ショップ
 window.openShop = (idx) => {
   activeZombieIndex = idx; updateMoneyDisp();
   document.getElementById('shop-target-name').textContent = myZombies[idx].name;
@@ -202,7 +202,6 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
 });
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
-// 🔦 スカウト
 function doScout() {
   const cityVal = document.getElementById('scout-city').value; const styleVal = document.getElementById('scout-style').value;
   let nameVal = document.getElementById('scout-name').value || '名無し';
@@ -215,13 +214,14 @@ function doScout() {
   setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
 }
 
-// 🧪 育成
 function updateNurtureUI() {
   const z = myZombies[activeZombieIndex]; if (!z) return;
   document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`; document.getElementById('nurture-zombie-name').textContent = z.name;
   document.getElementById('stat-style').textContent = z.style; document.getElementById('stat-spd').textContent = z.speed; document.getElementById('stat-pow').textContent = z.power; document.getElementById('stat-stm').textContent = z.stamina; document.getElementById('stat-mnt').textContent = z.mentality; document.getElementById('stat-mag').textContent = z.magic;
-  const pCtx = document.getElementById('zombieCanvas').getContext('2d'); pCtx.clearRect(0, 0, 160, 160);
-  drawZombieCharacter(pCtx, 80, 20, 80, 110, { ...z, knockback: 0 }, updateChromaKeyFrame(z.videoIndex, 80, 110), false);
+  const zCtx = document.getElementById('zombieCanvas').getContext('2d');
+  zCtx.imageSmoothingEnabled = false; // 🌟 育成画面でも無効化
+  zCtx.clearRect(0, 0, 160, 160);
+  drawZombieCharacter(zCtx, 80, 20, 80, 110, { ...z, knockback: 0 }, updateChromaKeyFrame(z.videoIndex, 80, 110), false);
   if (z.remainingTurns <= 0) { document.querySelector('.command-container').classList.add('hidden'); document.getElementById('send-to-garage-btn').classList.remove('hidden'); } else { document.querySelector('.command-container').classList.remove('hidden'); document.getElementById('send-to-garage-btn').classList.add('hidden'); }
 }
 
@@ -270,7 +270,6 @@ function renderCitySelect() {
   });
 }
 
-// 🐎 パドック演出
 function showPaddock() {
   const z = myZombies[activeZombieIndex]; if(!z) return;
   const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
@@ -324,7 +323,6 @@ function setupRaceState() {
   isGameRunning = true; requestAnimationFrame(update);
 }
 
-// 💥 スキル実行
 function triggerSkill(skillData, userRunner) {
   if (raceState !== 'RACING') return; const isPlayer = userRunner.id === 0;
   const magBonus = userRunner.magAttr > 50 ? (userRunner.magAttr - 50) * 0.5 : 0; const effectivePower = 100 + magBonus;
@@ -384,6 +382,10 @@ function renderPodium(sortedRunners, winningTime) {
 
 function update() {
   if (!isGameRunning) { requestAnimationFrame(update); return; }
+  
+  // 🌟 メインループ内でも念のため画像補間を無効化（ぼやけ防止）
+  ctx.imageSmoothingEnabled = false;
+  
   globalTime++; const cdEl = document.getElementById('countdown-overlay');
 
   if (raceState === 'COUNTDOWN') {
