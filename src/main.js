@@ -6,6 +6,81 @@ let shakeTime = 0; let scrollY = 0; let globalTime = 0;
 let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
+// ==========================================
+// 🎵 音響管理システム (AudioManager)
+// ==========================================
+const AudioManager = {
+  bgmList: {
+    opening: 'opening.m4a',
+    tokyo: 'tokyo.m4a',
+    osaka: 'oosaka.m4a',
+    nagoya: 'nagoya.mp4',
+    fukuoka: 'fukuoka.mp4',
+    sapporo: 'sapporo.m4a',
+    ending: 'ending.mp4'
+  },
+  seList: {
+    button: 'button.mp3',
+    drumroll: 'drumroll.mp3',
+    success: 'success.mp3',
+    countdown: 'countdown.mp3',
+    damage: 'damage.mp3',
+    goalin: 'goalin.mp3'
+  },
+  currentBGM: null,
+  currentBGMKey: null,
+  audioUnlocked: false,
+
+  init() {
+    const unlock = () => {
+      if (this.audioUnlocked) return;
+      this.audioUnlocked = true;
+      const dummy = new Audio();
+      dummy.play().catch(() => {});
+      if (!this.currentBGM) this.playBGM('opening');
+      document.removeEventListener('click', unlock);
+      document.removeEventListener('touchstart', unlock);
+    };
+    document.addEventListener('click', unlock);
+    document.addEventListener('touchstart', unlock);
+
+    // 全ボタンのクリック時に自動で button.mp3 を再生
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button, .btn, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
+      if (btn) this.playSE('button');
+    });
+  },
+
+  playBGM(key) {
+    if (!this.bgmList[key] || this.currentBGMKey === key) return;
+    this.stopBGM();
+    const audio = new Audio(this.bgmList[key]);
+    audio.loop = true;
+    audio.volume = 0.5;
+    audio.play().then(() => {
+      this.currentBGM = audio;
+      this.currentBGMKey = key;
+    }).catch(() => {});
+  },
+
+  stopBGM() {
+    if (this.currentBGM) {
+      this.currentBGM.pause();
+      this.currentBGM.currentTime = 0;
+      this.currentBGM = null;
+      this.currentBGMKey = null;
+    }
+  },
+
+  playSE(key) {
+    if (!this.seList[key]) return null;
+    const se = new Audio(this.seList[key]);
+    se.volume = 0.7;
+    se.play().catch(() => {});
+    return se;
+  }
+};
+
 // 📦 データ管理
 let myZombies = JSON.parse(localStorage.getItem('myZombies')) || [];
 let zombieMoney = parseInt(localStorage.getItem('zombieMoney')) || 0;
@@ -51,6 +126,15 @@ const CITIES = [
   { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【雪道】体力が削られる長距離戦。' }
 ];
 let currentCity = CITIES[0];
+
+// ストーリー難易度基準値 (合計300ベース)
+const STORY_DIFFICULTY = {
+  fukuoka: { min: -0.15, max: 0.05 }, // 初級 (255 ~ 315)
+  osaka:   { min: -0.15, max: 0.10 }, // 中級 (255 ~ 330)
+  nagoya:  { min: -0.10, max: 0.10 }, // 中級 (270 ~ 330)
+  sapporo: { min: -0.10, max: 0.15 }, // 上級 (270 ~ 345)
+  tokyo:   { min: -0.05, max: 0.20 }  // ラスボス (285 ~ 360)
+};
 
 const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }, { name: '猛毒', filter: 'hue-rotate(90deg) saturate(120%)' }, { name: '深淵', filter: 'hue-rotate(210deg) saturate(100%) brightness(0.9)' }, { name: '狂暴', filter: 'hue-rotate(-50deg) saturate(150%) brightness(1.1)' }, { name: '蒼白', filter: 'grayscale(70%) brightness(1.2) hue-rotate(180deg)' }, { name: '黒曜', filter: 'grayscale(60%) brightness(0.6) contrast(1.3)' }];
 const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨漢', scaleX: 1.25, scaleY: 1.3 }, { name: '肥満', scaleX: 1.3, scaleY: 0.95 }];
@@ -258,7 +342,12 @@ function applyKnockback(runner, baseKnockback) {
   if (runner.barrierPower > 0) { baseKnockback -= Math.floor(baseKnockback * (runner.barrierPower / 100)); effects.push({ text: `弾いた!`, runner: runner, isBalloon: true, life: 40, bgColor: '#a855f7', textColor: '#fff' }); createExplosion(runner.x, runner.y, '#a855f7', 15, 3, 4, 'spark'); }
   const defense = Math.floor(runner.powAttr * 0.8); const finalKnockback = baseKnockback - defense;
   if (finalKnockback <= 0) { runner.knockback = 0; effects.push({ text: `GUARD!`, runner: runner, isBalloon: true, life: 40, bgColor: '#38bdf8', textColor: '#000' }); }
-  else { runner.knockback = Math.max(runner.knockback, finalKnockback); runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); effects.push({ text: `ギャッ!`, runner: runner, isBalloon: true, life: 40, bgColor: '#ef4444', textColor: '#fff' }); createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); }
+  else { 
+    runner.knockback = Math.max(runner.knockback, finalKnockback); runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); 
+    effects.push({ text: `ギャッ!`, runner: runner, isBalloon: true, life: 40, bgColor: '#ef4444', textColor: '#fff' }); 
+    createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); 
+    AudioManager.playSE('damage'); // 🔊 被弾うめき声SE
+  }
 }
 
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCanvas, isExhausted, isRacing = false) {
@@ -319,6 +408,7 @@ function updateMoneyDisp() { document.getElementById('title-money').textContent 
 
 function renderGarage() {
   updateMoneyDisp();
+  AudioManager.playBGM('opening');
   const list = document.getElementById('garage-list'); list.innerHTML = ''; document.getElementById('garage-count').textContent = myZombies.length;
   myZombies.forEach((z, idx) => {
     const card = document.createElement('div'); card.className = 'zombie-card';
@@ -359,7 +449,17 @@ function doScout() {
   const cityVal = document.getElementById('scout-city').value; const styleVal = document.getElementById('scout-style').value;
   let nameVal = document.getElementById('scout-name').value || '名無し';
   let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
-  if(cityVal==='osaka') mnt+=15; if(cityVal==='nagoya') pow+=15; if(cityVal==='fukuoka') spd+=15; if(cityVal==='sapporo') stm+=15;
+  
+  // 🏙️ スカウト出身地ボーナス
+  if (cityVal === 'tokyo') {
+    spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3; // 東京：全ステータス+3均等
+  } else {
+    if(cityVal==='osaka') mnt+=15; 
+    if(cityVal==='nagoya') pow+=15; 
+    if(cityVal==='fukuoka') spd+=15; 
+    if(cityVal==='sapporo') stm+=15;
+  }
+
   const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
   const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
   myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
@@ -378,16 +478,26 @@ function updateNurtureUI() {
   if (z.remainingTurns <= 0) { document.querySelector('.command-container').classList.add('hidden'); document.getElementById('send-to-garage-btn').classList.remove('hidden'); } else { document.querySelector('.command-container').classList.remove('hidden'); document.getElementById('send-to-garage-btn').classList.add('hidden'); }
 }
 
+let activeDrumrollAudio = null;
+
 function executeCommand(type) {
   if (isNurturing) return; isNurturing = true;
   document.getElementById('nurture-result-overlay').classList.remove('hidden'); document.getElementById('drumroll-text').classList.remove('hidden'); document.getElementById('result-label').classList.add('hidden'); document.getElementById('result-status-changes').classList.add('hidden');
+  
+  activeDrumrollAudio = AudioManager.playSE('drumroll'); // 🔊 ドラムロール開始
+  
   let tick = 0; const drumInterval = setInterval(() => {
     tick++; document.getElementById('drumroll-text').textContent = `調整中 ${Math.floor(Math.random() * 89 + 10)} ...`;
-    if (tick > 12) { clearInterval(drumInterval); showNurtureResult(type); }
+    if (tick > 12) { 
+      clearInterval(drumInterval); 
+      if (activeDrumrollAudio) { activeDrumrollAudio.pause(); activeDrumrollAudio = null; }
+      showNurtureResult(type); 
+    }
   }, 100);
 }
 
 function showNurtureResult(type) {
+  AudioManager.playSE('success'); // 🔊 育成成功音
   const rand = Math.random(); let rType = rand < 0.2 ? 2 : (rand > 0.85 ? 0 : 1);
   let ms='', ss='', mName='', sName='';
   if (type === 'spd') { ms='speed'; ss='mentality'; mName='速さ'; sName='気性'; } else if (type === 'pow') { ms='power'; ss='magic'; mName='力強さ'; sName='異能'; } else if (type === 'stm') { ms='stamina'; ss='speed'; mName='体力'; sName='速さ'; }
@@ -433,15 +543,42 @@ function showPaddock() {
   
   runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
+  // 🎮 CPU難易度生成ロジック (都市別ストーリー倍率)
+  const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
+
   for (let i = 1; i < 4; i++) {
-    let mntBase = z.mentality; let powBase = z.power; if (currentCity.id === 'osaka') mntBase -= 30; if (currentCity.id === 'nagoya') powBase += 30;
-    
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
 
+    let cpuSpd, cpuPow, cpuStmVal, cpuMnt, cpuMag;
+
+    if (isPvpMode) {
+      cpuSpd = z.speed + (Math.floor(Math.random() * 30) - 15);
+      cpuPow = z.power + (Math.floor(Math.random() * 30) - 15);
+      cpuStmVal = z.stamina + (Math.floor(Math.random() * 30) - 15);
+      cpuMnt = z.mentality + (Math.floor(Math.random() * 30) - 15);
+      cpuMag = z.magic + (Math.floor(Math.random() * 30) - 15);
+    } else {
+      // 都市難易度に基いたステータス分配
+      const rate = diffSetting.min + Math.random() * (diffSetting.max - diffSetting.min);
+      const targetTotal = 300 * (1 + rate);
+
+      const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
+      const wSum = weights.reduce((a, b) => a + b, 0);
+
+      cpuSpd = Math.round((weights[0] / wSum) * targetTotal);
+      cpuPow = Math.round((weights[1] / wSum) * targetTotal);
+      cpuStmVal = Math.round((weights[2] / wSum) * targetTotal);
+      cpuMnt = Math.round((weights[3] / wSum) * targetTotal);
+      cpuMag = Math.round((weights[4] / wSum) * targetTotal);
+    }
+
+    if (currentCity.id === 'osaka') cpuMnt = Math.max(10, cpuMnt - 20);
+    if (currentCity.id === 'nagoya') cpuPow += 20;
+
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
-    const cpuStm = (z.stamina + (Math.floor(Math.random() * 30) - 15)) * 10;
-    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: z.speed + (Math.floor(Math.random() * 30) - 15), powAttr: powBase + (Math.floor(Math.random() * 30) - 15), mntAttr: mntBase + (Math.floor(Math.random() * 30) - 15), magAttr: z.magic + (Math.floor(Math.random() * 30) - 15), colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
+    const cpuStm = Math.max(100, cpuStmVal * 10);
+    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
     runners.push(cpuZ);
   }
 
@@ -469,6 +606,9 @@ function startRaceCutin() {
 
 function setupRaceState() {
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
+  
+  AudioManager.playBGM(currentCity.id); // 🎵 各都市のレースBGMスタート！
+
   document.getElementById('countdown-overlay').classList.remove('hidden'); document.getElementById('finish-overlay').classList.add('hidden'); document.getElementById('slime-overlay').classList.remove('active');
   particles.length = 0; effects.length = 0; syringeUsed = false;
   
@@ -525,6 +665,9 @@ document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
 
 function doFinish() {
   raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
+  
+  AudioManager.playSE('goalin'); // 🔊 ゴール効果音
+
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
   setTimeout(() => {
     raceState = 'FINISHED'; const sorted = [...runners].sort((a, b) => b.dist - a.dist); const playerRank = sorted.findIndex(r => r.id === 0) + 1;
@@ -547,6 +690,8 @@ function doFinish() {
     document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
     const noticeEl = document.getElementById('champ-notice');
     if (isChampUpdated) noticeEl.classList.remove('hidden'); else noticeEl.classList.add('hidden');
+
+    AudioManager.playBGM('ending'); // 🎵 リザルト画面でエンディングBGM再生
 
     renderPodium(sorted, elapsedSec); document.getElementById('result-screen').classList.remove('hidden');
   }, 2500);
@@ -581,7 +726,14 @@ function update() {
   globalTime++; const cdEl = document.getElementById('countdown-overlay');
 
   if (raceState === 'COUNTDOWN') {
+    const prevCD = Math.ceil(startCountdown);
     startCountdown -= 1 / 60;
+    const currentCD = Math.ceil(startCountdown);
+
+    if (prevCD !== currentCD && currentCD > 0) {
+      AudioManager.playSE('countdown'); // 🔊 ピッ、ピッ、ピッ音
+    }
+
     if (startCountdown > 0) { cdEl.textContent = Math.ceil(startCountdown); } 
     else { cdEl.textContent = "START!"; setTimeout(() => { if (raceState === 'RACING') cdEl.classList.add('hidden'); }, 1000); raceState = 'RACING'; startTime = Date.now(); }
   }
@@ -713,6 +865,7 @@ function update() {
 function init() {
   updateMoneyDisp();
   initPeerJS();
+  AudioManager.init(); // 🎵 音響管理システム初期化
   
   document.getElementById('nav-scout-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
   document.getElementById('nav-garage-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
@@ -725,15 +878,14 @@ function init() {
   // 🌟 遊び方モーダルの開閉処理
   document.getElementById('nav-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.remove('hidden'); };
   document.getElementById('close-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.add('hidden'); };
-  // モーダル背景クリックでも閉じる
   document.getElementById('howto-modal').addEventListener('click', (e) => {
     if (e.target.id === 'howto-modal') document.getElementById('howto-modal').classList.add('hidden');
   });
 
   document.getElementById('do-scout-btn').onclick = doScout;
-  document.getElementById('back-to-title-1').onclick = () => { document.getElementById('scout-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); };
-  document.getElementById('back-to-title-2').onclick = () => { document.getElementById('garage-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); };
-  document.getElementById('back-to-title-pvp').onclick = () => { document.getElementById('pvp-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); };
+  document.getElementById('back-to-title-1').onclick = () => { document.getElementById('scout-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
+  document.getElementById('back-to-title-2').onclick = () => { document.getElementById('garage-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
+  document.getElementById('back-to-title-pvp').onclick = () => { document.getElementById('pvp-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
   document.getElementById('back-to-garage-1').onclick = () => { document.getElementById('city-select-screen').classList.add('hidden'); document.getElementById('garage-screen').classList.remove('hidden'); };
   document.getElementById('retry-btn').onclick = () => { isGameRunning = false; isPvpMode = false; document.getElementById('result-screen').classList.add('hidden'); document.getElementById('race-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
   
