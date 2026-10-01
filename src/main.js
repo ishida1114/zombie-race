@@ -7,12 +7,11 @@ let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
 // ==========================================
-// 🎵 音響管理システム (AudioManager + ON/OFF機能)
+// 🎵 音響管理システム (audio/ フォルダ対応版)
 // ==========================================
 const AudioManager = {
-  // 📁 音声ファイルが audio/ フォルダ等にある場合はここを変更 (例: 'audio/')
-  basePathBGM: '',
-  basePathSE: '',
+  basePathBGM: 'audio/bgm/',
+  basePathSE: 'audio/se/',
 
   bgmList: {
     opening: 'opening.m4a',
@@ -35,7 +34,7 @@ const AudioManager = {
   currentBGM: null,
   currentBGMKey: null,
   audioUnlocked: false,
-  isMuted: false, // ミュート状態
+  isMuted: false,
 
   init() {
     this.createMuteButtonUI();
@@ -52,14 +51,13 @@ const AudioManager = {
     document.addEventListener('click', unlock);
     document.addEventListener('touchstart', unlock);
 
-    // ボタン全般の自動効果音適用（音ミュートボタン自体は除く）
+    // ボタン効果音の自動紐付け
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button, .btn, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
       if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
     });
   },
 
-  // 音ON/OFFトグル切替
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.isMuted) {
@@ -79,7 +77,6 @@ const AudioManager = {
     return this.isMuted;
   },
 
-  // 画面右上に音ON/OFF切り替えボタンを自動生成
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -133,7 +130,7 @@ const AudioManager = {
     audio.play().then(() => {
       this.currentBGM = audio;
     }).catch(err => {
-      console.warn(`[AudioManager] BGM (${path}) の再生に失敗しました。ファイルパスやサーバー環境を確認してください:`, err);
+      console.warn(`[AudioManager] BGM再生失敗 (${path}):`, err);
     });
   },
 
@@ -151,7 +148,7 @@ const AudioManager = {
     const se = new Audio(path);
     se.volume = 0.7;
     se.play().catch(err => {
-      console.warn(`[AudioManager] SE (${path}) の再生に失敗しました:`, err);
+      console.warn(`[AudioManager] SE再生失敗 (${path}):`, err);
     });
     return se;
   }
