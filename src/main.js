@@ -7,9 +7,13 @@ let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
 // ==========================================
-// 🎵 音響管理システム (AudioManager)
+// 🎵 音響管理システム (AudioManager + ON/OFF機能)
 // ==========================================
 const AudioManager = {
+  // 📁 音声ファイルが audio/ フォルダ等にある場合はここを変更 (例: 'audio/')
+  basePathBGM: '',
+  basePathSE: '',
+
   bgmList: {
     opening: 'opening.m4a',
     tokyo: 'tokyo.m4a',
@@ -27,40 +31,110 @@ const AudioManager = {
     damage: 'damage.mp3',
     goalin: 'goalin.mp3'
   },
+
   currentBGM: null,
   currentBGMKey: null,
   audioUnlocked: false,
+  isMuted: false, // ミュート状態
 
   init() {
+    this.createMuteButtonUI();
+
     const unlock = () => {
       if (this.audioUnlocked) return;
       this.audioUnlocked = true;
       const dummy = new Audio();
       dummy.play().catch(() => {});
-      if (!this.currentBGM) this.playBGM('opening');
+      if (!this.currentBGM && !this.isMuted) this.playBGM('opening');
       document.removeEventListener('click', unlock);
       document.removeEventListener('touchstart', unlock);
     };
     document.addEventListener('click', unlock);
     document.addEventListener('touchstart', unlock);
 
-    // 全ボタンのクリック時に自動で button.mp3 を再生
+    // ボタン全般の自動効果音適用（音ミュートボタン自体は除く）
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button, .btn, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
-      if (btn) this.playSE('button');
+      if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
     });
   },
 
+  // 音ON/OFFトグル切替
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    if (this.isMuted) {
+      if (this.currentBGM) this.currentBGM.pause();
+    } else {
+      if (this.currentBGM) {
+        this.currentBGM.play().catch(err => console.warn("BGM再生失敗:", err));
+      } else if (this.currentBGMKey) {
+        const key = this.currentBGMKey;
+        this.currentBGMKey = null;
+        this.playBGM(key);
+      } else {
+        this.playBGM('opening');
+      }
+    }
+    this.updateMuteButtonUI();
+    return this.isMuted;
+  },
+
+  // 画面右上に音ON/OFF切り替えボタンを自動生成
+  createMuteButtonUI() {
+    if (document.getElementById('sound-toggle-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'sound-toggle-btn';
+    btn.className = 'sound-toggle-btn';
+    btn.style.cssText = `
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: bold;
+      background: rgba(15, 23, 42, 0.9);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      transition: all 0.2s;
+    `;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      this.toggleMute();
+    };
+    document.body.appendChild(btn);
+    this.updateMuteButtonUI();
+  },
+
+  updateMuteButtonUI() {
+    const btn = document.getElementById('sound-toggle-btn');
+    if (btn) {
+      btn.textContent = this.isMuted ? '🔇 音: OFF' : '🔊 音: ON';
+      btn.style.color = this.isMuted ? '#94a3b8' : '#38bdf8';
+      btn.style.borderColor = this.isMuted ? '#64748b' : '#38bdf8';
+    }
+  },
+
   playBGM(key) {
-    if (!this.bgmList[key] || this.currentBGMKey === key) return;
+    if (!this.bgmList[key]) return;
+    if (this.currentBGMKey === key && this.currentBGM && !this.currentBGM.paused) return;
     this.stopBGM();
-    const audio = new Audio(this.bgmList[key]);
+    this.currentBGMKey = key;
+
+    if (this.isMuted) return;
+
+    const path = this.basePathBGM + this.bgmList[key];
+    const audio = new Audio(path);
     audio.loop = true;
     audio.volume = 0.5;
     audio.play().then(() => {
       this.currentBGM = audio;
-      this.currentBGMKey = key;
-    }).catch(() => {});
+    }).catch(err => {
+      console.warn(`[AudioManager] BGM (${path}) の再生に失敗しました。ファイルパスやサーバー環境を確認してください:`, err);
+    });
   },
 
   stopBGM() {
@@ -68,15 +142,17 @@ const AudioManager = {
       this.currentBGM.pause();
       this.currentBGM.currentTime = 0;
       this.currentBGM = null;
-      this.currentBGMKey = null;
     }
   },
 
   playSE(key) {
-    if (!this.seList[key]) return null;
-    const se = new Audio(this.seList[key]);
+    if (this.isMuted || !this.seList[key]) return null;
+    const path = this.basePathSE + this.seList[key];
+    const se = new Audio(path);
     se.volume = 0.7;
-    se.play().catch(() => {});
+    se.play().catch(err => {
+      console.warn(`[AudioManager] SE (${path}) の再生に失敗しました:`, err);
+    });
     return se;
   }
 };
@@ -127,13 +203,12 @@ const CITIES = [
 ];
 let currentCity = CITIES[0];
 
-// ストーリー難易度基準値 (合計300ベース)
 const STORY_DIFFICULTY = {
-  fukuoka: { min: -0.15, max: 0.05 }, // 初級 (255 ~ 315)
-  osaka:   { min: -0.15, max: 0.10 }, // 中級 (255 ~ 330)
-  nagoya:  { min: -0.10, max: 0.10 }, // 中級 (270 ~ 330)
-  sapporo: { min: -0.10, max: 0.15 }, // 上級 (270 ~ 345)
-  tokyo:   { min: -0.05, max: 0.20 }  // ラスボス (285 ~ 360)
+  fukuoka: { min: -0.15, max: 0.05 },
+  osaka:   { min: -0.15, max: 0.10 },
+  nagoya:  { min: -0.10, max: 0.10 },
+  sapporo: { min: -0.10, max: 0.15 },
+  tokyo:   { min: -0.05, max: 0.20 }
 };
 
 const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }, { name: '猛毒', filter: 'hue-rotate(90deg) saturate(120%)' }, { name: '深淵', filter: 'hue-rotate(210deg) saturate(100%) brightness(0.9)' }, { name: '狂暴', filter: 'hue-rotate(-50deg) saturate(150%) brightness(1.1)' }, { name: '蒼白', filter: 'grayscale(70%) brightness(1.2) hue-rotate(180deg)' }, { name: '黒曜', filter: 'grayscale(60%) brightness(0.6) contrast(1.3)' }];
@@ -346,7 +421,7 @@ function applyKnockback(runner, baseKnockback) {
     runner.knockback = Math.max(runner.knockback, finalKnockback); runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); 
     effects.push({ text: `ギャッ!`, runner: runner, isBalloon: true, life: 40, bgColor: '#ef4444', textColor: '#fff' }); 
     createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); 
-    AudioManager.playSE('damage'); // 🔊 被弾うめき声SE
+    AudioManager.playSE('damage');
   }
 }
 
@@ -450,9 +525,8 @@ function doScout() {
   let nameVal = document.getElementById('scout-name').value || '名無し';
   let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
   
-  // 🏙️ スカウト出身地ボーナス
   if (cityVal === 'tokyo') {
-    spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3; // 東京：全ステータス+3均等
+    spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3;
   } else {
     if(cityVal==='osaka') mnt+=15; 
     if(cityVal==='nagoya') pow+=15; 
@@ -484,7 +558,7 @@ function executeCommand(type) {
   if (isNurturing) return; isNurturing = true;
   document.getElementById('nurture-result-overlay').classList.remove('hidden'); document.getElementById('drumroll-text').classList.remove('hidden'); document.getElementById('result-label').classList.add('hidden'); document.getElementById('result-status-changes').classList.add('hidden');
   
-  activeDrumrollAudio = AudioManager.playSE('drumroll'); // 🔊 ドラムロール開始
+  activeDrumrollAudio = AudioManager.playSE('drumroll');
   
   let tick = 0; const drumInterval = setInterval(() => {
     tick++; document.getElementById('drumroll-text').textContent = `調整中 ${Math.floor(Math.random() * 89 + 10)} ...`;
@@ -497,7 +571,7 @@ function executeCommand(type) {
 }
 
 function showNurtureResult(type) {
-  AudioManager.playSE('success'); // 🔊 育成成功音
+  AudioManager.playSE('success');
   const rand = Math.random(); let rType = rand < 0.2 ? 2 : (rand > 0.85 ? 0 : 1);
   let ms='', ss='', mName='', sName='';
   if (type === 'spd') { ms='speed'; ss='mentality'; mName='速さ'; sName='気性'; } else if (type === 'pow') { ms='power'; ss='magic'; mName='力強さ'; sName='異能'; } else if (type === 'stm') { ms='stamina'; ss='speed'; mName='体力'; sName='速さ'; }
@@ -543,7 +617,6 @@ function showPaddock() {
   
   runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
-  // 🎮 CPU難易度生成ロジック (都市別ストーリー倍率)
   const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
 
   for (let i = 1; i < 4; i++) {
@@ -559,7 +632,6 @@ function showPaddock() {
       cpuMnt = z.mentality + (Math.floor(Math.random() * 30) - 15);
       cpuMag = z.magic + (Math.floor(Math.random() * 30) - 15);
     } else {
-      // 都市難易度に基いたステータス分配
       const rate = diffSetting.min + Math.random() * (diffSetting.max - diffSetting.min);
       const targetTotal = 300 * (1 + rate);
 
@@ -607,7 +679,7 @@ function startRaceCutin() {
 function setupRaceState() {
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
   
-  AudioManager.playBGM(currentCity.id); // 🎵 各都市のレースBGMスタート！
+  AudioManager.playBGM(currentCity.id);
 
   document.getElementById('countdown-overlay').classList.remove('hidden'); document.getElementById('finish-overlay').classList.add('hidden'); document.getElementById('slime-overlay').classList.remove('active');
   particles.length = 0; effects.length = 0; syringeUsed = false;
@@ -666,7 +738,7 @@ document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
 function doFinish() {
   raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
   
-  AudioManager.playSE('goalin'); // 🔊 ゴール効果音
+  AudioManager.playSE('goalin');
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
   setTimeout(() => {
@@ -691,7 +763,7 @@ function doFinish() {
     const noticeEl = document.getElementById('champ-notice');
     if (isChampUpdated) noticeEl.classList.remove('hidden'); else noticeEl.classList.add('hidden');
 
-    AudioManager.playBGM('ending'); // 🎵 リザルト画面でエンディングBGM再生
+    AudioManager.playBGM('ending');
 
     renderPodium(sorted, elapsedSec); document.getElementById('result-screen').classList.remove('hidden');
   }, 2500);
@@ -731,7 +803,7 @@ function update() {
     const currentCD = Math.ceil(startCountdown);
 
     if (prevCD !== currentCD && currentCD > 0) {
-      AudioManager.playSE('countdown'); // 🔊 ピッ、ピッ、ピッ音
+      AudioManager.playSE('countdown');
     }
 
     if (startCountdown > 0) { cdEl.textContent = Math.ceil(startCountdown); } 
@@ -865,7 +937,7 @@ function update() {
 function init() {
   updateMoneyDisp();
   initPeerJS();
-  AudioManager.init(); // 🎵 音響管理システム初期化
+  AudioManager.init();
   
   document.getElementById('nav-scout-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
   document.getElementById('nav-garage-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
@@ -875,7 +947,6 @@ function init() {
     document.getElementById('pvp-screen').classList.remove('hidden'); 
   };
   
-  // 🌟 遊び方モーダルの開閉処理
   document.getElementById('nav-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.remove('hidden'); };
   document.getElementById('close-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.add('hidden'); };
   document.getElementById('howto-modal').addEventListener('click', (e) => {
