@@ -16,6 +16,17 @@ let currentWinningTime = "0.00";
 let liveCommentary = "レース開始直前！各検体、枠順につきました。";
 let lastTopRunnerId = null;
 
+// 🎊 サイケカラー紙吹雪パーティクル
+let confettiParticles = [];
+
+// 🖼️ 新規素材のロード
+const successCutinImg = new Image();
+successCutinImg.src = '/success_cutin.png';
+
+const eyeVideo = document.createElement('video');
+eyeVideo.src = '/zombie_eye.mp4';
+eyeVideo.loop = true; eyeVideo.muted = true; eyeVideo.playsInline = true;
+
 // 🛣️ 都市別地面画像の動的ロード管理
 const ROAD_IMAGES = {
   tokyo:   { src: '/roadtokyo.webp',   img: new Image(), loaded: false },
@@ -500,7 +511,6 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
   targetCtx.restore();
 }
 
-// 🛣️ 全都市背景描画（各都市の地面画像が存在すれば優先スクロール表示！）
 function drawJapaneseStreetBackground() {
   const roadData = ROAD_IMAGES[currentCity.id];
   if (roadData && roadData.loaded) {
@@ -514,7 +524,6 @@ function drawJapaneseStreetBackground() {
     return;
   }
 
-  // フォールバック背景（画像未読み込み時）
   const isSnow = currentCity.bgType === 'snow';
   ctx.fillStyle = isSnow ? '#e2e8f0' : '#1e232e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = isSnow ? '#cbd5e1' : '#131720'; ctx.fillRect(0, 0, 20, canvas.height); ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
@@ -524,7 +533,6 @@ function drawJapaneseStreetBackground() {
   for (let i=1; i<4; i++) { ctx.beginPath(); ctx.moveTo(laneW*i, -100 + scrollY); ctx.lineTo(laneW*i, canvas.height + 100 + scrollY); ctx.stroke(); } ctx.setLineDash([]);
 }
 
-// 🎤 実況テロップ描画関数
 function drawLiveCommentary() {
   if (raceState !== 'RACING' && raceState !== 'COUNTDOWN' && raceState !== 'FINISH_SLOW') return;
   ctx.save();
@@ -602,39 +610,142 @@ window.openCitySelect = (idx, mode = 'story') => {
 
 window.deleteZombie = (idx) => { if(confirm('本当に逃がしますか？')) { myZombies.splice(idx, 1); saveGame(); renderGarage(); } };
 
+// 💉 牧場強化（ショップ）のテコ入れ：+2〜+4（ごく稀に+5）ランダム ＆ ドラムロール
 window.openShop = (idx) => {
   activeZombieIndex = idx; updateMoneyDisp();
   document.getElementById('shop-target-name').textContent = myZombies[idx].name;
   document.getElementById('garage-screen').classList.add('hidden'); document.getElementById('shop-screen').classList.remove('hidden');
 };
+
 document.querySelectorAll('.shop-btn').forEach(btn => {
   btn.onclick = () => {
     const price = parseInt(btn.dataset.price); const stat = btn.dataset.stat;
     if (zombieMoney < price) { alert('Z$が足りません！'); return; }
-    if (confirm(`300Z$消費して強化しますか？`)) { zombieMoney -= price; myZombies[activeZombieIndex][stat] += 3; saveGame(); updateMoneyDisp(); alert('強化完了！'); }
+    
+    if (confirm(`300Z$消費して【${btn.textContent.trim()}】を強化しますか？`)) {
+      zombieMoney -= price;
+      
+      const drum = AudioManager.playSE('drumroll');
+      setTimeout(() => {
+        if(drum) drum.pause();
+        AudioManager.playSE('success');
+        
+        // +2 〜 +4 （10%で超成功 +5）
+        const isCritical = Math.random() < 0.1;
+        const inc = isCritical ? 5 : Math.floor(Math.random() * 3) + 2;
+        
+        myZombies[activeZombieIndex][stat] += inc;
+        saveGame(); updateMoneyDisp();
+        
+        if (isCritical) {
+          alert(`🔥【超成功！！】 ステータスが +${inc} 爆発上昇した！`);
+        } else {
+          alert(`💉 強化完了！ ステータスが +${inc} 上昇！`);
+        }
+      }, 1000);
+    }
   };
 });
+
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
-function doScout() {
-  const cityVal = document.getElementById('scout-city').value; const styleVal = document.getElementById('scout-style').value;
-  let nameVal = document.getElementById('scout-name').value || '名無し';
-  let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
-  
-  if (cityVal === 'tokyo') {
-    spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3;
-  } else {
-    if(cityVal==='osaka') mnt+=15; 
-    if(cityVal==='nagoya') pow+=15; 
-    if(cityVal==='fukuoka') spd+=15; 
-    if(cityVal==='sapporo') stm+=15;
+// 👀 スカウト前ゾンビの目タップミニゲーム
+function startEyeTapMiniGame(onComplete) {
+  let overlay = document.getElementById('eye-minigame-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'eye-minigame-overlay';
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.92); z-index: 15000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    `;
+    document.body.appendChild(overlay);
   }
 
-  const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
-  const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
-  myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
-  const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
-  setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
+  let hitCount = 0;
+  const targetHits = 3;
+  
+  overlay.innerHTML = `
+    <div style="position: absolute; top: 30px; font-size: 20px; font-weight: bold; color: #38bdf8; text-shadow: 0 0 10px #38bdf8; text-align: center;">
+      🔍 潜伏中の検体を捕捉せよ！<br>
+      <span style="font-size: 14px; color: #facc15;">暗闇で光る「ゾンビの目」をタップ！ (${hitCount}/${targetHits})</span>
+    </div>
+  `;
+
+  overlay.style.display = 'flex';
+  
+  const videoElem = document.createElement('video');
+  videoElem.src = '/zombie_eye.mp4';
+  videoElem.loop = true; videoElem.muted = true; videoElem.playsInline = true;
+  videoElem.style.cssText = `
+    position: absolute; width: 120px; height: 120px; border-radius: 50%;
+    cursor: pointer; border: 3px solid #ef4444; box-shadow: 0 0 20px #ef4444;
+    transition: transform 0.1s; object-fit: cover;
+  `;
+
+  function moveVideo() {
+    const maxX = window.innerWidth - 140;
+    const maxY = window.innerHeight - 140;
+    const rx = Math.max(20, Math.floor(Math.random() * maxX));
+    const ry = Math.max(80, Math.floor(Math.random() * maxY));
+    videoElem.style.left = `${rx}px`;
+    videoElem.style.top = `${ry}px`;
+    videoElem.play().catch(() => {});
+  }
+
+  moveVideo();
+  overlay.appendChild(videoElem);
+
+  videoElem.onclick = (e) => {
+    e.stopPropagation();
+    AudioManager.playSE('button');
+    hitCount++;
+    createExplosion(e.clientX, e.clientY, '#38bdf8', 20, 5, 4, 'spark');
+    
+    const statusTxt = overlay.querySelector('span');
+    if (statusTxt) statusTxt.textContent = `暗闇で光る「ゾンビの目」をタップ！ (${hitCount}/${targetHits})`;
+
+    if (hitCount >= targetHits) {
+      overlay.style.display = 'none';
+      if (videoElem.parentNode) videoElem.parentNode.removeChild(videoElem);
+      onComplete(true); // 全成功ボーナスあり
+    } else {
+      moveVideo();
+    }
+  };
+}
+
+function doScout() {
+  const cityVal = document.getElementById('scout-city').value; 
+  const styleVal = document.getElementById('scout-style').value;
+  let nameVal = document.getElementById('scout-name').value || '名無し';
+
+  startEyeTapMiniGame((isBonus) => {
+    let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
+    
+    // 👀 タップミニゲーム成功ボーナス！
+    if (isBonus) {
+      spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3;
+      alert('✨ 捕捉大成功！素質が開花し、初期ステータス ALL +3 ボーナス獲得！');
+    }
+
+    if (cityVal === 'tokyo') {
+      spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3;
+    } else {
+      if(cityVal==='osaka') mnt+=15; 
+      if(cityVal==='nagoya') pow+=15; 
+      if(cityVal==='fukuoka') spd+=15; 
+      if(cityVal==='sapporo') stm+=15;
+    }
+
+    const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
+    const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
+    myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
+    
+    const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
+    setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
+  });
 }
 
 function updateNurtureUI() {
@@ -666,17 +777,53 @@ function executeCommand(type) {
   }, 100);
 }
 
+// 💥 大成功時の success_cutin.png 表示演出
 function showNurtureResult(type) {
   AudioManager.playSE('success');
   const rand = Math.random(); let rType = rand < 0.2 ? 2 : (rand > 0.85 ? 0 : 1);
   let ms='', ss='', mName='', sName='';
   if (type === 'spd') { ms='speed'; ss='mentality'; mName='速さ'; sName='気性'; } else if (type === 'pow') { ms='power'; ss='magic'; mName='力強さ'; sName='異能'; } else if (type === 'stm') { ms='stamina'; ss='speed'; mName='体力'; sName='速さ'; }
   let inc = rType===2?20:(rType===1?10:3); let dec = rType===2?-5:(rType===1?-3:-1);
+  
   document.getElementById('drumroll-text').classList.add('hidden'); document.getElementById('result-label').classList.remove('hidden'); document.getElementById('result-status-changes').classList.remove('hidden');
   const rl = document.getElementById('result-label');
-  if(rType===2){ rl.textContent='大成功!!'; rl.className='result-label lbl-great'; } else if(rType===1){ rl.textContent='成功'; rl.className='result-label lbl-good'; } else { rl.textContent='失敗...'; rl.className='result-label lbl-bad'; }
+  
+  // 🔥 大成功（rType === 2）で success_cutin.png 画像カットイン！
+  if(rType===2){ 
+    rl.textContent='大成功!!'; rl.className='result-label lbl-great'; 
+    flashEffect.alpha = 1.0; flashEffect.color = '#facc15';
+    showSuccessCutinImage();
+  } else if(rType===1){ 
+    rl.textContent='成功'; rl.className='result-label lbl-good'; 
+  } else { 
+    rl.textContent='失敗...'; rl.className='result-label lbl-bad'; 
+  }
+  
   document.getElementById('result-status-changes').innerHTML = `<div>${mName} <span class="change-up">+${inc}</span></div><div>${sName} <span class="change-down">${dec}</span></div>`;
   setTimeout(() => { myZombies[activeZombieIndex][ms]+=inc; myZombies[activeZombieIndex][ss]+=dec; myZombies[activeZombieIndex].remainingTurns--; saveGame(); document.getElementById('nurture-result-overlay').classList.add('hidden'); isNurturing = false; updateNurtureUI(); }, 1500);
+}
+
+// 🖼️ success_cutin.png ポップアップ表示関数
+function showSuccessCutinImage() {
+  let imgOverlay = document.getElementById('success-cutin-pop');
+  if (!imgOverlay) {
+    imgOverlay = document.createElement('div');
+    imgOverlay.id = 'success-cutin-pop';
+    imgOverlay.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 12000; pointer-events: none; display: flex; align-items: center; justify-content: center;
+    `;
+    document.body.appendChild(imgOverlay);
+  }
+  
+  imgOverlay.innerHTML = `
+    <img src="/success_cutin.png" style="
+      max-width: 80%; max-height: 60%; object-fit: contain; filter: drop-shadow(0 0 25px #facc15);
+      animation: popZoom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    " />
+  `;
+  imgOverlay.style.display = 'flex';
+  setTimeout(() => { imgOverlay.style.display = 'none'; }, 1200);
 }
 
 document.getElementById('send-to-garage-btn').onclick = () => {
@@ -1058,11 +1205,30 @@ function doFinish() {
   }, 2500);
 }
 
+// 🎊 サイケカラー紙吹雪パーティクル生成関数
+function initConfettiParticles() {
+  confettiParticles = [];
+  const colors = ['#ff007f', '#00f0ff', '#cc00ff', '#39ff14', '#ffe600', '#ff0055'];
+  for (let i = 0; i < 80; i++) {
+    confettiParticles.push({
+      x: Math.random() * podiumCanvas.width,
+      y: Math.random() * -podiumCanvas.height,
+      vx: (Math.random() - 0.5) * 2,
+      vy: Math.random() * 2 + 1.5,
+      size: Math.random() * 6 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      angle: Math.random() * Math.PI * 2,
+      vAngle: (Math.random() - 0.5) * 0.1
+    });
+  }
+}
+
 function startPodiumAnimation(sortedRunners, winningTime) {
   currentSortedRunners = sortedRunners;
   currentWinningTime = winningTime;
   
   if (podiumAnimationId) cancelAnimationFrame(podiumAnimationId);
+  initConfettiParticles();
 
   const listContainer = document.getElementById('result-list'); 
   listContainer.innerHTML = '';
@@ -1107,6 +1273,21 @@ function renderPodiumFrame() {
     const pc = pcs[currentSortedRunners[2].videoIndex] || pcs[0];
     drawZombieCharacter(pCtx, 220+40, 160-80, 64, 80, currentSortedRunners[2], pc, false, false);
   }
+
+  // 🎊 サイケカラー紙吹雪の更新＆描画
+  confettiParticles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.angle += p.vAngle;
+    if (p.y > podiumCanvas.height) p.y = -10;
+    
+    pCtx.save();
+    pCtx.translate(p.x, p.y);
+    pCtx.rotate(p.angle);
+    pCtx.fillStyle = p.color;
+    pCtx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 0.6);
+    pCtx.restore();
+  });
 }
 
 function update() {
