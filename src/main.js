@@ -213,8 +213,8 @@ const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨
 const RUNNING_STYLES = ['逃げ', '先行', '差し', '追込'];
 const CPU_NAMES = ['田中', '鈴木', '山田', '店長', '部長', '課長', 'バイト', '新人', '先輩'];
 
-// 🎬 zombie4.mp4 を追加！
-const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4', '/zombie4.mp4'];
+// 🎬 zombie5.mp4 を追加！
+const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4', '/zombie4.mp4', '/zombie5.mp4'];
 const zombieVideos = []; const offCanvases = []; const offCtxs = [];
 
 VIDEO_SOURCES.forEach(src => {
@@ -439,7 +439,6 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     targetCtx.scale(zData.sizeInfo.scaleX, zData.sizeInfo.scaleY);
     if (isKnockback) targetCtx.rotate(-0.35);
     
-    // 🎨 常時の色違い（colorInfo.filter）を無くし、動画そのままの色で表示
     let filterStr = 'none';
     if (isKnockback) filterStr = 'brightness(200%) sepia(100%) hue-rotate(-50deg)'; 
     else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)'; 
@@ -480,7 +479,33 @@ function drawJapaneseStreetBackground() {
   for (let i=1; i<4; i++) { ctx.beginPath(); ctx.moveTo(laneW*i, -100 + scrollY); ctx.lineTo(laneW*i, canvas.height + 100 + scrollY); ctx.stroke(); } ctx.setLineDash([]);
 }
 
-function updateMoneyDisp() { document.getElementById('title-money').textContent = zombieMoney; document.getElementById('garage-money').textContent = zombieMoney; document.getElementById('shop-money').textContent = zombieMoney; }
+// 💰 お金表示部への money.webp 追加および黒縁取り設定
+function updateMoneyDisp() { 
+  ['title-money', 'garage-money', 'shop-money'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = `${zombieMoney} Z$`;
+      // 黒い文字縁取り
+      el.style.textShadow = '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000';
+      el.style.webkitTextStroke = '1px #000';
+      el.style.color = '#facc15';
+      el.style.fontWeight = 'bold';
+
+      // 親要素（または要素自体）の背景に money.webp を表示
+      const parent = el.parentElement || el;
+      if (parent) {
+        parent.style.backgroundImage = 'url("/money.webp")';
+        parent.style.backgroundRepeat = 'no-repeat';
+        parent.style.backgroundPosition = 'center';
+        parent.style.backgroundSize = 'contain';
+        parent.style.padding = '8px 24px';
+        parent.style.display = 'inline-flex';
+        parent.style.alignItems = 'center';
+        parent.style.justifyContent = 'center';
+      }
+    }
+  });
+}
 
 function renderGarage() {
   updateMoneyDisp();
@@ -522,6 +547,12 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
 function doScout() {
+  // 🧟 3体上限制限チェック
+  if (myZombies.length >= 3) {
+    alert('検体（ゾンビ）は最大3体までしか所持できません！不要なゾンビを逃がしてください。');
+    return;
+  }
+
   const cityVal = document.getElementById('scout-city').value; const styleVal = document.getElementById('scout-style').value;
   let nameVal = document.getElementById('scout-name').value || '名無し';
   let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
@@ -776,7 +807,6 @@ function renderPodium(sortedRunners, winningTime) {
   pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
   pCtx.fillStyle = '#0f131a'; pCtx.font = 'bold 36px sans-serif'; pCtx.textAlign = 'center'; pCtx.fillText('1', 180, 150); pCtx.fillText('2', 100, 180); pCtx.fillText('3', 260, 200);
   
-  // 🎬 動的に全動画対応
   const pcs = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 64, 80));
 
   drawZombieCharacter(pCtx, 140+40, 100-80, 64, 80, sortedRunners[0], pcs[sortedRunners[0].videoIndex]||pcs[0], false, false);
@@ -876,7 +906,6 @@ function update() {
   if (raceState === 'RACING' || raceState === 'FINISH_SLOW') scrollY = (scrollY + 0.15 * dt) % 100;
   drawJapaneseStreetBackground();
 
-  // 🎬 動的に全動画対応 (zombie1 ~ zombie4)
   const processedCanvases = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 72, 90));
 
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
@@ -938,7 +967,14 @@ function init() {
   initPeerJS();
   AudioManager.init();
   
-  document.getElementById('nav-scout-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
+  document.getElementById('nav-scout-btn').onclick = () => { 
+    if (myZombies.length >= 3) {
+      alert('検体（ゾンビ）は最大3体までしか所持できません！不要なゾンビを逃がしてください。');
+      return;
+    }
+    document.getElementById('title-screen').classList.add('hidden'); 
+    document.getElementById('scout-screen').classList.remove('hidden'); 
+  };
   document.getElementById('nav-garage-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
   document.getElementById('nav-pvp-btn').onclick = () => { 
     updatePvpSelectUI(); 
