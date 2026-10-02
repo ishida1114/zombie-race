@@ -8,6 +8,9 @@ let flashEffect = { alpha: 0, color: '#ffffff' };
 
 // 📖 モード管理 ('story' | 'free')
 let currentGameMode = 'story';
+let podiumAnimationId = null;
+let currentSortedRunners = [];
+let currentWinningTime = "0.00";
 
 // ==========================================
 // 🎵 音響管理システム (画面左上にボタン配置)
@@ -160,7 +163,7 @@ const AudioManager = {
 let myZombies = JSON.parse(localStorage.getItem('myZombies')) || [];
 let zombieMoney = parseInt(localStorage.getItem('zombieMoney')) || 0;
 let weeklyChamps = JSON.parse(localStorage.getItem('weeklyChamps')) || {};
-let clearedCities = JSON.parse(localStorage.getItem('clearedCities')) || ['fukuoka']; // 解放状況（初期は福岡のみ）
+let clearedCities = JSON.parse(localStorage.getItem('clearedCities')) || ['fukuoka'];
 let weekStart = parseInt(localStorage.getItem('weekStart')) || Date.now();
 
 if (Date.now() - weekStart > 7 * 24 * 60 * 60 * 1000) {
@@ -195,7 +198,6 @@ function getTitle(z) {
   return ['駆け出しの', 'ヨチヨチの', '迷い込んだ'][Math.floor(Math.random()*3)];
 }
 
-// 🏙️ 都市設定 (福岡→大阪→名古屋→札幌→東京 のストーリー順)
 const CITIES = [
   { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka' },
   { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya' },
@@ -205,7 +207,6 @@ const CITIES = [
 ];
 let currentCity = CITIES[0];
 
-// 👹 ストーリーボス設定
 const STORY_BOSSES = {
   fukuoka: { name: '爆走デリバリー', title: '元最速配達員', quote: '「冷める前に届けるのが俺のプライドだァ！」' },
   osaka:   { name: 'ナニワの金主', title: '元大口スポンサー', quote: '「金さえ払えばサボってもええんやで！」' },
@@ -214,7 +215,6 @@ const STORY_BOSSES = {
   tokyo:   { name: 'Dr.マッドゾンビ', title: '最悪の異能科学者', quote: '「フハハ！究極のワクチンで我らは【超ゾンビ】となる！」' }
 };
 
-// ストーリーモード難易度倍率（基準値300に対する補正）
 const STORY_DIFFICULTY = {
   fukuoka: { min: -0.15, max: 0.05 },
   osaka:   { min: -0.15, max: 0.10 },
@@ -245,7 +245,9 @@ VIDEO_SOURCES.forEach(src => {
 
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
-  if (!v || v.readyState < 2 || v.paused) return null;
+  if (!v || v.readyState < 2) return null;
+  if (v.paused) v.play().catch(() => {});
+  
   if (c.width !== targetW) c.width = targetW; if (c.height !== targetH) c.height = targetH;
   cx.imageSmoothingEnabled = false;
   cx.clearRect(0, 0, targetW, targetH);
@@ -459,6 +461,19 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     targetCtx.filter = filterStr; 
     targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); 
     targetCtx.restore();
+  } else {
+    // 💡 動画読み込み中のフォールバック画像（シルエット）
+    targetCtx.save();
+    targetCtx.scale(zData.sizeInfo.scaleX, zData.sizeInfo.scaleY);
+    targetCtx.fillStyle = '#334155';
+    targetCtx.beginPath();
+    targetCtx.roundRect(-width/2 + 8, -height + 8, width - 16, height - 8, 8);
+    targetCtx.fill();
+    targetCtx.fillStyle = '#94a3b8';
+    targetCtx.font = 'bold 20px sans-serif';
+    targetCtx.textAlign = 'center';
+    targetCtx.fillText('🧟', 0, -height/2);
+    targetCtx.restore();
   }
   
   if (isRacing) {
@@ -541,7 +556,6 @@ function renderGarage() {
   if (myZombies.length === 0) list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:40px 20px;">検体が居ません。<br>探索してください。</div>';
 }
 
-// モードを選択して都市選択画面を開く
 window.openCitySelect = (idx, mode = 'story') => { 
   activeZombieIndex = idx; 
   currentGameMode = mode;
@@ -653,10 +667,8 @@ window.doRelease = (idx) => {
   }
 };
 
-// 🏙️ 都市選択画面の描画（ストーリー解放状況の適用）
 function renderCitySelect() {
   const container = document.getElementById('city-list'); container.innerHTML = '';
-  const modeTitle = currentGameMode === 'story' ? '📖 ストーリーモード' : '🏁 フリーレース';
   
   CITIES.forEach(city => {
     const isUnlocked = currentGameMode === 'free' || clearedCities.includes(city.id);
@@ -671,12 +683,67 @@ function renderCitySelect() {
     btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)${lockTag}</span><span class="city-desc">${city.desc}</span>${champHtml}`;
     
     if (isUnlocked) {
-      btn.onclick = () => { currentCity = city; document.getElementById('city-select-screen').classList.add('hidden'); showPaddock(); };
+      btn.onclick = () => { 
+        currentCity = city; 
+        document.getElementById('city-select-screen').classList.add('hidden'); 
+        
+        // 📖 ストーリーモード時は「出走検体紹介」の前にストーリー画面を挟む！
+        if (currentGameMode === 'story') {
+          showStoryCutscene(city, () => { showPaddock(); });
+        } else {
+          showPaddock(); 
+        }
+      };
     } else {
       btn.onclick = () => { alert('前の都市をストーリーモードでクリアすると解放されます！'); };
     }
     container.appendChild(btn);
   });
+}
+
+// 📖 パドック前ストーリー画面（カットインダイアログ）の動的挿入
+function showStoryCutscene(city, onComplete) {
+  let modal = document.getElementById('story-modal-overlay');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'story-modal-overlay';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.95); z-index: 10000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px; box-sizing: border-box; color: #fff; text-align: center;
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const boss = STORY_BOSSES[city.id] || { name: '強敵ゾンビ', title: '街の覇者', quote: '「負けんぞ！」' };
+
+  modal.innerHTML = `
+    <div style="max-width: 480px; width: 100%; background: #1e293b; border: 2px solid ${city.color}; border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);">
+      <div style="font-size: 14px; color: ${city.color}; font-weight: bold; margin-bottom: 8px;">📖 STORY RACE</div>
+      <h2 style="font-size: 28px; margin: 0 0 12px 0; color: #f8fafc;">STAGE: ${city.name}</h2>
+      <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px; line-height: 1.5;">${city.desc}</p>
+      
+      <div style="background: rgba(0,0,0,0.5); border-left: 4px solid ${city.color}; padding: 14px; border-radius: 8px; margin-bottom: 24px; text-align: left;">
+        <div style="font-size: 12px; color: #cbd5e1; font-weight: bold;">【STAGE BOSS】</div>
+        <div style="font-size: 18px; font-weight: bold; color: #facc15; margin: 6px 0;">【${boss.title}】${boss.name}</div>
+        <div style="font-size: 13px; font-style: italic; color: #f8fafc; margin-top: 6px; line-height: 1.4;">${boss.quote}</div>
+      </div>
+      
+      <button id="story-start-btn" style="
+        width: 100%; padding: 14px; font-size: 18px; font-weight: bold;
+        background: linear-gradient(135deg, ${city.color}, #0369a1); color: #fff;
+        border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      ">出走準備（検体確認へ）</button>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+
+  document.getElementById('story-start-btn').onclick = () => {
+    modal.style.display = 'none';
+    onComplete();
+  };
 }
 
 function showPaddock() {
@@ -687,7 +754,6 @@ function showPaddock() {
   
   runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
-  // 🎮 CPU強さ算出分岐 (ストーリー: 固定倍率 / フリー: プレイヤー基準スケーリング)
   const playerTotal = z.speed + z.power + z.stamina + z.mentality + z.magic;
   const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
 
@@ -695,7 +761,6 @@ function showPaddock() {
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
     let bossTitle = '対戦者';
     
-    // ストーリーモードで1体目のCPUは「都市ボス」に設定！
     if (currentGameMode === 'story' && i === 1 && STORY_BOSSES[currentCity.id]) {
       const boss = STORY_BOSSES[currentCity.id];
       name = boss.name;
@@ -707,7 +772,6 @@ function showPaddock() {
     let cpuSpd, cpuPow, cpuStmVal, cpuMnt, cpuMag;
 
     if (currentGameMode === 'story') {
-      // ストーリーモード：都市固定倍率
       const rate = diffSetting.min + Math.random() * (diffSetting.max - diffSetting.min);
       const targetTotal = 300 * (1 + rate);
       const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
@@ -719,8 +783,7 @@ function showPaddock() {
       cpuMnt = Math.round((weights[3] / wSum) * targetTotal);
       cpuMag = Math.round((weights[4] / wSum) * targetTotal);
     } else {
-      // フリーレース：プレイヤー現在値基準 ±10% スケーリング（接戦保障）
-      const rate = (Math.random() * 0.2) - 0.10; // -10% 〜 +10%
+      const rate = (Math.random() * 0.2) - 0.10;
       const targetTotal = playerTotal * (1 + rate);
       const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
       const wSum = weights.reduce((a, b) => a + b, 0);
@@ -854,7 +917,6 @@ function doFinish() {
         isChampUpdated = true;
       }
 
-      // 📖 ストーリークリア判定：1位勝利で次の都市を解放！
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
         clearedCities.push(currentCity.nextCity);
         alert(`🎉 ${currentCity.name}ストーリークリア！ 新たな都市【${CITIES.find(c=>c.id===currentCity.nextCity).name}】が解放されました！`);
@@ -871,29 +933,67 @@ function doFinish() {
 
     AudioManager.playBGM('ending');
 
-    renderPodium(sorted, elapsedSec); document.getElementById('result-screen').classList.remove('hidden');
+    startPodiumAnimation(sorted, elapsedSec); 
+    document.getElementById('result-screen').classList.remove('hidden');
   }, 2500);
 }
 
-function renderPodium(sortedRunners, winningTime) {
-  pCtx.clearRect(0, 0, podiumCanvas.width, podiumCanvas.height);
-  pCtx.imageSmoothingEnabled = false;
-  pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
-  pCtx.fillStyle = '#0f131a'; pCtx.font = 'bold 36px sans-serif'; pCtx.textAlign = 'center'; pCtx.fillText('1', 180, 150); pCtx.fillText('2', 100, 180); pCtx.fillText('3', 260, 200);
+// 🏆 表彰台リアルタイムアニメーション開始関数
+function startPodiumAnimation(sortedRunners, winningTime) {
+  currentSortedRunners = sortedRunners;
+  currentWinningTime = winningTime;
   
-  const pcs = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 64, 80));
+  if (podiumAnimationId) cancelAnimationFrame(podiumAnimationId);
 
-  drawZombieCharacter(pCtx, 140+40, 100-80, 64, 80, sortedRunners[0], pcs[sortedRunners[0].videoIndex]||pcs[0], false, false);
-  if(sortedRunners[1]) drawZombieCharacter(pCtx, 60+40, 140-80, 64, 80, sortedRunners[1], pcs[sortedRunners[1].videoIndex]||pcs[0], false, false);
-  if(sortedRunners[2]) drawZombieCharacter(pCtx, 220+40, 160-80, 64, 80, sortedRunners[2], pcs[sortedRunners[2].videoIndex]||pcs[0], false, false);
-
-  const listContainer = document.getElementById('result-list'); listContainer.innerHTML = '';
+  const listContainer = document.getElementById('result-list'); 
+  listContainer.innerHTML = '';
   sortedRunners.forEach((r, idx) => {
     const row = document.createElement('div'); row.className = `result-row rank-${idx+1}`;
     const timeStr = idx === 0 ? `${winningTime}s` : `+${(Math.random()*3 + 1).toFixed(2)}s`;
     row.innerHTML = `<span class="res-rank">${idx+1}</span><span class="res-name">${r.name}</span><span class="res-time">${timeStr}</span>`;
     listContainer.appendChild(row);
   });
+
+  function loop() {
+    if (raceState === 'FINISHED') {
+      renderPodiumFrame();
+      podiumAnimationId = requestAnimationFrame(loop);
+    }
+  }
+  loop();
+}
+
+// 🏆 表彰台フレーム描画（毎フレーム更新でキャラ消えを完全防止！）
+function renderPodiumFrame() {
+  if (!currentSortedRunners || currentSortedRunners.length === 0) return;
+  pCtx.clearRect(0, 0, podiumCanvas.width, podiumCanvas.height);
+  pCtx.imageSmoothingEnabled = false;
+  
+  // 台座描画
+  pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); 
+  pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); 
+  pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
+  pCtx.fillStyle = '#0f131a'; pCtx.font = 'bold 36px sans-serif'; pCtx.textAlign = 'center'; 
+  pCtx.fillText('1', 180, 150); pCtx.fillText('2', 100, 180); pCtx.fillText('3', 260, 200);
+  
+  // 動画の最新クロマキーフレームを取得
+  const pcs = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 64, 80));
+
+  // 1位
+  if (currentSortedRunners[0]) {
+    const pc = pcs[currentSortedRunners[0].videoIndex] || pcs[0];
+    drawZombieCharacter(pCtx, 140+40, 100-80, 64, 80, currentSortedRunners[0], pc, false, false);
+  }
+  // 2位
+  if (currentSortedRunners[1]) {
+    const pc = pcs[currentSortedRunners[1].videoIndex] || pcs[0];
+    drawZombieCharacter(pCtx, 60+40, 140-80, 64, 80, currentSortedRunners[1], pc, false, false);
+  }
+  // 3位
+  if (currentSortedRunners[2]) {
+    const pc = pcs[currentSortedRunners[2].videoIndex] || pcs[0];
+    drawZombieCharacter(pCtx, 220+40, 160-80, 64, 80, currentSortedRunners[2], pc, false, false);
+  }
 }
 
 function update() {
