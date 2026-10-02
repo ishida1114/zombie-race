@@ -7,7 +7,7 @@ let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
 // ==========================================
-// 🎵 音響管理システム (audio/ フォルダ対応版)
+// 🎵 音響管理システム (画面左上にボタン配置)
 // ==========================================
 const AudioManager = {
   basePathBGM: 'audio/bgm/',
@@ -81,10 +81,11 @@ const AudioManager = {
     const btn = document.createElement('button');
     btn.id = 'sound-toggle-btn';
     btn.className = 'sound-toggle-btn';
+    // 画面左上に配置してお金表示との被りを解消！
     btn.style.cssText = `
       position: fixed;
       top: 12px;
-      right: 12px;
+      left: 12px;
       z-index: 9999;
       padding: 6px 14px;
       font-size: 13px;
@@ -207,13 +208,11 @@ const STORY_DIFFICULTY = {
   tokyo:   { min: -0.05, max: 0.20 }
 };
 
-// 🎨 色違いは廃止し、標準カラーのみに固定
 const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }];
 const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨漢', scaleX: 1.25, scaleY: 1.3 }, { name: '肥満', scaleX: 1.3, scaleY: 0.95 }];
 const RUNNING_STYLES = ['逃げ', '先行', '差し', '追込'];
 const CPU_NAMES = ['田中', '鈴木', '山田', '店長', '部長', '課長', 'バイト', '新人', '先輩'];
 
-// 🎬 zombie5.mp4 を追加！
 const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4', '/zombie4.mp4', '/zombie5.mp4'];
 const zombieVideos = []; const offCanvases = []; const offCtxs = [];
 
@@ -262,14 +261,13 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
 
 const runners = []; const effects = []; let particles = [];
 
+// ⚡ 竜巻・溶岩・生肉を削除し、「雷」を追加！
 const ALL_SKILLS = [
   { id: 'meteor', name: 'メテオ', desc: '隕石爆発でライバル大打撃', type: 'auto', speed: 0.045 },
-  { id: 'volcano', name: '溶岩', desc: '全体ノックバック＆吹き飛ばし', type: 'auto', speed: 0.048 },
-  { id: 'tornado', name: '竜巻', desc: '竜巻で敵を後退させる', type: 'auto', speed: 0.050 },
+  { id: 'lightning', name: '雷', desc: '雷撃で自分以外の敵を数秒麻痺！', type: 'auto', speed: 0.050 },
   { id: 'frog', name: 'カエル', desc: '巨大カエルで視界ジャック', type: 'auto', speed: 0.070 },
   { id: 'poison', name: '毒液', desc: '前方の敵に毒ダメージ', type: 'auto', speed: 0.060 },
-  { id: 'stone', name: '小石', desc: '最寄りの敵に石を投げつけ', type: 'auto', speed: 0.090 },
-  { id: 'meat', name: '生肉', desc: '足止め罠で足止め', type: 'auto', speed: 0.040 }
+  { id: 'stone', name: '小石', desc: '最寄りの敵に石を投げつけ', type: 'auto', speed: 0.090 }
 ];
 const SYRINGE_SKILLS = [
   { id: 'mach', name: 'マッハ', desc: '一定時間超絶ダッシュ！' },
@@ -479,34 +477,37 @@ function drawJapaneseStreetBackground() {
   for (let i=1; i<4; i++) { ctx.beginPath(); ctx.moveTo(laneW*i, -100 + scrollY); ctx.lineTo(laneW*i, canvas.height + 100 + scrollY); ctx.stroke(); } ctx.setLineDash([]);
 }
 
-// 💰 お金表示部への money.webp 追加および黒縁取り設定
+// 💰 money.webp を 2.5 倍サイズでドカンと拡大 ＆ 強い黒縁取り
 function updateMoneyDisp() { 
   ['title-money', 'garage-money', 'shop-money'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.textContent = `${zombieMoney} Z$`;
-      // 黒い文字縁取り
-      el.style.textShadow = '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000';
-      el.style.webkitTextStroke = '1px #000';
+      // 強い黒文字フチ
+      el.style.textShadow = '3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 0 -3px 0 #000, 3px 0 0 #000, -3px 0 0 #000';
+      el.style.webkitTextStroke = '1.5px #000';
       el.style.color = '#facc15';
-      el.style.fontWeight = 'bold';
+      el.style.fontWeight = '900';
+      el.style.fontSize = '22px';
 
-      // 親要素（または要素自体）の背景に money.webp を表示
       const parent = el.parentElement || el;
       if (parent) {
         parent.style.backgroundImage = 'url("/money.webp")';
         parent.style.backgroundRepeat = 'no-repeat';
         parent.style.backgroundPosition = 'center';
-        parent.style.backgroundSize = 'contain';
-        parent.style.padding = '8px 24px';
+        // 2.5倍相当にサイズアップ
+        parent.style.backgroundSize = '220px 80px';
+        parent.style.padding = '20px 48px';
         parent.style.display = 'inline-flex';
         parent.style.alignItems = 'center';
         parent.style.justifyContent = 'center';
+        parent.style.minWidth = '200px';
       }
     }
   });
 }
 
+// 🏷️ 牧場（ガレージ）表示の「気性」「異能」表記変更
 function renderGarage() {
   updateMoneyDisp();
   AudioManager.playBGM('opening');
@@ -516,7 +517,7 @@ function renderGarage() {
     let recordHtml = z.bestTime ? `<div class="zc-record">👑 ${z.bestTime}s (${z.bestCity})</div>` : '';
     card.innerHTML = `
       <div class="zc-header"><span class="zc-name"><span class="zc-title">【${getTitle(z)}】</span>${z.name}</span><span class="zc-style">${z.style}</span></div>
-      <div class="zc-stats"><span>速:${z.speed}</span><span>力:${z.power}</span><span>体:${z.stamina}</span><span>気:${z.mentality}</span><span>魔:${z.magic}</span></div>
+      <div class="zc-stats"><span>速:${z.speed}</span><span>力:${z.power}</span><span>体:${z.stamina}</span><span>気性:${z.mentality}</span><span>異能:${z.magic}</span></div>
       ${recordHtml}
       <div class="zc-actions">
         <button class="zc-btn btn-race" onclick="openCitySelect(${idx})">出走</button>
@@ -547,12 +548,6 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
 function doScout() {
-  // 🧟 3体上限制限チェック
-  if (myZombies.length >= 3) {
-    alert('検体（ゾンビ）は最大3体までしか所持できません！不要なゾンビを逃がしてください。');
-    return;
-  }
-
   const cityVal = document.getElementById('scout-city').value; const styleVal = document.getElementById('scout-style').value;
   let nameVal = document.getElementById('scout-name').value || '名無し';
   let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
@@ -615,19 +610,30 @@ function showNurtureResult(type) {
   setTimeout(() => { myZombies[activeZombieIndex][ms]+=inc; myZombies[activeZombieIndex][ss]+=dec; myZombies[activeZombieIndex].remainingTurns--; saveGame(); document.getElementById('nurture-result-overlay').classList.add('hidden'); isNurturing = false; updateNurtureUI(); }, 1500);
 }
 
+// 🧟 育成完了時に4体以上いたら「逃がす画面」へ誘導する仕様（元の挙動）
 document.getElementById('send-to-garage-btn').onclick = () => {
   document.getElementById('nurture-screen').classList.add('hidden');
   if (myZombies.length > 3) {
     const list = document.getElementById('release-list'); list.innerHTML = '';
     myZombies.forEach((z, idx) => {
       const card = document.createElement('div'); card.className = 'zombie-card';
-      card.innerHTML = `<div class="zc-header"><span class="zc-name">${z.name}</span></div><div class="zc-stats"><span>速:${z.speed}</span><span>力:${z.power}</span><span>体:${z.stamina}</span><span>気:${z.mentality}</span><span>魔:${z.magic}</span></div><button class="zc-btn btn-del" style="margin-top:8px;" onclick="doRelease(${idx})">逃がす</button>`;
+      card.innerHTML = `<div class="zc-header"><span class="zc-name">${z.name}</span></div><div class="zc-stats"><span>速:${z.speed}</span><span>力:${z.power}</span><span>体:${z.stamina}</span><span>気性:${z.mentality}</span><span>異能:${z.magic}</span></div><button class="zc-btn btn-del" style="margin-top:8px;" onclick="doRelease(${idx})">逃がす</button>`;
       list.appendChild(card);
     });
     document.getElementById('release-screen').classList.remove('hidden');
   } else { renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); }
 };
-window.doRelease = (idx) => { myZombies.splice(idx, 1); saveGame(); document.getElementById('release-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
+window.doRelease = (idx) => { 
+  myZombies.splice(idx, 1); 
+  saveGame(); 
+  if (myZombies.length > 3) {
+    document.getElementById('send-to-garage-btn').click();
+  } else {
+    document.getElementById('release-screen').classList.add('hidden'); 
+    renderGarage(); 
+    document.getElementById('garage-screen').classList.remove('hidden'); 
+  }
+};
 
 function renderCitySelect() {
   const container = document.getElementById('city-list'); container.innerHTML = '';
@@ -742,9 +748,24 @@ function triggerSkill(skillData, userRunner) {
 
   if (isPvpMode && isPlayer) broadcast({ type: 'SYNC_SKILL', runnerId: 0, skill: skillData });
 
-  if (skillData.id === 'meteor') { particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 300, radius: 60, power: effectivePower, user: userRunner }); createExplosion(userRunner.x, userRunner.y, '#38bdf8', 15, 3, 3, 'spark'); } 
-  else if (skillData.id === 'volcano') { shakeTime = 15; effects.push({ text: `溶岩噴出!`, runner: userRunner, color: '#f97316', life: 50 }); runners.forEach(r => { if (r.id !== userRunner.id) { applyKnockback(r, effectivePower); r.isHard = false; createExplosion(r.x, r.y+20, '#f97316', 30, 5, 4, 'fire'); } }); } 
-  else if (skillData.id === 'tornado') { shakeTime = 10; effects.push({ text: `竜巻!`, runner: userRunner, color: '#a3e635', life: 50 }); createExplosion(canvas.width/2, 300, '#a3e635', 50, 8, 3, 'spark'); runners.forEach(r => { if (r.id !== userRunner.id) r.dist -= effectivePower * 0.3; }); } 
+  if (skillData.id === 'meteor') { 
+    particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 300, radius: 60, power: effectivePower, user: userRunner }); 
+    createExplosion(userRunner.x, userRunner.y, '#38bdf8', 15, 3, 3, 'spark'); 
+  } 
+  // ⚡ 新異能「雷」：画面フラッシュ＋敵全員落雷麻痺！
+  else if (skillData.id === 'lightning') { 
+    shakeTime = 20; 
+    flashEffect.alpha = 0.9; 
+    flashEffect.color = '#fef08a'; // 黄色の画面フラッシュ！
+    
+    runners.forEach(r => { 
+      if (r.id !== userRunner.id) { 
+        applyKnockback(r, effectivePower * 1.2); 
+        // 敵の頭上に落雷パーティクルを発生
+        particles.push({ type: 'lightning_strike', x: r.x, y: r.y - 120, targetY: r.y + 20, life: 30 });
+      } 
+    }); 
+  } 
   else if (skillData.id === 'frog') { 
     particles.push({ type: 'giant_frog', y: canvas.height + 150, targetY: canvas.height / 2 + 50, scale: 0.2, life: 120 });
     shakeTime = 15;
@@ -758,7 +779,6 @@ function triggerSkill(skillData, userRunner) {
   else if (skillData.id === 'barrier') { userRunner.barrierPower = effectivePower; createExplosion(userRunner.x, userRunner.y, '#a855f7', 30, 4, 3, 'spark'); setTimeout(() => { userRunner.barrierPower = 0; }, 3000); } 
   else if (skillData.id === 'heal') { userRunner.stm = Math.min(userRunner.maxStm, userRunner.stm + effectivePower * 2.0); createExplosion(userRunner.x, userRunner.y, '#4ade80', 40, 2, 3, 'fire'); } 
   else if (skillData.id === 'mach') { userRunner.boostTimer = effectivePower * 2.0; createExplosion(userRunner.x, userRunner.y, '#facc15', 50, 6, 4, 'spark'); } 
-  else if (skillData.id === 'meat') { createExplosion(canvas.width/2, 200, '#dc2626', 60, 7, 5, 'blood'); runners.forEach(r => { if (r.id !== userRunner.id) r.knockback = Math.random() * effectivePower; }); } 
 }
 
 document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
@@ -920,7 +940,36 @@ function update() {
     if (p.type === 'meteor_drop') {
       p.y += 12 * dt; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
       if (p.y >= p.targetY) { shakeTime = 20; createExplosion(p.x, p.y, '#f97316', 100, 10, 8, 'spark'); runners.forEach(r => { if(r.id !== p.user.id) applyKnockback(r, p.power); }); particles.splice(i, 1); }
-    } else if (p.type === 'giant_frog') {
+    } 
+    // ⚡ 雷エフェクトの描画（ジグザグ稲妻ビーム）
+    else if (p.type === 'lightning_strike') {
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      
+      let currX = p.x;
+      let currY = p.y;
+      const segs = 5;
+      const dy = (p.targetY - p.y) / segs;
+      
+      for (let s = 0; s < segs; s++) {
+        currY += dy;
+        currX += (Math.random() - 0.5) * 30;
+        ctx.lineTo(currX, currY);
+      }
+      ctx.stroke();
+      
+      // 白いコア線
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      createExplosion(p.x, p.targetY, '#facc15', 3, 3, 2, 'spark');
+      p.life -= 2 * dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    else if (p.type === 'giant_frog') {
       p.y += (p.targetY - p.y) * 0.1 * dt;
       if (p.scale < 3.0) p.scale += 0.08 * dt;
       p.life -= dt;
@@ -968,14 +1017,19 @@ function init() {
   AudioManager.init();
   
   document.getElementById('nav-scout-btn').onclick = () => { 
-    if (myZombies.length >= 3) {
-      alert('検体（ゾンビ）は最大3体までしか所持できません！不要なゾンビを逃がしてください。');
-      return;
-    }
     document.getElementById('title-screen').classList.add('hidden'); 
     document.getElementById('scout-screen').classList.remove('hidden'); 
   };
-  document.getElementById('nav-garage-btn').onclick = () => { document.getElementById('title-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
+  document.getElementById('nav-garage-btn').onclick = () => { 
+    document.getElementById('title-screen').classList.add('hidden'); 
+    // ガレージ移動時に4体以上なら逃がす画面へ
+    if (myZombies.length > 3) {
+      document.getElementById('send-to-garage-btn').click();
+    } else {
+      renderGarage(); 
+      document.getElementById('garage-screen').classList.remove('hidden'); 
+    }
+  };
   document.getElementById('nav-pvp-btn').onclick = () => { 
     updatePvpSelectUI(); 
     document.getElementById('title-screen').classList.add('hidden'); 
