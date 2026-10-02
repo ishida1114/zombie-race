@@ -12,6 +12,16 @@ let podiumAnimationId = null;
 let currentSortedRunners = [];
 let currentWinningTime = "0.00";
 
+// 🎤 リアルタイム実況テロップ変数
+let liveCommentary = "レース開始直前！各検体、枠順につきました。";
+let lastTopRunnerId = null;
+
+// 🛣️ 東京地面画像ロード
+const roadTokyoImg = new Image();
+roadTokyoImg.src = '/roadtokyo.webp';
+let roadTokyoLoaded = false;
+roadTokyoImg.onload = () => { roadTokyoLoaded = true; };
+
 // ==========================================
 // 🎵 音響管理システム (画面左上にボタン配置)
 // ==========================================
@@ -230,7 +240,7 @@ const CPU_NAMES = ['田中', '鈴木', '山田', '店長', '部長', '課長', '
 
 const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4', '/zombie4.mp4', '/zombie5.mp4'];
 const zombieVideos = []; const offCanvases = []; const offCtxs = [];
-const lastValidCanvases = []; // 💡 直前の正常フレームを保持するキャッシュ
+const lastValidCanvases = [];
 
 VIDEO_SOURCES.forEach(src => {
   const v = document.createElement('video');
@@ -244,11 +254,9 @@ VIDEO_SOURCES.forEach(src => {
   offCtxs.push(cx);
 });
 
-// 🎬 動画クロマキー処理（フレーム保持でチラつき完全防止 ＆ 自然な透過）
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
   
-  // 動画が未完了・一瞬ロード中の場合は前回の正常フレームを返して異物差し込みを防止！
   if (!v || v.readyState < 2) {
     return lastValidCanvases[idx] || null;
   }
@@ -263,7 +271,6 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   cx.drawImage(v, 0, 0, vw, vh, 0, 0, targetW, targetH);
   const data = cx.getImageData(0, 0, targetW, targetH);
   
-  // 自然な緑バッククロマキー（キャラの頭や服を削らない自然な判定）
   for (let i = 0; i < data.data.length; i += 4) {
     const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
     if (g > 65 && g > r * 1.12 && g > b * 1.12) {
@@ -272,7 +279,7 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   }
   
   cx.putImageData(data, 0, 0); 
-  lastValidCanvases[idx] = c; // 正常取得できたキャンバスをキャッシュ
+  lastValidCanvases[idx] = c;
   return c;
 }
 
@@ -434,6 +441,7 @@ function applyKnockback(runner, baseKnockback) {
     effects.push({ text: `ギャッ!`, runner: runner, isBalloon: true, life: 40, bgColor: '#ef4444', textColor: '#fff' }); 
     createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); 
     AudioManager.playSE('damage');
+    liveCommentary = `💥 ${runner.name}にダメージヒット！足止めされている！`;
   }
 }
 
@@ -483,7 +491,20 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
   targetCtx.restore();
 }
 
+// 🛣️ 背景描画（東京のみ roadtokyo.webp の縦スクロール対応）
 function drawJapaneseStreetBackground() {
+  if (currentCity.id === 'tokyo' && roadTokyoLoaded) {
+    ctx.save();
+    const imgH = roadTokyoImg.height * (canvas.width / roadTokyoImg.width);
+    const sy = (scrollY * 12) % imgH;
+    for (let y = -imgH + sy; y < canvas.height + imgH; y += imgH) {
+      ctx.drawImage(roadTokyoImg, 0, y, canvas.width, imgH);
+    }
+    ctx.restore();
+    return;
+  }
+
+  // 他都市の標準背景
   const isSnow = currentCity.bgType === 'snow';
   ctx.fillStyle = isSnow ? '#e2e8f0' : '#1e232e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = isSnow ? '#cbd5e1' : '#131720'; ctx.fillRect(0, 0, 20, canvas.height); ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
@@ -491,6 +512,24 @@ function drawJapaneseStreetBackground() {
   ctx.strokeStyle = isSnow ? '#94a3b8' : '#2d3748'; ctx.lineWidth = 2; ctx.setLineDash([20, 30]);
   const laneW = canvas.width / 4;
   for (let i=1; i<4; i++) { ctx.beginPath(); ctx.moveTo(laneW*i, -100 + scrollY); ctx.lineTo(laneW*i, canvas.height + 100 + scrollY); ctx.stroke(); } ctx.setLineDash([]);
+}
+
+// 🎤 実況テロップ描画関数
+function drawLiveCommentary() {
+  if (raceState !== 'RACING' && raceState !== 'COUNTDOWN' && raceState !== 'FINISH_SLOW') return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.fillRect(12, 10, canvas.width - 24, 34);
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(12, 10, canvas.width - 24, 34);
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`🎤 ${liveCommentary}`, canvas.width / 2, 27);
+  ctx.restore();
 }
 
 function updateMoneyDisp() { 
@@ -674,7 +713,6 @@ function renderCitySelect() {
         currentCity = city; 
         document.getElementById('city-select-screen').classList.add('hidden'); 
         
-        // 📖 ストーリーモード時はパドック前にストーリー画面を挟む
         if (currentGameMode === 'story') {
           showStoryCutscene(city, () => { showPaddock(); });
         } else {
@@ -688,7 +726,6 @@ function renderCitySelect() {
   });
 }
 
-// 📖 パドック前ストーリー画面（カットインダイアログ）
 function showStoryCutscene(city, onComplete) {
   let modal = document.getElementById('story-modal-overlay');
   if (!modal) {
@@ -733,7 +770,6 @@ function showStoryCutscene(city, onComplete) {
   };
 }
 
-// 📖 全都市制覇時の「真相・ネタバレ全ストーリー振り返り」モーダル
 function showEndingTruthModal() {
   let modal = document.getElementById('truth-modal-overlay');
   if (!modal) {
@@ -742,7 +778,7 @@ function showEndingTruthModal() {
     modal.style.cssText = `
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(10, 15, 30, 0.96); z-index: 20000;
-      display: flex; flex-direction: column; align-items: center; justify-flex-start;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
       padding: 20px; box-sizing: border-box; color: #fff; overflow-y: auto;
     `;
     document.body.appendChild(modal);
@@ -893,7 +929,9 @@ function startRaceCutin() {
 
 function setupRaceState() {
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
-  
+  liveCommentary = `各検体スタート位置につきました！距離${totalDistance}mの勝負！`;
+  lastTopRunnerId = null;
+
   AudioManager.playBGM(currentCity.id);
 
   document.getElementById('countdown-overlay').classList.remove('hidden'); document.getElementById('finish-overlay').classList.add('hidden'); document.getElementById('slime-overlay').classList.remove('active');
@@ -922,6 +960,8 @@ function triggerSkill(skillData, userRunner) {
   
   createExplosion(userRunner.x, userRunner.y + 20, isPlayer ? '#38bdf8' : '#ef4444', 25, 6, 4, 'fire');
   effects.push({ text: `【異能】${skillData.name}!!`, runner: userRunner, isBalloon: true, life: 70, bgColor: isPlayer ? '#0284c7' : '#b91c1c', textColor: '#ffffff' });
+
+  liveCommentary = `⚡ ${userRunner.name}が異能【${skillData.name}】を発動！！`;
 
   if (isPvpMode && isPlayer) broadcast({ type: 'SYNC_SKILL', runnerId: 0, skill: skillData });
 
@@ -1002,14 +1042,12 @@ function doFinish() {
     startPodiumAnimation(sorted, elapsedSec); 
     document.getElementById('result-screen').classList.remove('hidden');
 
-    // 📖 東京クリア（全都市制覇）時はリザルト上にネタバレ真相ダイアログを表示！
     if (isStoryAllClear) {
       setTimeout(() => { showEndingTruthModal(); }, 1200);
     }
   }, 2500);
 }
 
-// 🏆 表彰台リアルタイムアニメーション開始関数
 function startPodiumAnimation(sortedRunners, winningTime) {
   currentSortedRunners = sortedRunners;
   currentWinningTime = winningTime;
@@ -1034,7 +1072,6 @@ function startPodiumAnimation(sortedRunners, winningTime) {
   loop();
 }
 
-// 🏆 表彰台フレーム描画（毎フレーム更新でキャラ消えを完全防止！）
 function renderPodiumFrame() {
   if (!currentSortedRunners || currentSortedRunners.length === 0) return;
   pCtx.clearRect(0, 0, podiumCanvas.width, podiumCanvas.height);
@@ -1079,7 +1116,7 @@ function update() {
     }
 
     if (startCountdown > 0) { cdEl.textContent = Math.ceil(startCountdown); } 
-    else { cdEl.textContent = "START!"; setTimeout(() => { if (raceState === 'RACING') cdEl.classList.add('hidden'); }, 1000); raceState = 'RACING'; startTime = Date.now(); }
+    else { cdEl.textContent = "START!"; liveCommentary = "一斉にスタート！！激しい位置取り合戦だ！"; setTimeout(() => { if (raceState === 'RACING') cdEl.classList.add('hidden'); }, 1000); raceState = 'RACING'; startTime = Date.now(); }
   }
 
   let dt = raceState === 'FINISH_SLOW' ? 0.2 : 1.0; 
@@ -1103,16 +1140,47 @@ function update() {
       }
     });
 
+    // 🏃 移動・脚質計算（「追込」の超強化含む）
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
-      if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) { if (Math.random() < (70 - r.mntAttr) * 0.01) { r.isSlacking = true; r.knockback = 60; setTimeout(() => { r.isSlacking = false; }, 1000); } }
-      let baseSpeed = 0.08 + (r.spdAttr - 50) * 0.001; const progress = r.dist / totalDistance; 
+      if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) { 
+        if (Math.random() < (70 - r.mntAttr) * 0.01) { 
+          r.isSlacking = true; r.knockback = 60; 
+          liveCommentary = `❓ ${r.name}がサボり始めた！集中力が切れている！`;
+          setTimeout(() => { r.isSlacking = false; }, 1000); 
+        } 
+      }
       
+      let baseSpeed = 0.08 + (r.spdAttr - 50) * 0.001; 
+      const progress = r.dist / totalDistance; 
       let stmDrain = currentCity.bgType === 'snow' ? 0.045 : 0.028; 
-      if (r.style === '逃げ') { if (progress < 0.4) { baseSpeed *= 1.5; stmDrain *= 1.8; } else if (progress > 0.7) { baseSpeed *= 0.8; } } 
-      else if (r.style === '先行') { if (progress > 0.2 && progress < 0.6) { baseSpeed *= 1.2; stmDrain *= 1.2; } } 
-      else if (r.style === '差し') { if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.3; stmDrain *= 1.1; } } 
-      else if (r.style === '追込') { if (progress > 0.7) { baseSpeed *= 1.6; stmDrain *= 0.8; } }
+
+      if (r.style === '逃げ') { 
+        if (progress < 0.4) { baseSpeed *= 1.5; stmDrain *= 1.8; } 
+        else if (progress > 0.7) { baseSpeed *= 0.8; } 
+      } 
+      else if (r.style === '先行') { 
+        if (progress > 0.2 && progress < 0.6) { baseSpeed *= 1.2; stmDrain *= 1.2; } 
+      } 
+      else if (r.style === '差し') { 
+        if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.3; stmDrain *= 1.1; } 
+      } 
+      // 🔥 追込（改）：温存から一気の2.3倍爆発スパート＋オーラ演出！
+      else if (r.style === '追込') { 
+        if (progress < 0.7) { 
+          baseSpeed *= 0.85; 
+          stmDrain *= 0.5; // スタミナ激温存
+        } else { 
+          baseSpeed *= 2.3; 
+          stmDrain *= 1.2;
+          if (globalTime % 3 === 0) {
+            createExplosion(r.x, r.y + 30, r.id === 0 ? '#38bdf8' : '#ef4444', 3, 3, 3, 'spark');
+          }
+          if (Math.random() < 0.02) {
+            liveCommentary = `🔥 ${r.name}の追込スパート炸裂！怒涛の大外一気！`;
+          }
+        } 
+      }
       
       if (r.stm > 0) r.stm -= stmDrain * dt; else baseSpeed *= 0.65;
       
@@ -1122,14 +1190,30 @@ function update() {
     }
 
     for (let i = 0; i < 4; i++) { for (let j = i + 1; j < 4; j++) { const r1 = runners[i]; const r2 = runners[j]; if (Math.abs(r1.dist - r2.dist) < 8) { if (r1.powAttr > r2.powAttr) { r1.dist += 0.05*dt; r2.dist -= 0.05*dt; } else if (r2.powAttr > r1.powAttr) { r2.dist += 0.05*dt; r1.dist -= 0.05*dt; } } } }
-    const leadingDist = Math.max(...runners.map(r => r.dist)); remainingDistance = Math.max(0, totalDistance - leadingDist);
+    
+    const leadingDist = Math.max(...runners.map(r => r.dist)); 
+    remainingDistance = Math.max(0, totalDistance - leadingDist);
+    
+    const sortedRunners = [...runners].sort((a, b) => b.dist - a.dist);
+    const topRunner = sortedRunners[0];
+
+    // 🎤 先頭変動＆残り距離の実況テロップ更新
+    if (topRunner.id !== lastTopRunnerId && remainingDistance > 50) {
+      lastTopRunnerId = topRunner.id;
+      liveCommentary = `👑 ${topRunner.name}が先頭に躍り出た！`;
+    }
+    if (remainingDistance <= 100 && remainingDistance > 80) {
+      liveCommentary = `🏁 残り100m！叩き合いの直線コース！`;
+    } else if (remainingDistance <= 30 && remainingDistance > 10) {
+      liveCommentary = `🔥 栄光のゴールは目前！最後の力を振り絞る！`;
+    }
+
     if (raceState === 'RACING') {
       if (remainingDistance <= 50 && remainingDistance > 0 && startCountdown <= 0) { const countVal = Math.min(5, Math.max(1, Math.ceil(remainingDistance / 10))); cdEl.textContent = countVal; cdEl.classList.remove('hidden'); }
       if (remainingDistance <= 0) { doFinish(); }
     }
     
     document.getElementById('hud-dist').textContent = `${Math.floor(remainingDistance)}m`;
-    const sortedRunners = [...runners].sort((a, b) => b.dist - a.dist);
     document.getElementById('hud-rank').textContent = `${sortedRunners.findIndex(r => r.id === 0) + 1}位`;
     for (let i = 0; i < 4; i++) { document.getElementById(`runner-marker-${i}`).style.left = `${Math.min(1, Math.max(0, runners[i].dist / totalDistance)) * 100}%`; }
     const pStmBar = document.getElementById('p-stm-bar'); const pStmRatio = player.stm / player.maxStm;
@@ -1144,6 +1228,7 @@ function update() {
   ctx.save();
   if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime -= dt; }
   if (raceState === 'RACING' || raceState === 'FINISH_SLOW') scrollY = (scrollY + 0.15 * dt) % 100;
+  
   drawJapaneseStreetBackground();
 
   const processedCanvases = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 72, 90));
@@ -1216,6 +1301,9 @@ function update() {
     if (eff.life <= 0) effects.splice(i, 1);
   }
   if (flashEffect.alpha > 0) { ctx.fillStyle = flashEffect.color; ctx.globalAlpha = flashEffect.alpha; ctx.fillRect(0, 0, canvas.width, canvas.height); flashEffect.alpha -= 0.05 * dt; ctx.globalAlpha = 1.0; }
+
+  // 🎤 実況テロップ描画呼び出し
+  drawLiveCommentary();
 
   ctx.restore(); requestAnimationFrame(update);
 }
