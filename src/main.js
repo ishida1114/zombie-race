@@ -51,7 +51,6 @@ const AudioManager = {
     document.addEventListener('click', unlock);
     document.addEventListener('touchstart', unlock);
 
-    // ボタン効果音の自動紐付け
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button, .btn, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
       if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
@@ -208,12 +207,14 @@ const STORY_DIFFICULTY = {
   tokyo:   { min: -0.05, max: 0.20 }
 };
 
-const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }, { name: '猛毒', filter: 'hue-rotate(90deg) saturate(120%)' }, { name: '深淵', filter: 'hue-rotate(210deg) saturate(100%) brightness(0.9)' }, { name: '狂暴', filter: 'hue-rotate(-50deg) saturate(150%) brightness(1.1)' }, { name: '蒼白', filter: 'grayscale(70%) brightness(1.2) hue-rotate(180deg)' }, { name: '黒曜', filter: 'grayscale(60%) brightness(0.6) contrast(1.3)' }];
+// 🎨 色違いは廃止し、標準カラーのみに固定
+const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }];
 const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨漢', scaleX: 1.25, scaleY: 1.3 }, { name: '肥満', scaleX: 1.3, scaleY: 0.95 }];
 const RUNNING_STYLES = ['逃げ', '先行', '差し', '追込'];
 const CPU_NAMES = ['田中', '鈴木', '山田', '店長', '部長', '課長', 'バイト', '新人', '先輩'];
 
-const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4'];
+// 🎬 zombie4.mp4 を追加！
+const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4', '/zombie4.mp4'];
 const zombieVideos = []; const offCanvases = []; const offCtxs = [];
 
 VIDEO_SOURCES.forEach(src => {
@@ -437,10 +438,13 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     targetCtx.save();
     targetCtx.scale(zData.sizeInfo.scaleX, zData.sizeInfo.scaleY);
     if (isKnockback) targetCtx.rotate(-0.35);
-    let filterStr = zData.colorInfo.filter;
+    
+    // 🎨 常時の色違い（colorInfo.filter）を無くし、動画そのままの色で表示
+    let filterStr = 'none';
     if (isKnockback) filterStr = 'brightness(200%) sepia(100%) hue-rotate(-50deg)'; 
     else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)'; 
-    else if (isExhausted) filterStr += ' grayscale(80%) brightness(0.6)';
+    else if (isExhausted) filterStr = 'grayscale(80%) brightness(0.6)';
+    
     targetCtx.filter = filterStr; 
     targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); 
     targetCtx.restore();
@@ -532,7 +536,7 @@ function doScout() {
   }
 
   const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
-  const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
+  const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
   myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
   const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
   setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
@@ -647,7 +651,7 @@ function showPaddock() {
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
     const cpuStm = Math.max(100, cpuStmVal * 10);
-    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: ZOMBIE_COLORS[Math.floor(Math.random() * ZOMBIE_COLORS.length)], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
+    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
     runners.push(cpuZ);
   }
 
@@ -772,7 +776,8 @@ function renderPodium(sortedRunners, winningTime) {
   pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
   pCtx.fillStyle = '#0f131a'; pCtx.font = 'bold 36px sans-serif'; pCtx.textAlign = 'center'; pCtx.fillText('1', 180, 150); pCtx.fillText('2', 100, 180); pCtx.fillText('3', 260, 200);
   
-  const pc0 = updateChromaKeyFrame(0, 64, 80); const pc1 = updateChromaKeyFrame(1, 64, 80); const pc2 = updateChromaKeyFrame(2, 64, 80); const pcs = [pc0, pc1, pc2];
+  // 🎬 動的に全動画対応
+  const pcs = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 64, 80));
 
   drawZombieCharacter(pCtx, 140+40, 100-80, 64, 80, sortedRunners[0], pcs[sortedRunners[0].videoIndex]||pcs[0], false, false);
   if(sortedRunners[1]) drawZombieCharacter(pCtx, 60+40, 140-80, 64, 80, sortedRunners[1], pcs[sortedRunners[1].videoIndex]||pcs[0], false, false);
@@ -871,11 +876,8 @@ function update() {
   if (raceState === 'RACING' || raceState === 'FINISH_SLOW') scrollY = (scrollY + 0.15 * dt) % 100;
   drawJapaneseStreetBackground();
 
-  const processedCanvases = [
-    updateChromaKeyFrame(0, 72, 90) || updateChromaKeyFrame(0, 72, 90),
-    updateChromaKeyFrame(1, 72, 90) || updateChromaKeyFrame(1, 72, 90),
-    updateChromaKeyFrame(2, 72, 90) || updateChromaKeyFrame(2, 72, 90)
-  ];
+  // 🎬 動的に全動画対応 (zombie1 ~ zombie4)
+  const processedCanvases = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 72, 90));
 
   const drawOrder = [...runners].sort((a, b) => a.y - b.y);
   drawOrder.forEach(r => {
