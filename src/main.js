@@ -6,6 +6,9 @@ let shakeTime = 0; let scrollY = 0; let globalTime = 0;
 let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
+// 📖 モード管理 ('story' | 'free')
+let currentGameMode = 'story';
+
 // ==========================================
 // 🎵 音響管理システム (画面左上にボタン配置)
 // ==========================================
@@ -81,7 +84,6 @@ const AudioManager = {
     const btn = document.createElement('button');
     btn.id = 'sound-toggle-btn';
     btn.className = 'sound-toggle-btn';
-    // 画面左上に配置してお金表示との被りを解消！
     btn.style.cssText = `
       position: fixed;
       top: 12px;
@@ -158,6 +160,7 @@ const AudioManager = {
 let myZombies = JSON.parse(localStorage.getItem('myZombies')) || [];
 let zombieMoney = parseInt(localStorage.getItem('zombieMoney')) || 0;
 let weeklyChamps = JSON.parse(localStorage.getItem('weeklyChamps')) || {};
+let clearedCities = JSON.parse(localStorage.getItem('clearedCities')) || ['fukuoka']; // 解放状況（初期は福岡のみ）
 let weekStart = parseInt(localStorage.getItem('weekStart')) || Date.now();
 
 if (Date.now() - weekStart > 7 * 24 * 60 * 60 * 1000) {
@@ -182,6 +185,7 @@ function saveGame() {
   localStorage.setItem('myZombies', JSON.stringify(myZombies)); 
   localStorage.setItem('zombieMoney', zombieMoney.toString());
   localStorage.setItem('weeklyChamps', JSON.stringify(weeklyChamps));
+  localStorage.setItem('clearedCities', JSON.stringify(clearedCities));
 }
 
 function getTitle(z) {
@@ -191,15 +195,26 @@ function getTitle(z) {
   return ['駆け出しの', 'ヨチヨチの', '迷い込んだ'][Math.floor(Math.random()*3)];
 }
 
+// 🏙️ 都市設定 (福岡→大阪→名古屋→札幌→東京 のストーリー順)
 const CITIES = [
-  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【標準】約80秒の基本コース。' },
-  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【乱戦】ライバル達がサボりやすい。' },
-  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【鉄壁】ライバルが妨害を弾きやすい。' },
-  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【短距離】序盤からのスピード勝負。' },
-  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【雪道】体力が削られる長距離戦。' }
+  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka' },
+  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya' },
+  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【中級】フルアーマーの元警備隊長。', nextCity: 'sapporo' },
+  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【上級】凍結施設から逃げた元所長。', nextCity: 'tokyo' },
+  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【ラスボス】闇市ドーピングのマッドサイエンティスト。', nextCity: null }
 ];
 let currentCity = CITIES[0];
 
+// 👹 ストーリーボス設定
+const STORY_BOSSES = {
+  fukuoka: { name: '爆走デリバリー', title: '元最速配達員', quote: '「冷める前に届けるのが俺のプライドだァ！」' },
+  osaka:   { name: 'ナニワの金主', title: '元大口スポンサー', quote: '「金さえ払えばサボってもええんやで！」' },
+  nagoya:  { name: 'フルアーマー鉄壁', title: '元警備隊長', quote: '「この装甲を打ち破れると思うなよ…！」' },
+  sapporo: { name: '凍血のDr.ゼロ', title: '元冷凍研究所長', quote: '「凍てつく極寒の中で朽ち果てるがいい…」' },
+  tokyo:   { name: 'Dr.マッドゾンビ', title: '最悪の異能科学者', quote: '「フハハ！究極のワクチンで我らは【超ゾンビ】となる！」' }
+};
+
+// ストーリーモード難易度倍率（基準値300に対する補正）
 const STORY_DIFFICULTY = {
   fukuoka: { min: -0.15, max: 0.05 },
   osaka:   { min: -0.15, max: 0.10 },
@@ -261,7 +276,6 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
 
 const runners = []; const effects = []; let particles = [];
 
-// ⚡ 竜巻・溶岩・生肉を削除し、「雷」を追加！
 const ALL_SKILLS = [
   { id: 'meteor', name: 'メテオ', desc: '隕石爆発でライバル大打撃', type: 'auto', speed: 0.045 },
   { id: 'lightning', name: '雷', desc: '雷撃で自分以外の敵を数秒麻痺！', type: 'auto', speed: 0.050 },
@@ -477,13 +491,11 @@ function drawJapaneseStreetBackground() {
   for (let i=1; i<4; i++) { ctx.beginPath(); ctx.moveTo(laneW*i, -100 + scrollY); ctx.lineTo(laneW*i, canvas.height + 100 + scrollY); ctx.stroke(); } ctx.setLineDash([]);
 }
 
-// 💰 money.webp を 2.5 倍サイズでドカンと拡大 ＆ 強い黒縁取り
 function updateMoneyDisp() { 
   ['title-money', 'garage-money', 'shop-money'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.textContent = `${zombieMoney} Z$`;
-      // 強い黒文字フチ
       el.style.textShadow = '3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 0 -3px 0 #000, 3px 0 0 #000, -3px 0 0 #000';
       el.style.webkitTextStroke = '1.5px #000';
       el.style.color = '#facc15';
@@ -495,7 +507,6 @@ function updateMoneyDisp() {
         parent.style.backgroundImage = 'url("/money.webp")';
         parent.style.backgroundRepeat = 'no-repeat';
         parent.style.backgroundPosition = 'center';
-        // 2.5倍相当にサイズアップ
         parent.style.backgroundSize = '220px 80px';
         parent.style.padding = '20px 48px';
         parent.style.display = 'inline-flex';
@@ -507,7 +518,6 @@ function updateMoneyDisp() {
   });
 }
 
-// 🏷️ 牧場（ガレージ）表示の「気性」「異能」表記変更
 function renderGarage() {
   updateMoneyDisp();
   AudioManager.playBGM('opening');
@@ -520,7 +530,8 @@ function renderGarage() {
       <div class="zc-stats"><span>速:${z.speed}</span><span>力:${z.power}</span><span>体:${z.stamina}</span><span>気性:${z.mentality}</span><span>異能:${z.magic}</span></div>
       ${recordHtml}
       <div class="zc-actions">
-        <button class="zc-btn btn-race" onclick="openCitySelect(${idx})">出走</button>
+        <button class="zc-btn btn-race" onclick="openCitySelect(${idx}, 'story')">ストーリー</button>
+        <button class="zc-btn btn-race" style="background:#ca8a04;" onclick="openCitySelect(${idx}, 'free')">フリーレース</button>
         <button class="zc-btn btn-shop" onclick="openShop(${idx})">強化</button>
         <button class="zc-btn btn-del" onclick="deleteZombie(${idx})">逃がす</button>
       </div>
@@ -530,7 +541,15 @@ function renderGarage() {
   if (myZombies.length === 0) list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:40px 20px;">検体が居ません。<br>探索してください。</div>';
 }
 
-window.openCitySelect = (idx) => { activeZombieIndex = idx; document.getElementById('garage-screen').classList.add('hidden'); renderCitySelect(); document.getElementById('city-select-screen').classList.remove('hidden'); };
+// モードを選択して都市選択画面を開く
+window.openCitySelect = (idx, mode = 'story') => { 
+  activeZombieIndex = idx; 
+  currentGameMode = mode;
+  document.getElementById('garage-screen').classList.add('hidden'); 
+  renderCitySelect(); 
+  document.getElementById('city-select-screen').classList.remove('hidden'); 
+};
+
 window.deleteZombie = (idx) => { if(confirm('本当に逃がしますか？')) { myZombies.splice(idx, 1); saveGame(); renderGarage(); } };
 
 window.openShop = (idx) => {
@@ -610,7 +629,6 @@ function showNurtureResult(type) {
   setTimeout(() => { myZombies[activeZombieIndex][ms]+=inc; myZombies[activeZombieIndex][ss]+=dec; myZombies[activeZombieIndex].remainingTurns--; saveGame(); document.getElementById('nurture-result-overlay').classList.add('hidden'); isNurturing = false; updateNurtureUI(); }, 1500);
 }
 
-// 🧟 育成完了時に4体以上いたら「逃がす画面」へ誘導する仕様（元の挙動）
 document.getElementById('send-to-garage-btn').onclick = () => {
   document.getElementById('nurture-screen').classList.add('hidden');
   if (myZombies.length > 3) {
@@ -635,14 +653,28 @@ window.doRelease = (idx) => {
   }
 };
 
+// 🏙️ 都市選択画面の描画（ストーリー解放状況の適用）
 function renderCitySelect() {
   const container = document.getElementById('city-list'); container.innerHTML = '';
+  const modeTitle = currentGameMode === 'story' ? '📖 ストーリーモード' : '🏁 フリーレース';
+  
   CITIES.forEach(city => {
-    const btn = document.createElement('div'); btn.className = 'city-btn';
+    const isUnlocked = currentGameMode === 'free' || clearedCities.includes(city.id);
+    const btn = document.createElement('div'); 
+    btn.className = `city-btn ${isUnlocked ? '' : 'locked'}`;
+    if (!isUnlocked) btn.style.opacity = '0.5';
+
     const champ = weeklyChamps[city.id];
     let champHtml = champ ? `<div class="city-champ">👑 週次王者: ${champ.name} (${champ.time}s)</div>` : `<div class="city-champ">👑 週次王者: 記録なし</div>`;
-    btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)</span><span class="city-desc">${city.desc}</span>${champHtml}`;
-    btn.onclick = () => { currentCity = city; document.getElementById('city-select-screen').classList.add('hidden'); showPaddock(); };
+    
+    let lockTag = isUnlocked ? '' : '<span style="color:#ef4444; font-weight:bold;"> [未解放]</span>';
+    btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)${lockTag}</span><span class="city-desc">${city.desc}</span>${champHtml}`;
+    
+    if (isUnlocked) {
+      btn.onclick = () => { currentCity = city; document.getElementById('city-select-screen').classList.add('hidden'); showPaddock(); };
+    } else {
+      btn.onclick = () => { alert('前の都市をストーリーモードでクリアすると解放されます！'); };
+    }
     container.appendChild(btn);
   });
 }
@@ -655,24 +687,41 @@ function showPaddock() {
   
   runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
+  // 🎮 CPU強さ算出分岐 (ストーリー: 固定倍率 / フリー: プレイヤー基準スケーリング)
+  const playerTotal = z.speed + z.power + z.stamina + z.mentality + z.magic;
   const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
 
   for (let i = 1; i < 4; i++) {
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
+    let bossTitle = '対戦者';
+    
+    // ストーリーモードで1体目のCPUは「都市ボス」に設定！
+    if (currentGameMode === 'story' && i === 1 && STORY_BOSSES[currentCity.id]) {
+      const boss = STORY_BOSSES[currentCity.id];
+      name = boss.name;
+      bossTitle = boss.title;
+    }
+
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
 
     let cpuSpd, cpuPow, cpuStmVal, cpuMnt, cpuMag;
 
-    if (isPvpMode) {
-      cpuSpd = z.speed + (Math.floor(Math.random() * 30) - 15);
-      cpuPow = z.power + (Math.floor(Math.random() * 30) - 15);
-      cpuStmVal = z.stamina + (Math.floor(Math.random() * 30) - 15);
-      cpuMnt = z.mentality + (Math.floor(Math.random() * 30) - 15);
-      cpuMag = z.magic + (Math.floor(Math.random() * 30) - 15);
-    } else {
+    if (currentGameMode === 'story') {
+      // ストーリーモード：都市固定倍率
       const rate = diffSetting.min + Math.random() * (diffSetting.max - diffSetting.min);
       const targetTotal = 300 * (1 + rate);
+      const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
+      const wSum = weights.reduce((a, b) => a + b, 0);
 
+      cpuSpd = Math.round((weights[0] / wSum) * targetTotal);
+      cpuPow = Math.round((weights[1] / wSum) * targetTotal);
+      cpuStmVal = Math.round((weights[2] / wSum) * targetTotal);
+      cpuMnt = Math.round((weights[3] / wSum) * targetTotal);
+      cpuMag = Math.round((weights[4] / wSum) * targetTotal);
+    } else {
+      // フリーレース：プレイヤー現在値基準 ±10% スケーリング（接戦保障）
+      const rate = (Math.random() * 0.2) - 0.10; // -10% 〜 +10%
+      const targetTotal = playerTotal * (1 + rate);
       const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
       const wSum = weights.reduce((a, b) => a + b, 0);
 
@@ -688,7 +737,7 @@ function showPaddock() {
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
     const cpuStm = Math.max(100, cpuStmVal * 10);
-    const cpuZ = { id: i, name: name, title: '対戦者', isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
+    const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
     runners.push(cpuZ);
   }
 
@@ -752,16 +801,13 @@ function triggerSkill(skillData, userRunner) {
     particles.push({ type: 'meteor_drop', x: canvas.width / 2, y: -100, targetY: 300, radius: 60, power: effectivePower, user: userRunner }); 
     createExplosion(userRunner.x, userRunner.y, '#38bdf8', 15, 3, 3, 'spark'); 
   } 
-  // ⚡ 新異能「雷」：画面フラッシュ＋敵全員落雷麻痺！
   else if (skillData.id === 'lightning') { 
     shakeTime = 20; 
     flashEffect.alpha = 0.9; 
-    flashEffect.color = '#fef08a'; // 黄色の画面フラッシュ！
-    
+    flashEffect.color = '#fef08a'; 
     runners.forEach(r => { 
       if (r.id !== userRunner.id) { 
         applyKnockback(r, effectivePower * 1.2); 
-        // 敵の頭上に落雷パーティクルを発生
         particles.push({ type: 'lightning_strike', x: r.x, y: r.y - 120, targetY: r.y + 20, life: 30 });
       } 
     }); 
@@ -806,6 +852,14 @@ function doFinish() {
       if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
         weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
         isChampUpdated = true;
+      }
+
+      // 📖 ストーリークリア判定：1位勝利で次の都市を解放！
+      if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
+        clearedCities.push(currentCity.nextCity);
+        alert(`🎉 ${currentCity.name}ストーリークリア！ 新たな都市【${CITIES.find(c=>c.id===currentCity.nextCity).name}】が解放されました！`);
+      } else if (currentGameMode === 'story' && currentCity.id === 'tokyo') {
+        alert(`🏆 全都市制覇！【Dr.マッドゾンビ】を倒し、究極のワクチンを手に入れた…が！？\n「ククク…身体が…力が溢れてくる！俺自身が【超ゾンビ】だったのだーッ！」`);
       }
     } 
     else if (playerRank === 2) prize = 300; else if (playerRank === 3) prize = 100; else prize = 50;
@@ -941,30 +995,19 @@ function update() {
       p.y += 12 * dt; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
       if (p.y >= p.targetY) { shakeTime = 20; createExplosion(p.x, p.y, '#f97316', 100, 10, 8, 'spark'); runners.forEach(r => { if(r.id !== p.user.id) applyKnockback(r, p.power); }); particles.splice(i, 1); }
     } 
-    // ⚡ 雷エフェクトの描画（ジグザグ稲妻ビーム）
     else if (p.type === 'lightning_strike') {
       ctx.strokeStyle = '#fef08a';
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
-      
-      let currX = p.x;
-      let currY = p.y;
-      const segs = 5;
-      const dy = (p.targetY - p.y) / segs;
-      
+      let currX = p.x; let currY = p.y;
+      const segs = 5; const dy = (p.targetY - p.y) / segs;
       for (let s = 0; s < segs; s++) {
-        currY += dy;
-        currX += (Math.random() - 0.5) * 30;
+        currY += dy; currX += (Math.random() - 0.5) * 30;
         ctx.lineTo(currX, currY);
       }
       ctx.stroke();
-      
-      // 白いコア線
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
       createExplosion(p.x, p.targetY, '#facc15', 3, 3, 2, 'spark');
       p.life -= 2 * dt;
       if (p.life <= 0) particles.splice(i, 1);
@@ -1022,7 +1065,6 @@ function init() {
   };
   document.getElementById('nav-garage-btn').onclick = () => { 
     document.getElementById('title-screen').classList.add('hidden'); 
-    // ガレージ移動時に4体以上なら逃がす画面へ
     if (myZombies.length > 3) {
       document.getElementById('send-to-garage-btn').click();
     } else {
