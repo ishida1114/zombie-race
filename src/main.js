@@ -16,11 +16,20 @@ let currentWinningTime = "0.00";
 let liveCommentary = "レース開始直前！各検体、枠順につきました。";
 let lastTopRunnerId = null;
 
-// 🛣️ 東京地面画像ロード
-const roadTokyoImg = new Image();
-roadTokyoImg.src = '/roadtokyo.webp';
-let roadTokyoLoaded = false;
-roadTokyoImg.onload = () => { roadTokyoLoaded = true; };
+// 🛣️ 都市別地面画像の動的ロード管理
+const ROAD_IMAGES = {
+  tokyo:   { src: '/roadtokyo.webp',   img: new Image(), loaded: false },
+  osaka:   { src: '/roadoosaka.webp',  img: new Image(), loaded: false },
+  nagoya:  { src: '/roadnagoya.webp',  img: new Image(), loaded: false },
+  sapporo: { src: '/roadsapporo.webp', img: new Image(), loaded: false },
+  fukuoka: { src: '/roadfukuoka.webp', img: new Image(), loaded: false }
+};
+
+Object.keys(ROAD_IMAGES).forEach(cityId => {
+  const item = ROAD_IMAGES[cityId];
+  item.img.src = item.src;
+  item.img.onload = () => { item.loaded = true; };
+});
 
 // ==========================================
 // 🎵 音響管理システム (画面左上にボタン配置)
@@ -491,20 +500,21 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
   targetCtx.restore();
 }
 
-// 🛣️ 背景描画（東京のみ roadtokyo.webp の縦スクロール対応）
+// 🛣️ 全都市背景描画（各都市の地面画像が存在すれば優先スクロール表示！）
 function drawJapaneseStreetBackground() {
-  if (currentCity.id === 'tokyo' && roadTokyoLoaded) {
+  const roadData = ROAD_IMAGES[currentCity.id];
+  if (roadData && roadData.loaded) {
     ctx.save();
-    const imgH = roadTokyoImg.height * (canvas.width / roadTokyoImg.width);
+    const imgH = roadData.img.height * (canvas.width / roadData.img.width);
     const sy = (scrollY * 12) % imgH;
     for (let y = -imgH + sy; y < canvas.height + imgH; y += imgH) {
-      ctx.drawImage(roadTokyoImg, 0, y, canvas.width, imgH);
+      ctx.drawImage(roadData.img, 0, y, canvas.width, imgH);
     }
     ctx.restore();
     return;
   }
 
-  // 他都市の標準背景
+  // フォールバック背景（画像未読み込み時）
   const isSnow = currentCity.bgType === 'snow';
   ctx.fillStyle = isSnow ? '#e2e8f0' : '#1e232e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = isSnow ? '#cbd5e1' : '#131720'; ctx.fillRect(0, 0, 20, canvas.height); ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
@@ -1140,7 +1150,6 @@ function update() {
       }
     });
 
-    // 🏃 移動・脚質計算（「追込」の超強化含む）
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
       if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) { 
@@ -1165,11 +1174,10 @@ function update() {
       else if (r.style === '差し') { 
         if (progress > 0.5 && progress < 0.8) { baseSpeed *= 1.3; stmDrain *= 1.1; } 
       } 
-      // 🔥 追込（改）：温存から一気の2.3倍爆発スパート＋オーラ演出！
       else if (r.style === '追込') { 
         if (progress < 0.7) { 
           baseSpeed *= 0.85; 
-          stmDrain *= 0.5; // スタミナ激温存
+          stmDrain *= 0.5; 
         } else { 
           baseSpeed *= 2.3; 
           stmDrain *= 1.2;
@@ -1197,7 +1205,6 @@ function update() {
     const sortedRunners = [...runners].sort((a, b) => b.dist - a.dist);
     const topRunner = sortedRunners[0];
 
-    // 🎤 先頭変動＆残り距離の実況テロップ更新
     if (topRunner.id !== lastTopRunnerId && remainingDistance > 50) {
       lastTopRunnerId = topRunner.id;
       liveCommentary = `👑 ${topRunner.name}が先頭に躍り出た！`;
@@ -1302,7 +1309,6 @@ function update() {
   }
   if (flashEffect.alpha > 0) { ctx.fillStyle = flashEffect.color; ctx.globalAlpha = flashEffect.alpha; ctx.fillRect(0, 0, canvas.width, canvas.height); flashEffect.alpha -= 0.05 * dt; ctx.globalAlpha = 1.0; }
 
-  // 🎤 実況テロップ描画呼び出し
   drawLiveCommentary();
 
   ctx.restore(); requestAnimationFrame(update);
