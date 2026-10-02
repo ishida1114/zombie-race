@@ -230,6 +230,7 @@ const CPU_NAMES = ['田中', '鈴木', '山田', '店長', '部長', '課長', '
 
 const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4', '/zombie4.mp4', '/zombie5.mp4'];
 const zombieVideos = []; const offCanvases = []; const offCtxs = [];
+const lastValidCanvases = []; // 💡 直前の正常フレームを保持するキャッシュ
 
 VIDEO_SOURCES.forEach(src => {
   const v = document.createElement('video');
@@ -243,37 +244,36 @@ VIDEO_SOURCES.forEach(src => {
   offCtxs.push(cx);
 });
 
+// 🎬 動画クロマキー処理（フレーム保持でチラつき完全防止 ＆ 自然な透過）
 function updateChromaKeyFrame(idx, targetW, targetH) {
   const v = zombieVideos[idx]; const c = offCanvases[idx]; const cx = offCtxs[idx];
-  if (!v || v.readyState < 2) return null;
+  
+  // 動画が未完了・一瞬ロード中の場合は前回の正常フレームを返して異物差し込みを防止！
+  if (!v || v.readyState < 2) {
+    return lastValidCanvases[idx] || null;
+  }
   if (v.paused) v.play().catch(() => {});
   
-  if (c.width !== targetW) c.width = targetW; if (c.height !== targetH) c.height = targetH;
+  if (c.width !== targetW) c.width = targetW; 
+  if (c.height !== targetH) c.height = targetH;
   cx.imageSmoothingEnabled = false;
   cx.clearRect(0, 0, targetW, targetH);
   
   const vw = v.videoWidth || 100; const vh = v.videoHeight || 100;
-  const cropX = vw * 0.03; const cropY = vh * 0.08; const cropW = vw * 0.94; const cropH = vh * 0.92;
-
-  cx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
+  cx.drawImage(v, 0, 0, vw, vh, 0, 0, targetW, targetH);
   const data = cx.getImageData(0, 0, targetW, targetH);
   
-  for (let y = 0; y < targetH; y++) {
-    for (let x = 0; x < targetW; x++) {
-      const i = (y * targetW + x) * 4;
-      const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
-      if (g > 75 && g > r * 1.15 && g > b * 1.15) {
-        data.data[i+3] = 0; 
-      }
-      if (y < targetH * 0.12 && (x > targetW * 0.5 || x < targetW * 0.2)) {
-        if (r > 150 && g > 150 && b > 150) {
-          data.data[i+3] = 0;
-        }
-      }
+  // 自然な緑バッククロマキー（キャラの頭や服を削らない自然な判定）
+  for (let i = 0; i < data.data.length; i += 4) {
+    const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
+    if (g > 65 && g > r * 1.12 && g > b * 1.12) {
+      data.data[i+3] = 0; 
     }
   }
   
-  cx.putImageData(data, 0, 0); return c;
+  cx.putImageData(data, 0, 0); 
+  lastValidCanvases[idx] = c; // 正常取得できたキャンバスをキャッシュ
+  return c;
 }
 
 const runners = []; const effects = []; let particles = [];
@@ -454,25 +454,12 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     if (isKnockback) targetCtx.rotate(-0.35);
     
     let filterStr = 'none';
-    if (isKnockback) filterStr = 'brightness(200%) sepia(100%) hue-rotate(-50deg)'; 
+    if (isKnockback) filterStr = 'brightness(180%) sepia(80%) hue-rotate(-30deg)'; 
     else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)'; 
     else if (isExhausted) filterStr = 'grayscale(80%) brightness(0.6)';
     
     targetCtx.filter = filterStr; 
     targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); 
-    targetCtx.restore();
-  } else {
-    // 💡 動画読み込み中のフォールバック画像（シルエット）
-    targetCtx.save();
-    targetCtx.scale(zData.sizeInfo.scaleX, zData.sizeInfo.scaleY);
-    targetCtx.fillStyle = '#334155';
-    targetCtx.beginPath();
-    targetCtx.roundRect(-width/2 + 8, -height + 8, width - 16, height - 8, 8);
-    targetCtx.fill();
-    targetCtx.fillStyle = '#94a3b8';
-    targetCtx.font = 'bold 20px sans-serif';
-    targetCtx.textAlign = 'center';
-    targetCtx.fillText('🧟', 0, -height/2);
     targetCtx.restore();
   }
   
@@ -687,7 +674,7 @@ function renderCitySelect() {
         currentCity = city; 
         document.getElementById('city-select-screen').classList.add('hidden'); 
         
-        // 📖 ストーリーモード時は「出走検体紹介」の前にストーリー画面を挟む！
+        // 📖 ストーリーモード時はパドック前にストーリー画面を挟む
         if (currentGameMode === 'story') {
           showStoryCutscene(city, () => { showPaddock(); });
         } else {
@@ -701,7 +688,7 @@ function renderCitySelect() {
   });
 }
 
-// 📖 パドック前ストーリー画面（カットインダイアログ）の動的挿入
+// 📖 パドック前ストーリー画面（カットインダイアログ）
 function showStoryCutscene(city, onComplete) {
   let modal = document.getElementById('story-modal-overlay');
   if (!modal) {
@@ -743,6 +730,84 @@ function showStoryCutscene(city, onComplete) {
   document.getElementById('story-start-btn').onclick = () => {
     modal.style.display = 'none';
     onComplete();
+  };
+}
+
+// 📖 全都市制覇時の「真相・ネタバレ全ストーリー振り返り」モーダル
+function showEndingTruthModal() {
+  let modal = document.getElementById('truth-modal-overlay');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'truth-modal-overlay';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 15, 30, 0.96); z-index: 20000;
+      display: flex; flex-direction: column; align-items: center; justify-flex-start;
+      padding: 20px; box-sizing: border-box; color: #fff; overflow-y: auto;
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="max-width: 520px; width: 100%; background: #1e293b; border: 2px solid #e11d48; border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(225,29,72,0.4); margin: auto;">
+      <div style="font-size: 14px; color: #f43f5e; font-weight: bold; text-align: center; letter-spacing: 2px;">🏆 STORY ALL CLEAR 🏆</div>
+      <h2 style="font-size: 24px; text-align: center; margin: 8px 0 16px 0; color: #facc15;">全都市制覇：隠された『真実』</h2>
+      
+      <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6; margin-bottom: 20px; text-align: center;">
+        東京のDr.マッドゾンビを倒し、ついに手に入れた特効薬ワクチン。<br>
+        だが、あなたが倒してきたボスたちには、知られざる【真相】があった…！
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; text-align: left; font-size: 13px;">
+        <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #0284c7; border-radius: 6px;">
+          <div style="color: #38bdf8; font-weight: bold;">🚚 【福岡】爆走デリバリーの真実</div>
+          <div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">
+            冷めないピザを届けていたわけではない。彼はゾンビ化初期、市民へ「緊急予防薬」を命がけで配送していた英雄だった。
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #ca8a04; border-radius: 6px;">
+          <div style="color: #facc15; font-weight: bold;">💰 【大阪】ナニワの金主の真実</div>
+          <div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">
+            金を撒いてサボらせていた富豪は、全私財を投じてワクチン開発を影で支援していた大恩人だった。手遅れとなり自らも感染した。
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #16a34a; border-radius: 6px;">
+          <div style="color: #4ade80; font-weight: bold;">🛡️ 【名古屋】フルアーマー鉄壁の真実</div>
+          <div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">
+            道を阻んでいた重装甲は妨害のためではない。感染拡大を防ぐため、自ら身体を封印し防衛線となって孤軍奮闘していた。
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #93c5fd; border-radius: 6px;">
+          <div style="color: #93c5fd; font-weight: bold;">❄️ 【札幌】凍血のDr.ゼロの真実</div>
+          <div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">
+            極寒施設で立ち塞がった所長は、ウイルスの死滅条件を解明するため、自らを凍結実験台にして生き延びていた研究者だった。
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.9); padding: 12px; border-left: 4px solid #e11d48; border-radius: 6px; border: 1px solid #f43f5e;">
+          <div style="color: #f43f5e; font-weight: bold;">💉 【東京＆衝撃の結末】特効薬の真実</div>
+          <div style="color: #fff; margin-top: 4px; line-height: 1.5; font-weight: bold;">
+            すべてのボスを倒し、ついにワクチンを自分に投与したあなた。<br>
+            しかし、人間に戻るどころか知性と圧倒的筋力を兼ね備えた最悪の『超ゾンビ（新世界の王）』として覚醒してしまったのだった…！
+          </div>
+        </div>
+      </div>
+
+      <button id="truth-close-btn" style="
+        width: 100%; padding: 14px; font-size: 16px; font-weight: bold; margin-top: 20px;
+        background: linear-gradient(135deg, #e11d48, #9f1239); color: #fff;
+        border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      ">真相を受け入れ、ガレージへ戻る</button>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+
+  document.getElementById('truth-close-btn').onclick = () => {
+    modal.style.display = 'none';
   };
 }
 
@@ -907,6 +972,8 @@ function doFinish() {
     const z = myZombies[activeZombieIndex || 0]; if(z) z.matches++; let prize = 0;
     
     let isChampUpdated = false;
+    let isStoryAllClear = false;
+
     if (playerRank === 1) { 
       if(z) z.wins++; prize = 500; 
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
@@ -919,9 +986,8 @@ function doFinish() {
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
         clearedCities.push(currentCity.nextCity);
-        alert(`🎉 ${currentCity.name}ストーリークリア！ 新たな都市【${CITIES.find(c=>c.id===currentCity.nextCity).name}】が解放されました！`);
       } else if (currentGameMode === 'story' && currentCity.id === 'tokyo') {
-        alert(`🏆 全都市制覇！【Dr.マッドゾンビ】を倒し、究極のワクチンを手に入れた…が！？\n「ククク…身体が…力が溢れてくる！俺自身が【超ゾンビ】だったのだーッ！」`);
+        isStoryAllClear = true;
       }
     } 
     else if (playerRank === 2) prize = 300; else if (playerRank === 3) prize = 100; else prize = 50;
@@ -935,6 +1001,11 @@ function doFinish() {
 
     startPodiumAnimation(sorted, elapsedSec); 
     document.getElementById('result-screen').classList.remove('hidden');
+
+    // 📖 東京クリア（全都市制覇）時はリザルト上にネタバレ真相ダイアログを表示！
+    if (isStoryAllClear) {
+      setTimeout(() => { showEndingTruthModal(); }, 1200);
+    }
   }, 2500);
 }
 
@@ -969,27 +1040,22 @@ function renderPodiumFrame() {
   pCtx.clearRect(0, 0, podiumCanvas.width, podiumCanvas.height);
   pCtx.imageSmoothingEnabled = false;
   
-  // 台座描画
   pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); 
   pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); 
   pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
   pCtx.fillStyle = '#0f131a'; pCtx.font = 'bold 36px sans-serif'; pCtx.textAlign = 'center'; 
   pCtx.fillText('1', 180, 150); pCtx.fillText('2', 100, 180); pCtx.fillText('3', 260, 200);
   
-  // 動画の最新クロマキーフレームを取得
   const pcs = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 64, 80));
 
-  // 1位
   if (currentSortedRunners[0]) {
     const pc = pcs[currentSortedRunners[0].videoIndex] || pcs[0];
     drawZombieCharacter(pCtx, 140+40, 100-80, 64, 80, currentSortedRunners[0], pc, false, false);
   }
-  // 2位
   if (currentSortedRunners[1]) {
     const pc = pcs[currentSortedRunners[1].videoIndex] || pcs[0];
     drawZombieCharacter(pCtx, 60+40, 140-80, 64, 80, currentSortedRunners[1], pc, false, false);
   }
-  // 3位
   if (currentSortedRunners[2]) {
     const pc = pcs[currentSortedRunners[2].videoIndex] || pcs[0];
     drawZombieCharacter(pCtx, 220+40, 160-80, 64, 80, currentSortedRunners[2], pc, false, false);
