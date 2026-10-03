@@ -43,7 +43,7 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 🎵 音響管理システム (画面中央上部に配置)
+// 🎵 音響管理システム (重複停止の確実化)
 // ==========================================
 const AudioManager = {
   basePathBGM: 'audio/bgm/',
@@ -156,6 +156,8 @@ const AudioManager = {
   playBGM(key) {
     if (!this.bgmList[key]) return;
     if (this.currentBGMKey === key && this.currentBGM && !this.currentBGM.paused) return;
+    
+    // 💡 確実に前のBGMを停止
     this.stopBGM();
     this.currentBGMKey = key;
 
@@ -165,9 +167,11 @@ const AudioManager = {
     const audio = new Audio(path);
     audio.loop = true;
     audio.volume = 0.5;
-    audio.play().then(() => {
-      this.currentBGM = audio;
-    }).catch(err => {
+    
+    // 💡 即座にインスタンスを代入し、非同期再生完了前でも stopBGM で停止可能にする
+    this.currentBGM = audio;
+
+    audio.play().catch(err => {
       console.warn(`[AudioManager] BGM再生失敗 (${path}):`, err);
     });
   },
@@ -304,7 +308,6 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   
   for (let i = 0; i < data.data.length; i += 4) {
     const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
-    // 💡 差額判定で鮮やかな背景グリーンのみを消去
     if (g > 90 && (g - r) > 40 && (g - b) > 40) {
       data.data[i+3] = 0; 
     }
@@ -1024,9 +1027,12 @@ function showPaddock() {
   const grid = document.getElementById('paddock-grid'); if(!grid) return;
   grid.innerHTML = '';
   
-  runners.length = 0; const laneW = canvas.width / 4;
+  runners.length = 0; 
+  // 💡 左右にパディング(30px)を設けて両端のレーンを中央寄りに調整
+  const lanePadding = 30;
+  const laneW = (canvas.width - lanePadding * 2) / 4;
   
-  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
+  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: lanePadding + laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
   
   const playerTotal = z.speed + z.power + z.stamina + z.mentality + z.magic;
   const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
@@ -1093,7 +1099,7 @@ function showPaddock() {
     const cpuStm = Math.max(100, cpuStmVal * 10);
     const cpuColorInfo = isIntruder ? { filter: 'brightness(0) drop-shadow(0 0 10px #ef4444)' } : ZOMBIE_COLORS[0];
 
-    const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: cpuColorInfo, sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150, isIntruder: isIntruder };
+    const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: lanePadding + laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: cpuColorInfo, sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150, isIntruder: isIntruder };
     runners.push(cpuZ);
   }
 
