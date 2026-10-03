@@ -20,7 +20,7 @@ let lastTopRunnerId = null;
 let confettiParticles = [];
 
 // 🌐 オンラインランキング共有用 (JSONBlob API エンドポイント)
-const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/1356882299833835520';
+const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/01a10163-5363-72b5-81b5-0735cc9f9e10';
 
 // 🖼️ 新規素材のロード
 const successCutinImg = new Image();
