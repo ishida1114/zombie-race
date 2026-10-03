@@ -50,7 +50,9 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 // ==========================================
 async function fetchOnlineChamps() {
   try {
-    const res = await fetch(ONLINE_RANKING_URL);
+    const res = await fetch(ONLINE_RANKING_URL, {
+      headers: { 'Accept': 'application/json' }
+    });
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
@@ -60,6 +62,21 @@ async function fetchOnlineChamps() {
     }
   } catch (err) {
     console.warn('[OnlineSync] サーバーからのランキング取得に失敗 (オフライン動作):', err);
+  }
+}
+
+async function updateOnlineChamps(newChamps) {
+  try {
+    await fetch(ONLINE_RANKING_URL, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(newChamps)
+    });
+  } catch (err) {
+    console.warn('[OnlineSync] サーバーへのランキング送信に失敗 (オフライン動作):', err);
   }
 }
 
