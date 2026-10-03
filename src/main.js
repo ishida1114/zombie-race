@@ -305,8 +305,8 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   
   for (let i = 0; i < data.data.length; i += 4) {
     const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
-    // 💡 背景の鮮やかな緑だけを消すように判定を厳格化（ゾンビの肌を残す）
-    if (g > 90 && g > r * 1.35 && g > b * 1.35) {
+    // 💡 背景用グリーン（GがR・Bより極端に飛び抜けて高いピクセル）のみ透明化
+    if (g > 90 && (g - r) > 40 && (g - b) > 40) {
       data.data[i+3] = 0; 
     }
   }
