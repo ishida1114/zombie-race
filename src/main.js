@@ -46,7 +46,7 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 🌐 オンラインデータ同期機能
+// 🌐 オンラインデータ同期機能 (画面ダイアログ通知付き)
 // ==========================================
 async function fetchOnlineChamps() {
   try {
@@ -61,13 +61,13 @@ async function fetchOnlineChamps() {
       }
     }
   } catch (err) {
-    console.warn('[OnlineSync] サーバーからのランキング取得に失敗 (オフライン動作):', err);
+    console.warn('[OnlineSync] ランキング取得失敗:', err);
   }
 }
 
 async function updateOnlineChamps(newChamps) {
   try {
-    await fetch(ONLINE_RANKING_URL, {
+    const res = await fetch(ONLINE_RANKING_URL, {
       method: 'PUT',
       headers: { 
         'Content-Type': 'application/json',
@@ -75,8 +75,13 @@ async function updateOnlineChamps(newChamps) {
       },
       body: JSON.stringify(newChamps)
     });
+    if (res.ok) {
+      alert('【オンライン更新成功】サーバーへ最高タイムを正常に保存しました！');
+    } else {
+      alert(`【オンライン更新失敗】サーバー応答エラー: ステータス ${res.status}`);
+    }
   } catch (err) {
-    console.warn('[OnlineSync] サーバーへのランキング送信に失敗 (オフライン動作):', err);
+    alert(`【通信エラー】送信に失敗しました: ${err.message}`);
   }
 }
 
@@ -129,7 +134,7 @@ const AudioManager = {
 
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button, .btn, .retro-btn, .retro-btn-small, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
-      if (btn && btn.id !== 'sound-toggle-btn' && btn.id !== 'test-sync-btn') this.playSE('button');
+      if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
     });
   },
 
@@ -1267,9 +1272,10 @@ async function doFinish() {
       prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 300) : 500;
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
-      // 💡 1着なら常にサーバーへ最新タイムを送信・更新
       weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
       isChampUpdated = true;
+
+      // 💡 1着ゴール時に通信結果をダイアログで直接画面表示
       await updateOnlineChamps(weeklyChamps);
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
@@ -1602,20 +1608,6 @@ function init() {
   initPeerJS();
   AudioManager.init();
   fetchOnlineChamps(); 
-
-  // 🧪 デバッグ用：画面右下に「オンラインテスト送信」ボタンを生成
-  if (!document.getElementById('test-sync-btn')) {
-    const testBtn = document.createElement('button');
-    testBtn.id = 'test-sync-btn';
-    testBtn.textContent = '🌐 オンラインテスト送信';
-    testBtn.style.cssText = 'position:fixed; bottom:12px; right:12px; z-index:99999; padding:8px 14px; background:#facc15; color:#000; font-weight:bold; border:none; border-radius:8px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.5);';
-    testBtn.onclick = async () => {
-      weeklyChamps['fukuoka'] = { name: "テスト送信成功", time: "18.50" };
-      await updateOnlineChamps(weeklyChamps);
-      alert('✨ テスト送信が完了しました！JSONBlobの画面（F5）を確認してください。');
-    };
-    document.body.appendChild(testBtn);
-  }
   
   const navScout = document.getElementById('nav-scout-btn');
   if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
