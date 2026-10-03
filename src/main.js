@@ -44,16 +44,20 @@ const AudioManager = {
       if (!this.currentBGM && !this.isMuted) this.playBGM('opening');
       document.removeEventListener('pointerdown', unlock);
       document.removeEventListener('keydown', unlock);
+      document.removeEventListener('click', unlock);
     };
-    // 💡 画面を最初に触った瞬間にBGMを自動再生
+    
+    // 💡 画面どこを触っても最初の1回でBGM即座に全面解禁
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
+    document.addEventListener('click', unlock);
 
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button, .btn, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
       if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
     });
   },
+  
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.isMuted) { if (this.currentBGM) this.currentBGM.pause(); } 
@@ -64,17 +68,20 @@ const AudioManager = {
     }
     this.updateMuteButtonUI(); return this.isMuted;
   },
+  
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button'); btn.id = 'sound-toggle-btn'; btn.className = 'sound-toggle-btn';
-    btn.style.cssText = `position: fixed; top: 12px; left: 12px; z-index: 9999; padding: 6px 14px; font-size: 13px; font-weight: bold; background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: all 0.2s;`;
+    btn.style.cssText = `position: fixed; top: 12px; left: 12px; z-index: 9999; padding: 6px 14px; font-size: 13px; font-weight: bold; background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: all 0.2s; font-family: 'DotGothic16', sans-serif;`;
     btn.onclick = (e) => { e.stopPropagation(); this.toggleMute(); };
     document.body.appendChild(btn); this.updateMuteButtonUI();
   },
+  
   updateMuteButtonUI() {
     const btn = document.getElementById('sound-toggle-btn');
     if (btn) { btn.textContent = this.isMuted ? '🔇 音: OFF' : '🔊 音: ON'; btn.style.color = this.isMuted ? '#94a3b8' : '#38bdf8'; btn.style.borderColor = this.isMuted ? '#64748b' : '#38bdf8'; }
   },
+  
   playBGM(key) {
     if (!this.bgmList[key]) return;
     if (this.currentBGMKey === key && this.currentBGM && !this.currentBGM.paused) return;
@@ -84,7 +91,9 @@ const AudioManager = {
     audio.loop = true; audio.volume = 0.5;
     audio.play().then(() => { this.currentBGM = audio; }).catch(err => { console.warn(`[AudioManager] BGM再生失敗 (${path}):`, err); });
   },
+  
   stopBGM() { if (this.currentBGM) { this.currentBGM.pause(); this.currentBGM.currentTime = 0; this.currentBGM = null; } },
+  
   playSE(key) {
     if (this.isMuted || !this.seList[key]) return null;
     const path = this.basePathSE + this.seList[key]; const se = new Audio(path);
@@ -171,7 +180,14 @@ const STORY_BOSSES = {
   tokyo:   { name: 'Dr.マッドゾンビ', title: '最悪の異能科学者', quote: '「フハハ！究極のワクチンで我らは【超ゾンビ】となる！」' }
 };
 
-const STORY_DIFFICULTY = { fukuoka: { min: -0.15, max: 0.05 }, osaka: { min: -0.15, max: 0.10 }, nagoya: { min: -0.10, max: 0.10 }, sapporo: { min: -0.10, max: 0.15 }, tokyo: { min: 0.15, max: 0.40 } };
+const STORY_DIFFICULTY = { 
+  fukuoka: { min: -0.15, max: 0.05 }, 
+  osaka:   { min: -0.15, max: 0.10 }, 
+  nagoya:  { min: -0.10, max: 0.10 }, 
+  sapporo: { min: -0.10, max: 0.15 }, 
+  tokyo:   { min: 0.15, max: 0.40 } // 🔥 案B: 東京ボス補正+15%〜+40%に大幅超絶強化
+};
+
 const FREE_CITY_MULTIPLIERS = { fukuoka: 0.88, osaka: 0.92, nagoya: 0.96, sapporo: 1.00, tokyo: 1.04 };
 const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }];
 const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨漢', scaleX: 1.25, scaleY: 1.3 }, { name: '肥満', scaleX: 1.3, scaleY: 0.95 }];
@@ -328,7 +344,7 @@ function drawLiveCommentary() {
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`🎤 ${liveCommentary}`, canvas.width / 2, 27); ctx.restore();
 }
 
-// 💡 修正：money.webp の背景画像を確実に適用する
+// 💡 money.webp 背景と黒フチつきスタイルの確実適用
 function updateMoneyDisp() { 
   ['title-money', 'garage-money', 'shop-money'].forEach(id => {
     const el = document.getElementById(id);
@@ -336,15 +352,7 @@ function updateMoneyDisp() {
       el.textContent = `${zombieMoney} Z$`; 
       const parent = el.parentElement;
       if (parent) { 
-        parent.style.backgroundImage = 'url("/money.webp")'; 
-        parent.style.backgroundRepeat = 'no-repeat'; 
-        parent.style.backgroundPosition = 'center'; 
-        parent.style.backgroundSize = '220px 80px'; 
-        parent.style.padding = '20px 48px'; 
-        parent.style.display = 'inline-flex'; 
-        parent.style.alignItems = 'center'; 
-        parent.style.justifyContent = 'center'; 
-        parent.style.minWidth = '200px'; 
+        parent.className = 'money-wrapper';
       }
     }
   });
@@ -400,6 +408,7 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
 });
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
+// 👀 zombie_eye.mp4 を使用した探索ミニゲーム
 function startEyeTapMiniGame(onComplete) {
   let overlay = document.getElementById('eye-minigame-overlay');
   if (!overlay) {
@@ -497,6 +506,7 @@ function showSuccessCutinImage() {
   imgOverlay.style.display = 'flex'; setTimeout(() => { imgOverlay.style.display = 'none'; }, 1200);
 }
 
+// 💡 3体超過時に必ず逃がす画面へ誘導する分岐保護
 document.getElementById('send-to-garage-btn').onclick = () => {
   document.getElementById('nurture-screen').classList.add('hidden');
   if (myZombies.length > 3) {
@@ -509,7 +519,18 @@ document.getElementById('send-to-garage-btn').onclick = () => {
     document.getElementById('release-screen').classList.remove('hidden');
   } else { renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); }
 };
-window.doRelease = (idx) => { myZombies.splice(idx, 1); saveGame(); if (myZombies.length > 3) { document.getElementById('send-to-garage-btn').click(); } else { document.getElementById('release-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); } };
+
+window.doRelease = (idx) => { 
+  myZombies.splice(idx, 1); 
+  saveGame(); 
+  if (myZombies.length > 3) { 
+    document.getElementById('send-to-garage-btn').click(); 
+  } else { 
+    document.getElementById('release-screen').classList.add('hidden'); 
+    renderGarage(); 
+    document.getElementById('garage-screen').classList.remove('hidden'); 
+  } 
+};
 
 function renderCitySelect() {
   const container = document.getElementById('city-list'); container.innerHTML = '';
@@ -528,8 +549,13 @@ function renderCitySelect() {
     
     if (isUnlocked) {
       btn.onclick = () => { 
-        currentCity = city; document.getElementById('city-select-screen').classList.add('hidden'); 
-        if (currentGameMode === 'story') { showStoryCutscene(city, () => { showPaddock(); }); } else { showPaddock(); }
+        currentCity = city; 
+        document.getElementById('city-select-screen').classList.add('hidden'); 
+        if (currentGameMode === 'story') { 
+          showStoryCutscene(city, () => { showPaddock(); }); 
+        } else { 
+          showPaddock(); 
+        }
       };
     } else { btn.onclick = () => { alert('前の都市をストーリーモードでクリアすると解放されます！'); }; }
     container.appendChild(btn);
@@ -554,7 +580,7 @@ function showStoryCutscene(city, onComplete) {
         <div style="font-size: 18px; font-weight: bold; color: #facc15; margin: 6px 0;">【${boss.title}】${boss.name}</div>
         <div style="font-size: 13px; font-style: italic; color: #f8fafc; margin-top: 6px; line-height: 1.4;">${boss.quote}</div>
       </div>
-      <button id="story-start-btn" style="width: 100%; padding: 14px; font-size: 18px; font-weight: bold; background: linear-gradient(135deg, ${city.color}, #0369a1); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">出走準備（検体確認へ）</button>
+      <button id="story-start-btn" style="width: 100%; padding: 14px; font-size: 18px; font-weight: bold; background: linear-gradient(135deg, ${city.color}, #0369a1); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-family: 'DotGothic16', sans-serif;">出走準備（検体確認へ）</button>
     </div>
   `;
   modal.style.display = 'flex';
@@ -580,13 +606,14 @@ function showEndingTruthModal() {
         <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #93c5fd; border-radius: 6px;"><div style="color: #93c5fd; font-weight: bold;">❄️ 【札幌】凍血のDr.ゼロの真実</div><div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">極寒施設で立ち塞がった所長は、ウイルスの死滅条件を解明するため、自らを凍結実験台にして生き延びていた研究者だった。</div></div>
         <div style="background: rgba(15, 23, 42, 0.9); padding: 12px; border-left: 4px solid #e11d48; border-radius: 6px; border: 1px solid #f43f5e;"><div style="color: #f43f5e; font-weight: bold;">💉 【東京＆衝撃の結末】特効薬の真実</div><div style="color: #fff; margin-top: 4px; line-height: 1.5; font-weight: bold;">すべてのボスを倒し、ついにワクチンを自分に投与したあなた。<br>しかし、人間に戻るどころか知性と圧倒的筋力を兼ね備えた最悪の『超ゾンビ（新世界の王）』として覚醒してしまったのだった…！</div></div>
       </div>
-      <button id="truth-close-btn" style="width: 100%; padding: 14px; font-size: 16px; font-weight: bold; margin-top: 20px; background: linear-gradient(135deg, #e11d48, #9f1239); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">真相を受け入れ、ガレージへ戻る</button>
+      <button id="truth-close-btn" style="width: 100%; padding: 14px; font-size: 16px; font-weight: bold; margin-top: 20px; background: linear-gradient(135deg, #e11d48, #9f1239); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-family: 'DotGothic16', sans-serif;">真相を受け入れ、ガレージへ戻る</button>
     </div>
   `;
   modal.style.display = 'flex';
   document.getElementById('truth-close-btn').onclick = () => { modal.style.display = 'none'; };
 }
 
+// 💡 フリー・ストーリー問わず、パドック画面でのボタン消滅を完全防ぎレースへ遷移させる
 function showPaddock() {
   const z = myZombies[activeZombieIndex || 0]; if(!z) return;
   const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
@@ -600,6 +627,7 @@ function showPaddock() {
 
   for (let i = 1; i < 4; i++) {
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)]; let bossTitle = '対戦者';
+    
     if (currentGameMode === 'story' && i === 1 && STORY_BOSSES[currentCity.id]) {
       const boss = STORY_BOSSES[currentCity.id]; name = boss.name; bossTitle = boss.title;
     }
@@ -650,12 +678,16 @@ function showPaddock() {
     grid.appendChild(card);
   });
   
-  const btnWrapper = document.createElement('div'); btnWrapper.style.marginTop = '24px'; btnWrapper.style.animation = 'fadeIn 0.5s 1.2s forwards'; btnWrapper.style.opacity = '0'; 
-  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう</span></button>`;
+  const btnWrapper = document.createElement('div'); 
+  btnWrapper.style.cssText = 'margin-top:24px; text-align:center; opacity:1;'; 
+  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn" style="width:100%; max-width:300px; background:linear-gradient(to bottom, #ef4444, #b91c1c);">レースへ向かう</button>`;
   grid.appendChild(btnWrapper);
   
   document.getElementById('paddock-screen').classList.remove('hidden');
-  document.getElementById('start-cutin-btn').onclick = () => { document.getElementById('paddock-screen').classList.add('hidden'); startRaceCutin(); };
+  document.getElementById('start-cutin-btn').onclick = () => { 
+    document.getElementById('paddock-screen').classList.add('hidden'); 
+    startRaceCutin(); 
+  };
 }
 
 function startRaceCutin() {
@@ -986,11 +1018,6 @@ function init() {
     else { renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); }
   };
   document.getElementById('nav-pvp-btn').onclick = () => { updatePvpSelectUI(); document.getElementById('title-screen').classList.add('hidden'); document.getElementById('pvp-screen').classList.remove('hidden'); };
-  
-  const howtoBtn = document.getElementById('nav-howto-btn');
-  if(howtoBtn) howtoBtn.onclick = () => { document.getElementById('howto-modal').classList.remove('hidden'); };
-  const closeHowtoBtn = document.getElementById('close-howto-btn');
-  if(closeHowtoBtn) closeHowtoBtn.onclick = () => { document.getElementById('howto-modal').classList.add('hidden'); };
 
   document.getElementById('do-scout-btn').onclick = doScout;
   document.getElementById('back-to-title-1').onclick = () => { document.getElementById('scout-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
@@ -1002,4 +1029,5 @@ function init() {
   document.querySelectorAll('.cmd-btn').forEach(btn => { btn.onclick = () => { executeCommand(btn.dataset.cmd); }; });
   requestAnimationFrame(update);
 }
+
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }

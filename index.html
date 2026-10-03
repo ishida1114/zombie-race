@@ -17,65 +17,211 @@
       --accent-gold: #facc15;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body { font-family: 'DotGothic16', sans-serif; background-color: var(--bg-color); color: var(--text-main); overflow: hidden; touch-action: none; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
     
-    .screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+    body { 
+      font-family: 'DotGothic16', sans-serif; 
+      background-color: var(--bg-color); 
+      color: var(--text-main); 
+      overflow: hidden; 
+      touch-action: none; 
+    }
+    
+    .screen { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100vw; 
+      height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+      overflow-y: auto; 
+      overflow-x: hidden; 
+    }
+    
     .hidden { display: none !important; }
 
     /* 💰 ヘッダーのお金表示エリア */
     .header-bar {
-      display: flex; justify-content: center; align-items: center;
-      padding: 10px; background: rgba(15, 23, 42, 0.8);
-      position: sticky; top: 0; z-index: 50;
+      display: flex; 
+      justify-content: center; 
+      align-items: center;
+      padding: 12px 10px; 
+      background: rgba(15, 23, 42, 0.85);
+      position: sticky; 
+      top: 0; 
+      z-index: 50;
+      backdrop-filter: blur(4px);
     }
-    /* JS側で money.webp の背景とスタイルを上書きします */
-    .money-disp { font-size: 22px; font-weight: 900; color: var(--accent-gold); }
+    
+    .money-wrapper {
+      background-image: url('/money.webp');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 220px 80px;
+      padding: 16px 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 200px;
+    }
+
+    .money-disp { 
+      font-size: 22px; 
+      font-weight: 900; 
+      color: var(--accent-gold);
+      -webkit-text-stroke: 1.5px #000;
+      text-shadow: 3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 0 -3px 0 #000, 3px 0 0 #000, -3px 0 0 #000;
+    }
 
     /* === タイトル画面 === */
-    #title-screen { justify-content: flex-start; align-items: center; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); padding-top: 40px; }
+    #title-screen { 
+      justify-content: flex-start; 
+      align-items: center; 
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
+      padding: 24px 0; 
+    }
     
-    /* 🖼️ タイトルロゴエリア */
-    .title-banner { margin-bottom: 20px; text-align: center; width: 100%; display: flex; justify-content: center; }
-    .title-logo-img { max-width: 320px; width: 85%; height: auto; filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.6)); }
+    .title-banner { 
+      margin-top: 10px; 
+      margin-bottom: 20px; 
+      text-align: center; 
+      width: 100%; 
+      display: flex; 
+      justify-content: center; 
+    }
     
-    /* 📖 チュートリアルボックス */
+    .title-logo-img { 
+      max-width: 320px; 
+      width: 85%; 
+      height: auto; 
+      filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.7)); 
+    }
+    
+    /* 📖 チュートリアルボックス（詳細版復元） */
     .tutorial-box {
-      background: rgba(30, 41, 59, 0.85); border: 2px solid var(--accent-blue); border-radius: 12px;
-      padding: 16px 20px; margin: 0 20px 24px 20px; max-width: 500px; width: calc(100% - 40px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      background: rgba(30, 41, 59, 0.9); 
+      border: 2px solid var(--accent-blue); 
+      border-radius: 12px;
+      padding: 18px 20px; 
+      margin: 0 20px 24px 20px; 
+      max-width: 520px; 
+      width: calc(100% - 40px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
     }
-    .tutorial-box h2 { color: var(--accent-gold); font-size: 18px; border-bottom: 1px solid var(--accent-gold); padding-bottom: 6px; margin-bottom: 10px; }
-    .tutorial-box p { font-size: 13px; line-height: 1.6; margin-bottom: 12px; color: #e2e8f0; }
-    .tutorial-box h3 { color: var(--accent-blue); font-size: 15px; margin-bottom: 6px; }
-    .tutorial-box ul { padding-left: 20px; font-size: 13px; line-height: 1.5; color: #cbd5e1; }
-    .tutorial-box li { margin-bottom: 4px; }
+    
+    .tutorial-box h2 { 
+      color: var(--accent-gold); 
+      font-size: 18px; 
+      border-bottom: 2px solid var(--accent-gold); 
+      padding-bottom: 6px; 
+      margin-bottom: 12px; 
+    }
+    
+    .tutorial-box p { 
+      font-size: 13px; 
+      line-height: 1.6; 
+      margin-bottom: 14px; 
+      color: #e2e8f0; 
+    }
+    
+    .tutorial-box h3 { 
+      color: var(--accent-blue); 
+      font-size: 15px; 
+      margin-top: 12px; 
+      margin-bottom: 6px; 
+      border-left: 4px solid var(--accent-blue);
+      padding-left: 8px;
+    }
+    
+    .tutorial-box ul { 
+      padding-left: 18px; 
+      font-size: 12px; 
+      line-height: 1.6; 
+      color: #cbd5e1; 
+    }
+    
+    .tutorial-box li { margin-bottom: 6px; }
 
-    .nav-menu { display: flex; flex-direction: column; gap: 14px; width: 80%; max-width: 320px; margin-bottom: 20px; }
-    .retro-btn {
-      background: linear-gradient(to bottom, #334155, #1e293b); color: var(--text-main); border: 2px solid #475569;
-      padding: 14px; font-size: 18px; font-family: 'DotGothic16', sans-serif; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 #0f172a; transition: all 0.1s;
+    .nav-menu { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 14px; 
+      width: 80%; 
+      max-width: 320px; 
+      margin-bottom: 24px; 
     }
-    .retro-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #0f172a; }
+    
+    .retro-btn {
+      background: linear-gradient(to bottom, #3b82f6, #1d4ed8); 
+      color: var(--text-main); 
+      border: 2px solid #60a5fa;
+      padding: 14px; 
+      font-size: 18px; 
+      font-weight: bold;
+      font-family: 'DotGothic16', sans-serif; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      box-shadow: 0 4px 0 #1e3a8a, 0 6px 12px rgba(0,0,0,0.4); 
+      transition: all 0.1s;
+      text-shadow: 1px 1px 2px #000;
+    }
+    
+    .retro-btn:active { 
+      transform: translateY(4px); 
+      box-shadow: 0 0 0 #1e3a8a; 
+    }
 
     /* === 汎用UI === */
-    .panel { background: var(--panel-bg); border-radius: 12px; padding: 20px; margin: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+    .panel { 
+      background: var(--panel-bg); 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin: 16px; 
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4); 
+      border: 1px solid #334155;
+    }
+    
     .input-group { margin-bottom: 16px; }
     .input-group label { display: block; font-size: 14px; color: var(--accent-blue); margin-bottom: 8px; }
-    .input-group input, .input-group select { width: 100%; padding: 12px; font-family: 'DotGothic16'; font-size: 16px; background: #0f172a; color: #fff; border: 1px solid #475569; border-radius: 6px; }
+    .input-group input, .input-group select { 
+      width: 100%; 
+      padding: 12px; 
+      font-family: 'DotGothic16'; 
+      font-size: 15px; 
+      background: #0f172a; 
+      color: #fff; 
+      border: 1px solid #475569; 
+      border-radius: 6px; 
+    }
 
     /* === ガレージ（牧場） === */
-    .zombie-card { background: #334155; border-radius: 8px; padding: 12px; margin-bottom: 12px; border-left: 4px solid var(--accent-blue); }
+    .zombie-card { 
+      background: #334155; 
+      border-radius: 8px; 
+      padding: 12px; 
+      margin-bottom: 12px; 
+      border-left: 4px solid var(--accent-blue); 
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
     .zc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .zc-name { font-size: 18px; font-weight: bold; color: #fff; }
     .zc-title { font-size: 12px; color: var(--accent-gold); margin-right: 4px; }
-    .zc-style { background: #0f172a; padding: 2px 8px; border-radius: 12px; font-size: 12px; color: var(--accent-blue); }
-    .zc-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font-size: 12px; text-align: center; color: #cbd5e1; margin-bottom: 8px; }
+    .zc-style { background: #0f172a; padding: 2px 8px; border-radius: 12px; font-size: 12px; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+    .zc-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font-size: 12px; text-align: center; color: #cbd5e1; margin-bottom: 8px; background: #1e293b; padding: 6px; border-radius: 4px; }
     .zc-record { font-size: 12px; color: var(--accent-gold); text-align: right; margin-bottom: 8px; }
     .zc-actions { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
     .zc-btn { padding: 8px 2px; font-size: 11px; font-family: 'DotGothic16'; border: none; border-radius: 4px; cursor: pointer; color: #fff; font-weight: bold; }
-    .btn-race { background: var(--accent-blue); }
-    .btn-shop { background: #10b981; }
+    .btn-race { background: #0284c7; }
+    .btn-shop { background: #16a34a; }
     .btn-del { background: var(--accent-red); }
 
     /* === ショップ画面 === */
@@ -83,7 +229,7 @@
     .shop-item { background: #334155; border: 1px solid #475569; border-radius: 8px; padding: 12px; text-align: center; }
     .shop-item h4 { font-size: 16px; color: var(--accent-gold); margin-bottom: 8px; }
     .shop-item p { font-size: 12px; color: var(--text-sub); margin-bottom: 12px; line-height: 1.4; }
-    .shop-btn { background: #10b981; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; font-family: 'DotGothic16'; cursor: pointer; width: 100%; }
+    .shop-btn { background: #16a34a; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; font-family: 'DotGothic16'; cursor: pointer; width: 100%; font-weight: bold; }
 
     /* === 育成画面 === */
     .nurture-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; padding-bottom: 12px; margin-bottom: 16px; }
@@ -93,11 +239,11 @@
     .nurture-stats-box { flex: 1; display: flex; flex-direction: column; gap: 8px; }
     .stat-row { display: flex; justify-content: space-between; background: #334155; padding: 8px 12px; border-radius: 4px; font-size: 14px; }
     .command-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .cmd-btn { padding: 16px 8px; font-size: 16px; background: linear-gradient(to bottom, #475569, #334155); border: 2px solid #64748b; color: #fff; border-radius: 8px; font-family: 'DotGothic16'; cursor: pointer; }
+    .cmd-btn { padding: 16px 8px; font-size: 15px; background: linear-gradient(to bottom, #475569, #334155); border: 2px solid #64748b; color: #fff; border-radius: 8px; font-family: 'DotGothic16'; cursor: pointer; font-weight: bold; }
     .cmd-btn:active { background: #1e293b; }
 
     /* 育成結果演出 */
-    #nurture-result-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.9); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    #nurture-result-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.92); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; }
     .drumroll { font-size: 24px; color: var(--accent-gold); animation: pulse 0.1s infinite alternate; }
     .result-label { font-size: 36px; font-weight: bold; margin-bottom: 16px; text-shadow: 0 0 10px currentColor; }
     .lbl-great { color: var(--accent-gold); transform: scale(1.2); animation: pop 0.3s ease-out; }
@@ -116,8 +262,8 @@
     .city-btn { background: #334155; border: 2px solid #475569; border-radius: 8px; padding: 16px; cursor: pointer; text-align: left; position: relative; overflow: hidden; }
     .city-btn.locked { cursor: not-allowed; filter: grayscale(80%); }
     .city-name { font-size: 20px; font-weight: bold; display: block; margin-bottom: 4px; text-shadow: 1px 1px 0 #000; }
-    .city-desc { font-size: 12px; color: var(--text-sub); }
-    .city-champ { margin-top: 8px; font-size: 12px; color: var(--accent-gold); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: inline-block; }
+    .city-desc { font-size: 12px; color: var(--text-sub); line-height: 1.4; }
+    .city-champ { margin-top: 8px; font-size: 12px; color: var(--accent-gold); background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 4px; display: inline-block; border: 1px solid rgba(250, 204, 21, 0.3); }
 
     /* === パドック === */
     .paddock-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
@@ -140,18 +286,16 @@
     #race-screen { background: #000; }
     canvas { display: block; width: 100%; height: 60vh; object-fit: cover; }
     .hud-top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; z-index: 10; }
-    .hud-box { background: rgba(15,23,42,0.8); border: 2px solid var(--accent-blue); padding: 8px 16px; border-radius: 8px; font-size: 20px; font-weight: bold; color: #fff; }
+    .hud-box { background: rgba(15,23,42,0.85); border: 2px solid var(--accent-blue); padding: 8px 16px; border-radius: 8px; font-size: 20px; font-weight: bold; color: #fff; }
     
     .race-ui-bottom { height: 40vh; background: var(--panel-bg); border-top: 4px solid #475569; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
     
-    /* 進行度バー */
     .progress-track { height: 24px; background: #0f172a; border-radius: 12px; position: relative; border: 2px solid #475569; overflow: hidden; margin-top: 5px; }
     .runner-marker { position: absolute; top: 0; height: 100%; width: 4px; transition: left 0.1s linear; }
     .m-player { background: var(--accent-blue); z-index: 5; box-shadow: 0 0 8px var(--accent-blue); width: 6px; }
     .m-cpu { background: var(--accent-red); z-index: 4; }
     .goal-line { position: absolute; right: 0; top: 0; width: 8px; height: 100%; background: repeating-linear-gradient(45deg, #fff, #fff 4px, #000 4px, #000 8px); }
 
-    /* プレイヤー情報＆スタミナ */
     .player-status-row { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
     .p-name { font-size: 16px; font-weight: bold; color: #fff; }
     .stm-container { width: 60%; height: 16px; background: #0f172a; border-radius: 8px; border: 1px solid #475569; overflow: hidden; position: relative; }
@@ -159,11 +303,9 @@
     .stm-bar.danger { background: linear-gradient(90deg, #ef4444, #f87171); animation: blink 0.5s infinite; }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-    /* スキル発動エリア */
     .skills-area { display: flex; gap: 12px; flex: 1; }
-    
     .auto-flasks { display: flex; flex-direction: column; gap: 8px; flex: 1; }
-    .flask-row { display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 6px; border-radius: 6px; height: 50%; }
+    .flask-row { display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 6px; border-radius: 6px; height: 50%; border: 1px solid #334155; }
     .flask-icon { width: 24px; height: 32px; border: 2px solid #475569; border-radius: 4px 4px 12px 12px; position: relative; overflow: hidden; background: #1e293b; }
     .flask-fill { position: absolute; bottom: 0; left: 0; width: 100%; background: var(--accent-blue); transition: height 0.1s linear; }
     .flask-info { display: flex; flex-direction: column; }
@@ -178,9 +320,8 @@
     .s-name { font-size: 14px; font-weight: bold; }
 
     #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 60vh; display: flex; justify-content: center; align-items: center; font-size: 80px; font-weight: bold; color: var(--accent-gold); text-shadow: 0 0 20px #000, 4px 4px 0 #000; z-index: 30; }
-    #finish-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 60vh; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 40; }
+    #finish-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 60vh; background: rgba(255,255,255,0.85); display: flex; justify-content: center; align-items: center; z-index: 40; }
     .finish-text { font-size: 64px; font-weight: 900; color: #000; font-style: italic; letter-spacing: 4px; transform: scale(1.5); animation: stamp 0.3s forwards; }
-    @keyframes stamp { to { transform: scale(1); } }
 
     .slime-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 60vh; pointer-events: none; z-index: 25; background: radial-gradient(circle at center, transparent 40%, rgba(132, 204, 22, 0.4) 100%); opacity: 0; transition: opacity 0.2s; }
     .slime-overlay.active { opacity: 1; }
@@ -209,38 +350,45 @@
 
   <!-- 1. タイトル画面 -->
   <div id="title-screen" class="screen">
-    <!-- 💡 タイトルロゴ (zombielogo.webp) -->
     <div class="title-banner">
-      <img src="/zombielogo.webp" alt="ZOMBIE RACE" class="title-logo-img" onerror="this.onerror=null; this.src='/logo.png';">
+      <img src="/zombielogo.webp" alt="ZOMBIE RACE" class="title-logo-img">
     </div>
 
-    <!-- 📖 チュートリアルボックス -->
+    <!-- 📖 チュートリアルボックス（パラメータ意味・スキル詳細付き完全復元） -->
     <div class="tutorial-box">
       <h2>📖 ゾンビマスターへの道</h2>
-      <p>1. <strong>探索（スカウト）</strong>で強力な検体を捕まえろ！<br>
-         2. <strong>牧場（育成・強化）</strong>で能力と脚質を磨け！<br>
-         3. <strong>レースに出場</strong>し、Z$を稼いで全都市を制覇せよ！</p>
+      <p>1. <strong>探索（スカウト）</strong>で暗闇の目をタップして素質ある検体を捕まえろ！<br>
+         2. <strong>牧場（育成・強化）</strong>で能力と脚質を極限まで鍛え上げろ！<br>
+         3. <strong>レースに出場</strong>し、Z$を稼いで全都市のボスを撃破せよ！</p>
       
+      <h3>📊 パラメータの意味</h3>
+      <ul>
+        <li><strong>速さ</strong>：最高速度に直結。高いほど基本スピードがアップ！</li>
+        <li><strong>力強さ</strong>：競り合いの強さと攻撃に対するノックバック耐性！</li>
+        <li><strong>体力</strong>：スタミナ量。切れると「ニク…」と呟いて大失速！</li>
+        <li><strong>気性</strong>：レース中のサボり（集中力切れ）の発生率に影響！</li>
+        <li><strong>異能</strong>：異能スキルの威力向上 ＆ フラスコ溜まり速度アップ！</li>
+      </ul>
+
       <h3>🏁 レース画面のアイテム解説</h3>
       <ul>
-        <li><strong style="color: #ef4444;">💉 注射器（手動スキル）</strong><br>
-          1レースに<strong>「1回限定」</strong>で、好きなタイミングでタップして発動できる強力な切り札です！</li>
+        <li><strong style="color: #ef4444;">💉 注射器（切り札スキル）</strong><br>
+          1レースに<strong>「1回限定」</strong>で、任意のタイミングでタップ発動（マッハ・バリア・ヒール・サイコ）！</li>
         <li><strong style="color: #4ade80;">🧪 フラスコ（自動スキル）</strong><br>
-          時間経過（と異能ステータス）でゲージが溜まり、<strong>100%になると自動発動</strong>するスキルです。</li>
+          時間経過と異能値でゲージが溜まり、<strong>100%で自動発動</strong>する攻撃・妨害スキル！</li>
       </ul>
     </div>
 
     <div class="nav-menu">
       <button id="nav-scout-btn" class="retro-btn">探索 (Scout)</button>
       <button id="nav-garage-btn" class="retro-btn">牧場 (Garage)</button>
-      <button id="nav-pvp-btn" class="retro-btn" style="border-color: #ca8a04; color: #facc15;">通信対戦 (PvP)</button>
+      <button id="nav-pvp-btn" class="retro-btn" style="background: linear-gradient(to bottom, #ca8a04, #854d0e); border-color: #facc15;">通信対戦 (PvP)</button>
     </div>
   </div>
 
   <!-- 2. スカウト画面 -->
   <div id="scout-screen" class="screen hidden">
-    <!-- 💰 ヘッダーにお金表示 (JSで背景 money.webp 適用) -->
-    <div class="header-bar"><div class="money-disp" id="title-money">0 Z$</div></div>
+    <div class="header-bar"><div class="money-wrapper"><div class="money-disp" id="title-money">0 Z$</div></div></div>
     <div class="panel">
       <h2 style="color:var(--accent-blue); margin-bottom:16px; text-align:center;">🔬 検体レーダー</h2>
       <div class="input-group">
@@ -266,10 +414,11 @@
         <label>個体名 (コードネーム)</label>
         <input type="text" id="scout-name" placeholder="例: ジョン・ドウ" maxlength="10">
       </div>
-      <button id="do-scout-btn" class="retro-btn" style="width:100%; margin-top:20px; background:var(--accent-red); border-color:#fca5a5;">探索開始</button>
-      <button id="back-to-title-1" class="retro-btn" style="width:100%; margin-top:12px; background:transparent;">戻る</button>
+      <button id="do-scout-btn" class="retro-btn" style="width:100%; margin-top:20px; background:linear-gradient(to bottom, #ef4444, #b91c1c); border-color:#fca5a5;">探索開始</button>
+      <button id="back-to-title-1" class="retro-btn" style="width:100%; margin-top:12px; background:transparent; border-color:#475569;">戻る</button>
     </div>
-    <div id="found-overlay" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:50; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+    
+    <div id="found-overlay" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:50; display:flex; justify-content:center; align-items:center; flex-direction:column;">
       <h1 style="color:#000; font-size:32px; letter-spacing:4px; margin-bottom:20px;">検体確保!!</h1>
       <div style="width:100px; height:100px; background:#000; border-radius:50%; animation:pulse 0.5s infinite alternate;"></div>
     </div>
@@ -279,11 +428,17 @@
   <div id="nurture-screen" class="screen hidden">
     <div class="panel" style="flex:1; display:flex; flex-direction:column;">
       <div class="nurture-header">
-        <div><div style="font-size:12px; color:var(--text-sub);">個体名</div><div id="nurture-zombie-name" style="font-size:24px; font-weight:bold;">---</div></div>
+        <div>
+          <div style="font-size:12px; color:var(--text-sub);">個体名</div>
+          <div id="nurture-zombie-name" style="font-size:24px; font-weight:bold;">---</div>
+        </div>
         <div class="nurture-turn" id="nurture-turn-txt">残 5 調整</div>
       </div>
+
       <div class="nurture-layout">
-        <div class="nurture-visual"><canvas id="zombieCanvas" width="160" height="160" style="width:100%; height:100%; object-fit:contain;"></canvas></div>
+        <div class="nurture-visual">
+          <canvas id="zombieCanvas" width="160" height="160" style="width:100%; height:100%; object-fit:contain;"></canvas>
+        </div>
         <div class="nurture-stats-box">
           <div class="stat-row"><span>脚質</span><span id="stat-style" style="color:var(--accent-gold);">---</span></div>
           <div class="stat-row"><span>速さ</span><span id="stat-spd">0</span></div>
@@ -293,12 +448,15 @@
           <div class="stat-row"><span>異能</span><span id="stat-mag">0</span></div>
         </div>
       </div>
+
       <div class="command-container">
         <button class="cmd-btn" data-cmd="spd"><span style="font-size:24px; display:block; margin-bottom:4px;">🏃</span>ランニング<br><span style="font-size:10px; color:#94a3b8;">速↑ 気↓</span></button>
         <button class="cmd-btn" data-cmd="pow"><span style="font-size:24px; display:block; margin-bottom:4px;">🥩</span>捕食訓練<br><span style="font-size:10px; color:#94a3b8;">力↑ 異↓</span></button>
         <button class="cmd-btn" data-cmd="stm"><span style="font-size:24px; display:block; margin-bottom:4px;">🏊</span>血の遊泳<br><span style="font-size:10px; color:#94a3b8;">体↑ 速↓</span></button>
       </div>
-      <button id="send-to-garage-btn" class="retro-btn hidden" style="width:100%; margin-top:auto; background:var(--accent-blue);">牧場(ガレージ)へ送る</button>
+
+      <button id="send-to-garage-btn" class="retro-btn hidden" style="width:100%; margin-top:auto; background:linear-gradient(to bottom, #0284c7, #0369a1); border-color:#38bdf8;">牧場(ガレージ)へ送る</button>
+
       <div id="nurture-result-overlay" class="hidden">
         <div id="drumroll-text" class="drumroll">調整中...</div>
         <div id="result-label" class="result-label hidden">大成功!!</div>
@@ -307,7 +465,7 @@
     </div>
   </div>
 
-  <!-- 4. 逃がす画面（整理用） -->
+  <!-- 4. 逃がす画面（3体超過保護用） -->
   <div id="release-screen" class="screen hidden" style="background:rgba(15,23,42,0.95); z-index:200;">
     <div class="panel" style="margin-top:40px;">
       <h2 style="color:var(--accent-red); text-align:center; margin-bottom:12px;">⚠️ キャパシティ上限</h2>
@@ -318,32 +476,30 @@
 
   <!-- 5. ガレージ（牧場）画面 -->
   <div id="garage-screen" class="screen hidden">
-    <!-- 💰 ヘッダーにお金表示 (JSで背景 money.webp 適用) -->
-    <div class="header-bar"><div class="money-disp" id="garage-money">0 Z$</div></div>
+    <div class="header-bar"><div class="money-wrapper"><div class="money-disp" id="garage-money">0 Z$</div></div></div>
     <div class="panel" style="flex:1; overflow-y:auto; padding-top:10px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h2 style="color:var(--accent-blue);">🧟 管理中検体 (<span id="garage-count">0</span>/3)</h2>
       </div>
       <div id="garage-list"></div>
-      <button id="back-to-title-2" class="retro-btn" style="width:100%; margin-top:20px; background:transparent;">タイトルへ</button>
+      <button id="back-to-title-2" class="retro-btn" style="width:100%; margin-top:20px; background:transparent; border-color:#475569;">タイトルへ</button>
     </div>
   </div>
 
   <!-- 6. ショップ（強化）画面 -->
   <div id="shop-screen" class="screen hidden">
-    <!-- 💰 ヘッダーにお金表示 (JSで背景 money.webp 適用) -->
-    <div class="header-bar"><div class="money-disp" id="shop-money">0 Z$</div></div>
+    <div class="header-bar"><div class="money-wrapper"><div class="money-disp" id="shop-money">0 Z$</div></div></div>
     <div class="panel">
       <h2 style="color:#10b981; text-align:center; margin-bottom:8px;">💉 闇市ドーピング</h2>
       <p style="text-align:center; font-size:14px; color:var(--text-sub);">対象: <span id="shop-target-name" style="color:#fff; font-weight:bold;">---</span></p>
       <div class="shop-grid">
-        <div class="shop-item"><h4>筋力増強剤</h4><p>速さ +3</p><button class="shop-btn" data-price="300" data-stat="speed">300 Z$</button></div>
-        <div class="shop-item"><h4>凶暴化ガス</h4><p>力強さ +3</p><button class="shop-btn" data-price="300" data-stat="power">300 Z$</button></div>
-        <div class="shop-item"><h4>凝血パック</h4><p>体力 +3</p><button class="shop-btn" data-price="300" data-stat="stamina">300 Z$</button></div>
-        <div class="shop-item"><h4>精神安定剤</h4><p>気性 +3</p><button class="shop-btn" data-price="300" data-stat="mentality">300 Z$</button></div>
-        <div class="shop-item" style="grid-column: span 2;"><h4>変異ウイルス</h4><p>異能 +3</p><button class="shop-btn" data-price="300" data-stat="magic">300 Z$</button></div>
+        <div class="shop-item"><h4>筋力増強剤</h4><p>速さ +2〜4</p><button class="shop-btn" data-price="300" data-stat="speed">300 Z$</button></div>
+        <div class="shop-item"><h4>凶暴化ガス</h4><p>力強さ +2〜4</p><button class="shop-btn" data-price="300" data-stat="power">300 Z$</button></div>
+        <div class="shop-item"><h4>凝血パック</h4><p>体力 +2〜4</p><button class="shop-btn" data-price="300" data-stat="stamina">300 Z$</button></div>
+        <div class="shop-item"><h4>精神安定剤</h4><p>気性 +2〜4</p><button class="shop-btn" data-price="300" data-stat="mentality">300 Z$</button></div>
+        <div class="shop-item" style="grid-column: span 2;"><h4>変異ウイルス</h4><p>異能 +2〜4</p><button class="shop-btn" data-price="300" data-stat="magic">300 Z$</button></div>
       </div>
-      <button id="close-shop-btn" class="retro-btn" style="width:100%; margin-top:24px; background:transparent;">戻る</button>
+      <button id="close-shop-btn" class="retro-btn" style="width:100%; margin-top:24px; background:transparent; border-color:#475569;">戻る</button>
     </div>
   </div>
 
@@ -352,7 +508,7 @@
     <div class="panel">
       <h2 style="color:var(--accent-red); text-align:center;">🏙️ 出走エリア選択</h2>
       <div id="city-list" class="city-list"></div>
-      <button id="back-to-garage-1" class="retro-btn" style="width:100%; margin-top:24px; background:transparent;">牧場へ戻る</button>
+      <button id="back-to-garage-1" class="retro-btn" style="width:100%; margin-top:24px; background:transparent; border-color:#475569;">牧場へ戻る</button>
     </div>
   </div>
 
@@ -391,16 +547,16 @@
         <div style="font-size:14px; color:var(--accent-blue); margin-bottom:8px;">コース: <span id="lobby-city-name" style="color:#fff;">---</span></div>
         <div style="font-size:14px; color:var(--accent-blue); margin-bottom:8px;">参加メンバー</div>
         <div id="member-list" style="margin-bottom:16px;"></div>
-        <button id="start-pvp-race-btn" class="retro-btn" style="width:100%; background:var(--accent-red);">全員揃ったら出走！</button>
+        <button id="start-pvp-race-btn" class="retro-btn" style="width:100%; background:linear-gradient(to bottom, #ef4444, #b91c1c);">全員揃ったら出走！</button>
       </div>
 
-      <button id="back-to-title-pvp" class="retro-btn" style="width:100%; margin-top:24px; background:transparent;">タイトルへ</button>
+      <button id="back-to-title-pvp" class="retro-btn" style="width:100%; margin-top:24px; background:transparent; border-color:#475569;">タイトルへ</button>
     </div>
   </div>
 
   <!-- 9. パドック画面 -->
   <div id="paddock-screen" class="screen hidden">
-    <div class="panel" style="background:transparent; box-shadow:none;">
+    <div class="panel" style="background:transparent; box-shadow:none; border:none;">
       <h2 style="color:var(--accent-gold); text-align:center; text-shadow:0 2px 4px #000; margin-bottom:4px;">📊 出走検体リスト</h2>
       <div id="paddock-grid" class="paddock-grid"></div>
     </div>
