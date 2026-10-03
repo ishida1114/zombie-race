@@ -19,8 +19,16 @@ let lastTopRunnerId = null;
 // 🎊 サイケカラー紙吹雪パーティクル
 let confettiParticles = [];
 
-// 🌐 オンラインランキング共有用 URL
-const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/01a10163-5363-72b5-81b5-0735cc9f9e10';
+// ==========================================
+// 🌐 Supabase 接続設定
+// ==========================================
+const SUPABASE_URL = 'https://qpboofsykqjqfkfpledd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwYm9vZnN5a3FqcWZrZnBsZWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NDk5MDgsImV4cCI6MjEwNjAyNTkwOH0.n--qzh0umuLA_2Uke04WNkaHJ11I86V_Ip-pcOfOoOQ';
+const SUPABASE_HEADERS = {
+  'apikey': SUPABASE_ANON_KEY,
+  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+  'Content-Type': 'application/json'
+};
 
 // 🖼️ 新規素材のロード
 const successCutinImg = new Image();
@@ -46,32 +54,63 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 🌐 オンラインデータ同期機能 (キャッシュ回避対策済み)
+// 🌐 Supabase オンラインデータ同期機能
 // ==========================================
 async function fetchOnlineChamps() {
   try {
-    const res = await fetch(ONLINE_RANKING_URL + '?t=' + Date.now());
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/zombie_rankings?select=city_id,player_name,time_record`, {
+      headers: SUPABASE_HEADERS
+    });
     if (res.ok) {
       const data = await res.json();
-      if (data && typeof data === 'object') {
-        weeklyChamps = data;
+      if (Array.isArray(data)) {
+        const champs = {};
+        data.forEach(row => {
+          if (row.city_id) {
+            champs[row.city_id] = { name: row.player_name, time: String(row.time_record) };
+          }
+        });
+        weeklyChamps = champs;
         localStorage.setItem('weeklyChamps', JSON.stringify(weeklyChamps));
       }
     }
   } catch (err) {
-    console.warn('[OnlineSync] 取得エラー:', err);
+    console.warn('[SupabaseSync] 取得エラー:', err);
   }
 }
 
-async function updateOnlineChamps(newChamps) {
+async function updateOnlineChamps(cityId, name, time) {
   try {
-    await fetch(ONLINE_RANKING_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newChamps)
+    const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/zombie_rankings?city_id=eq.${cityId}`, {
+      headers: SUPABASE_HEADERS
     });
+    if (checkRes.ok) {
+      const existing = await checkRes.json();
+      if (existing && existing.length > 0) {
+        // 更新 (PATCH)
+        await fetch(`${SUPABASE_URL}/rest/v1/zombie_rankings?city_id=eq.${cityId}`, {
+          method: 'PATCH',
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify({
+            player_name: name,
+            time_record: parseFloat(time)
+          })
+        });
+      } else {
+        // 新規登録 (POST)
+        await fetch(`${SUPABASE_URL}/rest/v1/zombie_rankings`, {
+          method: 'POST',
+          headers: SUPABASE_HEADERS,
+          body: JSON.stringify({
+            city_id: cityId,
+            player_name: name,
+            time_record: parseFloat(time)
+          })
+        });
+      }
+    }
   } catch (err) {
-    console.warn('[OnlineSync] 送信エラー:', err);
+    console.warn('[SupabaseSync] 送信エラー:', err);
   }
 }
 
@@ -1266,7 +1305,7 @@ async function doFinish() {
       if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
         weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
         isChampUpdated = true;
-        await updateOnlineChamps(weeklyChamps); 
+        await updateOnlineChamps(currentCity.id, z ? z.name : '名無し', elapsedSec);
       }
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
@@ -1426,7 +1465,7 @@ function update() {
       if (currentGameMode === 'story' && currentCity.id === 'tokyo' && r.id === 1) {
         if (remainingDistance <= 150 && !r.hasMadDoped) {
           r.hasMadDoped = true;
-          liveCommentary = `⚠️ Dr.マッドゾンビが究極の薬を注射！【マッハ＋バリア】発動！！`;
+          liveCommentary = `⚠️️ Dr.マッドゾンビが究極の薬を注射！【マッハ＋バリア】発動！！`;
           triggerSkill(SYRINGE_SKILLS.find(s=>s.id==='mach'), r);
           triggerSkill(SYRINGE_SKILLS.find(s=>s.id==='barrier'), r);
         }
@@ -1595,7 +1634,7 @@ function update() {
 }
 
 // ==========================================
-// 🚨 テストボタンをタイトル画面に追加
+// 🚨 Supabase 用テストボタン
 // ==========================================
 function addDebugButton() {
   if(document.getElementById('sync-test-btn')) return;
@@ -1607,24 +1646,11 @@ function addDebugButton() {
   
   testBtn.onclick = async () => {
     try {
-      alert("【送信テスト】JSONBlobへデータを送信します...");
-      const testData = { "fukuoka": { "name": "テスト成功！", "time": "9.99" } };
-      
-      const putRes = await fetch(ONLINE_RANKING_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testData)
-      });
-      
-      if (!putRes.ok) throw new Error("送信失敗 (ステータス: " + putRes.status + ")");
-      alert("✅ 送信成功！\n\n続いて受信テストを行います...");
-      
-      const getRes = await fetch(ONLINE_RANKING_URL + '?t=' + Date.now());
-      if (!getRes.ok) throw new Error("受信失敗 (ステータス: " + getRes.status + ")");
-      
-      const getData = await getRes.json();
-      alert("🎉 完全成功！\n\n取得したデータ:\n" + JSON.stringify(getData, null, 2));
-      
+      alert("【Supabase送信テスト】データを送信します...");
+      await updateOnlineChamps('fukuoka', 'テスト成功！', '9.99');
+      alert("✅ 送信処理完了！\n\n続いて受信テストを行います...");
+      await fetchOnlineChamps();
+      alert("🎉 完全成功！\n\n取得したデータ:\n" + JSON.stringify(weeklyChamps, null, 2));
     } catch(e) {
       alert("❌ エラー発生！原因:\n" + e.message);
     }
@@ -1637,7 +1663,7 @@ function init() {
   initPeerJS();
   AudioManager.init();
   fetchOnlineChamps();
-  addDebugButton(); // テストボタン表示
+  addDebugButton();
   
   const navScout = document.getElementById('nav-scout-btn');
   if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
