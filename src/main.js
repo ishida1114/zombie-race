@@ -43,13 +43,10 @@ const AudioManager = {
       const dummy = new Audio(); dummy.play().catch(() => {});
       if (!this.currentBGM && !this.isMuted) this.playBGM('opening');
       document.removeEventListener('pointerdown', unlock);
-      document.removeEventListener('keydown', unlock);
       document.removeEventListener('click', unlock);
     };
     
-    // 画面初回操作でBGM完全解禁
     document.addEventListener('pointerdown', unlock);
-    document.addEventListener('keydown', unlock);
     document.addEventListener('click', unlock);
 
     document.addEventListener('click', (e) => {
@@ -69,10 +66,11 @@ const AudioManager = {
     this.updateMuteButtonUI(); return this.isMuted;
   },
   
+  // 💡 音量ボタンを右上（top:10px, right:10px）に移動し被りを解消
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button'); btn.id = 'sound-toggle-btn'; btn.className = 'sound-toggle-btn';
-    btn.style.cssText = `position: fixed; top: 12px; left: 12px; z-index: 9999; padding: 6px 14px; font-size: 13px; font-weight: bold; background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'DotGothic16', sans-serif !important;`;
+    btn.style.cssText = `position: fixed; top: 10px; right: 10px; z-index: 9999; padding: 6px 14px; font-size: 13px; font-weight: bold; background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'DotGothic16', sans-serif !important;`;
     btn.onclick = (e) => { e.stopPropagation(); this.toggleMute(); };
     document.body.appendChild(btn); this.updateMuteButtonUI();
   },
@@ -341,9 +339,7 @@ function updateMoneyDisp() {
   const ids = ['title-money', 'scout-header-money', 'garage-money', 'shop-money'];
   ids.forEach(id => {
     const el = document.getElementById(id);
-    if (el) {
-      el.textContent = `${zombieMoney} Z$`; 
-    }
+    if (el) { el.textContent = `${zombieMoney} Z$`; }
   });
 }
 
@@ -367,7 +363,7 @@ function renderGarage() {
     `;
     list.appendChild(card);
   });
-  if (myZombies.length === 0) list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:40px 20px;">検体が居ません。<br>探索してください。</div>';
+  if (myZombies.length === 0) list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:30px 10px;">検体が居ません。<br>探索してください。</div>';
 }
 
 window.renameZombie = (idx) => {
@@ -397,6 +393,7 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
 });
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
+// 💡 探索ミニゲーム（`zombie_eye.mp4` タップ）
 function startEyeTapMiniGame(onComplete) {
   let overlay = document.getElementById('eye-minigame-overlay');
   if (!overlay) {
@@ -405,14 +402,14 @@ function startEyeTapMiniGame(onComplete) {
     document.body.appendChild(overlay);
   }
   let hitCount = 0; const targetHits = 3;
-  overlay.innerHTML = `<div style="position: absolute; top: 30px; font-size: 20px; font-weight: bold; color: #38bdf8; text-shadow: 0 0 10px #38bdf8; text-align: center;">🔍 潜伏中の検体を捕捉せよ！<br><span style="font-size: 14px; color: #facc15;">暗闇で光る「ゾンビの目」をタップ！ (${hitCount}/${targetHits})</span></div>`;
+  overlay.innerHTML = `<div style="position: absolute; top: 30px; font-size: 18px; font-weight: bold; color: #38bdf8; text-shadow: 0 0 10px #38bdf8; text-align: center;">🔍 潜伏中の検体を捕捉せよ！<br><span style="font-size: 13px; color: #facc15;">暗闇で光る「ゾンビの目」をタップ！ (${hitCount}/${targetHits})</span></div>`;
   overlay.style.display = 'flex';
   
   const videoElem = document.createElement('video'); videoElem.src = '/zombie_eye.mp4'; videoElem.loop = true; videoElem.muted = true; videoElem.playsInline = true;
-  videoElem.style.cssText = `position: absolute; width: 120px; height: 120px; border-radius: 50%; cursor: pointer; border: 3px solid #ef4444; box-shadow: 0 0 20px #ef4444; transition: transform 0.1s; object-fit: cover;`;
+  videoElem.style.cssText = `position: absolute; width: 110px; height: 110px; border-radius: 50%; cursor: pointer; border: 3px solid #ef4444; box-shadow: 0 0 20px #ef4444; object-fit: cover;`;
 
   function moveVideo() {
-    const maxX = window.innerWidth - 140; const maxY = window.innerHeight - 140;
+    const maxX = window.innerWidth - 130; const maxY = window.innerHeight - 130;
     const rx = Math.max(20, Math.floor(Math.random() * maxX)); const ry = Math.max(80, Math.floor(Math.random() * maxY));
     videoElem.style.left = `${rx}px`; videoElem.style.top = `${ry}px`; videoElem.play().catch(() => {});
   }
@@ -427,9 +424,11 @@ function startEyeTapMiniGame(onComplete) {
   };
 }
 
+// 💡 探索＆検体確保（黒丸●撤廃・確保したゾンビのキャンバス描画演出）
 function doScout() {
   const cityVal = document.getElementById('scout-city').value; const styleVal = document.getElementById('scout-style').value;
   let nameVal = document.getElementById('scout-name').value || '名無し';
+  
   startEyeTapMiniGame((isBonus) => {
     let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
     if (isBonus) { spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3; alert('✨ 捕捉大成功！素質が開花し、初期ステータス ALL +3 ボーナス獲得！'); }
@@ -439,8 +438,24 @@ function doScout() {
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
     const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
     myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
+    
+    // 💡 確保成功時：黒丸●を廃止し、確保ゾンビ描画プレビューをオーバーレイに描画
+    const previewBox = document.getElementById('found-zombie-preview');
+    if (previewBox) {
+      previewBox.innerHTML = '';
+      const pCanvas = document.createElement('canvas'); pCanvas.width = 140; pCanvas.height = 140;
+      const pCtxInner = pCanvas.getContext('2d');
+      drawZombieCharacter(pCtxInner, 70, 10, 70, 100, { ...newZ, knockback: 0 }, updateChromaKeyFrame(newZ.videoIndex, 70, 100), false);
+      previewBox.appendChild(pCanvas);
+    }
+
     const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
-    setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
+    setTimeout(() => { 
+      overlay.classList.add('hidden'); 
+      document.getElementById('scout-screen').classList.add('hidden'); 
+      updateNurtureUI(); 
+      document.getElementById('nurture-screen').classList.remove('hidden'); 
+    }, 1800);
   });
 }
 
@@ -448,9 +463,17 @@ function updateNurtureUI() {
   const z = myZombies[activeZombieIndex]; if (!z) return;
   document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`; document.getElementById('nurture-zombie-name').textContent = z.name;
   document.getElementById('stat-style').textContent = z.style; document.getElementById('stat-spd').textContent = z.speed; document.getElementById('stat-pow').textContent = z.power; document.getElementById('stat-stm').textContent = z.stamina; document.getElementById('stat-mnt').textContent = z.mentality; document.getElementById('stat-mag').textContent = z.magic;
+  
   const zCtx = document.getElementById('zombieCanvas').getContext('2d'); zCtx.imageSmoothingEnabled = false; zCtx.clearRect(0, 0, 160, 160);
   drawZombieCharacter(zCtx, 80, 20, 80, 110, { ...z, knockback: 0 }, updateChromaKeyFrame(z.videoIndex, 80, 110), false);
-  if (z.remainingTurns <= 0) { document.querySelector('.command-container').classList.add('hidden'); document.getElementById('send-to-garage-btn').classList.remove('hidden'); } else { document.querySelector('.command-container').classList.remove('hidden'); document.getElementById('send-to-garage-btn').classList.add('hidden'); }
+  
+  if (z.remainingTurns <= 0) { 
+    document.querySelector('.command-container').classList.add('hidden'); 
+    document.getElementById('send-to-garage-btn').classList.remove('hidden'); 
+  } else { 
+    document.querySelector('.command-container').classList.remove('hidden'); 
+    document.getElementById('send-to-garage-btn').classList.add('hidden'); 
+  }
 }
 
 let activeDrumrollAudio = null;
@@ -530,7 +553,7 @@ function renderCitySelect() {
     let lockTag = isUnlocked ? '' : '<span style="color:#ef4444; font-weight:bold;"> [未解放]</span>';
     
     let descHtml = city.desc;
-    if (currentGameMode === 'free' && isUnlocked) { descHtml += `<br><span style="color:#facc15; font-weight:bold; font-size:13px;">💰 1着賞金: ${city.freeBasePrize} Z$</span>`; }
+    if (currentGameMode === 'free' && isUnlocked) { descHtml += `<br><span style="color:#facc15; font-weight:bold; font-size:12px;">💰 1着賞金: ${city.freeBasePrize} Z$</span>`; }
 
     btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)${lockTag}</span><span class="city-desc">${descHtml}</span>${champHtml}`;
     
@@ -590,7 +613,7 @@ function showEndingTruthModal() {
         <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #0284c7; border-radius: 6px;"><div style="color: #38bdf8; font-weight: bold;">🚚 【福岡】爆走デリバリーの真実</div><div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">冷めないピザを届けていたわけではない。彼はゾンビ化初期、市民へ「緊急予防薬」を命がけで配送していた英雄だった。</div></div>
         <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #ca8a04; border-radius: 6px;"><div style="color: #facc15; font-weight: bold;">💰 【大阪】ナニワの金主の真実</div><div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">金を撒いてサボらせていた富豪は、全私財を投じてワクチン開発を影で支援していた大恩人だった。手遅れとなり自らも感染した。</div></div>
         <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #16a34a; border-radius: 6px;"><div style="color: #4ade80; font-weight: bold;">🛡️ 【名古屋】フルアーマー鉄壁の真実</div><div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">道を阻んでいた重装甲は妨害のためではない。感染拡大を防ぐため、自ら身体を封印し防衛線となって孤軍奮闘していた。</div></div>
-        <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #93c5fd; border-radius: 6px;"><div style="color: #93c5fd; font-weight: bold;">❄️ 【札幌】凍血のDr.ゼロの真実</div><div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">極寒施設で立ち塞がった所長は、ウイルスの死滅条件を解明するため、自らを凍結実験台にして生き延びていた研究者だった。</div></div>
+        <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #93c5fd; border-radius: 6px;"><div style="color: #93c5fd; font-weight: bold;">❄️️ 【札幌】凍血のDr.ゼロの真実</div><div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">極寒施設で立ち塞がった所長は、ウイルスの死滅条件を解明するため、自らを凍結実験台にして生き延びていた研究者だった。</div></div>
         <div style="background: rgba(15, 23, 42, 0.9); padding: 12px; border-left: 4px solid #e11d48; border-radius: 6px; border: 1px solid #f43f5e;"><div style="color: #f43f5e; font-weight: bold;">💉 【東京＆衝撃の結末】特効薬の真実</div><div style="color: #fff; margin-top: 4px; line-height: 1.5; font-weight: bold;">すべてのボスを倒し、ついにワクチンを自分に投与したあなた。<br>しかし、人間に戻るどころか知性と圧倒的筋力を兼ね備えた最悪の『超ゾンビ（新世界の王）』として覚醒してしまったのだった…！</div></div>
       </div>
       <button id="truth-close-btn" class="retro-btn" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 20px; background: linear-gradient(135deg, #e11d48, #9f1239);">真相を受け入れ、ガレージへ戻る</button>
@@ -756,7 +779,8 @@ function doFinish() {
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
   setTimeout(() => {
     raceState = 'FINISHED'; 
-    document.getElementById('finish-overlay').classList.add('hidden'); // 💡 FINISH文字を確実に消す
+    // 💡 FINISH文字オーバーレイを確実に消去
+    document.getElementById('finish-overlay').classList.add('hidden'); 
     
     const sorted = [...runners].sort((a, b) => b.dist - a.dist); 
     const playerRank = sorted.findIndex(r => r.id === 0) + 1;
@@ -766,7 +790,7 @@ function doFinish() {
 
     if (playerRank === 1) { 
       if(z) z.wins++; 
-      if (currentGameMode === 'free') { prize = currentCity.freeBasePrize || 300; } else { prize = 500; }
+      prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 300) : 500;
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
       const currentChamp = weeklyChamps[currentCity.id];
@@ -787,7 +811,7 @@ function doFinish() {
     else prize = 50;
     
     zombieMoney += prize; saveGame(); 
-    // 💡 獲得賞金をキレイな文字列でセット
+    // 💡 獲得賞金をキレイにフォーマット表示
     document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
     
     const noticeEl = document.getElementById('champ-notice');
@@ -832,7 +856,9 @@ function renderPodiumFrame() {
   if (!currentSortedRunners || currentSortedRunners.length === 0) return;
   pCtx.clearRect(0, 0, podiumCanvas.width, podiumCanvas.height); pCtx.imageSmoothingEnabled = false;
   
-  pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
+  pCtx.fillStyle = '#facc15'; pCtx.fillRect(140, 100, 80, 140); 
+  pCtx.fillStyle = '#94a3b8'; pCtx.fillRect(60, 140, 80, 100); 
+  pCtx.fillStyle = '#b45309'; pCtx.fillRect(220, 160, 80, 80);
   pCtx.fillStyle = '#0f131a'; pCtx.font = 'bold 36px sans-serif'; pCtx.textAlign = 'center'; pCtx.fillText('1', 180, 150); pCtx.fillText('2', 100, 180); pCtx.fillText('3', 260, 200);
   
   const pcs = VIDEO_SOURCES.map((_, i) => updateChromaKeyFrame(i, 64, 80));

@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ZOMBIE RACE</title>
+  <!-- 💡 Google Fonts を確実に読み込み -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
-    
     :root {
       --bg-color: #0f172a;
       --panel-bg: #1e293b;
@@ -24,7 +27,6 @@
       user-select: none;
       font-family: 'DotGothic16', sans-serif !important;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
     
     body { 
@@ -53,31 +55,30 @@
       display: flex; 
       justify-content: center; 
       align-items: center;
-      padding: 10px; 
+      padding: 8px; 
       background: rgba(15, 23, 42, 0.85);
       position: sticky; 
       top: 0; 
       z-index: 50;
-      backdrop-filter: blur(4px);
     }
     
     .money-wrapper {
       background-image: url('/money.webp');
       background-repeat: no-repeat;
       background-position: center;
-      background-size: 220px 70px;
-      padding: 14px 40px;
+      background-size: 200px 60px;
+      padding: 10px 30px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 200px;
+      min-width: 180px;
     }
 
     .money-disp { 
-      font-size: 22px; 
+      font-size: 20px; 
       font-weight: 900; 
       color: var(--accent-gold);
-      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
+      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
     }
 
     /* === タイトル画面 === */
@@ -90,7 +91,7 @@
     
     .title-banner { 
       margin-top: 10px; 
-      margin-bottom: 16px; 
+      margin-bottom: 12px; 
       text-align: center; 
       width: 100%; 
       display: flex; 
@@ -98,42 +99,43 @@
     }
     
     .title-logo-img { 
-      max-width: 300px; 
-      width: 80%; 
+      max-width: 280px; 
+      width: 75%; 
       height: auto; 
       filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.6)); 
     }
     
+    /* 📖 チュートリアルボックス（全復元） */
     .tutorial-box {
       background: rgba(30, 41, 59, 0.9); 
       border: 2px solid var(--accent-blue); 
       border-radius: 12px;
-      padding: 16px; 
-      margin: 0 16px 20px 16px; 
-      max-width: 500px; 
+      padding: 14px 16px; 
+      margin: 0 16px 16px 16px; 
+      max-width: 480px; 
       width: calc(100% - 32px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
     }
     
     .tutorial-box h2 { 
       color: var(--accent-gold); 
-      font-size: 18px; 
+      font-size: 16px; 
       border-bottom: 2px solid var(--accent-gold); 
       padding-bottom: 4px; 
-      margin-bottom: 10px; 
+      margin-bottom: 8px; 
     }
     
     .tutorial-box p { 
-      font-size: 13px; 
+      font-size: 12px; 
       line-height: 1.5; 
-      margin-bottom: 10px; 
+      margin-bottom: 8px; 
       color: #e2e8f0; 
     }
     
     .tutorial-box h3 { 
       color: var(--accent-blue); 
-      font-size: 14px; 
-      margin-top: 10px; 
+      font-size: 13px; 
+      margin-top: 8px; 
       margin-bottom: 4px; 
       border-left: 3px solid var(--accent-blue);
       padding-left: 6px;
@@ -141,19 +143,19 @@
     
     .tutorial-box ul { 
       padding-left: 16px; 
-      font-size: 12px; 
-      line-height: 1.5; 
+      font-size: 11px; 
+      line-height: 1.4; 
       color: #cbd5e1; 
     }
     
-    .tutorial-box li { margin-bottom: 4px; }
+    .tutorial-box li { margin-bottom: 3px; }
 
     .nav-menu { 
       display: flex; 
       flex-direction: column; 
-      gap: 12px; 
+      gap: 10px; 
       width: 80%; 
-      max-width: 300px; 
+      max-width: 280px; 
       margin-bottom: 20px; 
     }
     
@@ -162,36 +164,36 @@
       color: var(--text-main); 
       border: 2px solid #60a5fa;
       padding: 12px; 
-      font-size: 17px; 
+      font-size: 16px; 
       font-weight: bold;
       border-radius: 8px; 
       cursor: pointer; 
-      box-shadow: 0 4px 0 #1e3a8a, 0 6px 12px rgba(0,0,0,0.4); 
+      box-shadow: 0 4px 0 #1e3a8a; 
       transition: all 0.1s;
       text-shadow: 1px 1px 2px #000;
     }
     
     .retro-btn:active { 
-      transform: translateY(4px); 
+      transform: translateY(3px); 
       box-shadow: 0 0 0 #1e3a8a; 
     }
 
-    /* === 汎用パネル === */
+    /* === 汎用UI === */
     .panel { 
       background: var(--panel-bg); 
       border-radius: 12px; 
-      padding: 16px; 
-      margin: 12px; 
+      padding: 14px; 
+      margin: 10px; 
       box-shadow: 0 8px 16px rgba(0,0,0,0.4); 
       border: 1px solid #334155;
     }
     
-    .input-group { margin-bottom: 12px; }
-    .input-group label { display: block; font-size: 13px; color: var(--accent-blue); margin-bottom: 6px; }
+    .input-group { margin-bottom: 10px; }
+    .input-group label { display: block; font-size: 12px; color: var(--accent-blue); margin-bottom: 4px; }
     .input-group input, .input-group select { 
       width: 100%; 
-      padding: 10px; 
-      font-size: 14px; 
+      padding: 8px; 
+      font-size: 13px; 
       background: #0f172a; 
       color: #fff; 
       border: 1px solid #475569; 
@@ -205,13 +207,12 @@
       padding: 10px; 
       margin-bottom: 10px; 
       border-left: 4px solid var(--accent-blue); 
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
     
     .zc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .zc-name { font-size: 16px; font-weight: bold; color: #fff; }
+    .zc-name { font-size: 15px; font-weight: bold; color: #fff; }
     .zc-title { font-size: 11px; color: var(--accent-gold); margin-right: 4px; }
-    .zc-style { background: #0f172a; padding: 2px 6px; border-radius: 10px; font-size: 11px; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+    .zc-style { background: #0f172a; padding: 2px 6px; border-radius: 10px; font-size: 10px; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
     .zc-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; font-size: 11px; text-align: center; color: #cbd5e1; margin-bottom: 6px; background: #1e293b; padding: 4px; border-radius: 4px; }
     .zc-record { font-size: 11px; color: var(--accent-gold); text-align: right; margin-bottom: 6px; }
     .zc-actions { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
@@ -221,55 +222,55 @@
     .btn-del { background: var(--accent-red); }
 
     /* === ショップ画面 === */
-    .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-    .shop-item { background: #334155; border: 1px solid #475569; border-radius: 8px; padding: 10px; text-align: center; }
-    .shop-item h4 { font-size: 15px; color: var(--accent-gold); margin-bottom: 4px; }
-    .shop-item p { font-size: 11px; color: var(--text-sub); margin-bottom: 8px; }
-    .shop-btn { background: #16a34a; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; }
+    .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .shop-item { background: #334155; border: 1px solid #475569; border-radius: 8px; padding: 8px; text-align: center; }
+    .shop-item h4 { font-size: 14px; color: var(--accent-gold); margin-bottom: 2px; }
+    .shop-item p { font-size: 10px; color: var(--text-sub); margin-bottom: 6px; }
+    .shop-btn { background: #16a34a; color: #fff; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; font-size: 12px; }
 
-    /* === 育成画面（崩れ防止スクロール） === */
-    .nurture-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; padding-bottom: 8px; margin-bottom: 12px; }
-    .nurture-turn { font-size: 18px; color: var(--accent-gold); font-weight: bold; }
-    .nurture-layout { display: flex; gap: 12px; margin-bottom: 14px; }
-    .nurture-visual { flex: 0 0 130px; height: 130px; background: #0f172a; border-radius: 8px; border: 2px solid #475569; position: relative; overflow: hidden; }
-    .nurture-stats-box { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-    .stat-row { display: flex; justify-content: space-between; background: #334155; padding: 6px 10px; border-radius: 4px; font-size: 13px; }
-    .command-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-    .cmd-btn { padding: 12px 4px; font-size: 13px; background: linear-gradient(to bottom, #475569, #334155); border: 2px solid #64748b; color: #fff; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    /* === 育成画面（はみ出し防止コンパクト設計） === */
+    .nurture-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; padding-bottom: 6px; margin-bottom: 8px; }
+    .nurture-turn { font-size: 16px; color: var(--accent-gold); font-weight: bold; }
+    .nurture-layout { display: flex; gap: 10px; margin-bottom: 10px; }
+    .nurture-visual { flex: 0 0 110px; height: 110px; background: #0f172a; border-radius: 8px; border: 2px solid #475569; position: relative; overflow: hidden; }
+    .nurture-stats-box { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .stat-row { display: flex; justify-content: space-between; background: #334155; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .command-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 4px; }
+    .cmd-btn { padding: 10px 2px; font-size: 12px; background: linear-gradient(to bottom, #475569, #334155); border: 2px solid #64748b; color: #fff; border-radius: 6px; cursor: pointer; font-weight: bold; }
 
     /* 育成結果演出 */
     #nurture-result-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.92); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    .drumroll { font-size: 22px; color: var(--accent-gold); animation: pulse 0.1s infinite alternate; }
-    .result-label { font-size: 32px; font-weight: bold; margin-bottom: 12px; text-shadow: 0 0 10px currentColor; }
-    .lbl-great { color: var(--accent-gold); transform: scale(1.2); }
+    .drumroll { font-size: 20px; color: var(--accent-gold); }
+    .result-label { font-size: 28px; font-weight: bold; margin-bottom: 8px; }
+    .lbl-great { color: var(--accent-gold); }
     .lbl-good { color: var(--accent-blue); }
     .lbl-bad { color: var(--accent-red); }
-    .result-changes { font-size: 16px; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+    .result-changes { font-size: 15px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
     .change-up { color: #4ade80; font-weight: bold; }
     .change-down { color: var(--accent-red); }
 
     /* === 都市選択 === */
-    .city-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-    .city-btn { background: #334155; border: 2px solid #475569; border-radius: 8px; padding: 12px; cursor: pointer; text-align: left; position: relative; }
+    .city-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .city-btn { background: #334155; border: 2px solid #475569; border-radius: 8px; padding: 10px; cursor: pointer; text-align: left; }
     .city-btn.locked { cursor: not-allowed; filter: grayscale(80%); }
-    .city-name { font-size: 18px; font-weight: bold; display: block; margin-bottom: 2px; }
+    .city-name { font-size: 16px; font-weight: bold; display: block; margin-bottom: 2px; }
     .city-desc { font-size: 11px; color: var(--text-sub); line-height: 1.3; }
-    .city-champ { margin-top: 6px; font-size: 11px; color: var(--accent-gold); background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .city-champ { margin-top: 4px; font-size: 10px; color: var(--accent-gold); background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; display: inline-block; }
 
     /* === パドック === */
-    .paddock-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-    .pd-card { background: #334155; padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 2px; }
+    .paddock-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .pd-card { background: #334155; padding: 8px; border-radius: 6px; display: flex; flex-direction: column; gap: 2px; }
     .pd-card.c-0 { border-left: 4px solid var(--accent-blue); }
     .pd-card.c-1, .pd-card.c-2, .pd-card.c-3 { border-left: 4px solid var(--accent-red); }
-    .pd-name { font-size: 15px; font-weight: bold; }
-    .pd-title { font-size: 11px; color: var(--accent-gold); }
-    .pd-stats { font-size: 11px; color: var(--text-sub); }
+    .pd-name { font-size: 14px; font-weight: bold; }
+    .pd-title { font-size: 10px; color: var(--accent-gold); }
+    .pd-stats { font-size: 10px; color: var(--text-sub); }
 
     /* === ペルソナ風スタイリッシュカットイン === */
     #cutin-screen { justify-content: center; align-items: center; z-index: 200; background: rgba(0,0,0,0.92); }
     .cutin-bg { 
       width: 140%; 
-      height: 180px; 
+      height: 160px; 
       transform: rotate(-7deg); 
       display: flex; 
       justify-content: center; 
@@ -277,11 +278,10 @@
       box-shadow: 0 0 40px rgba(239, 68, 68, 0.6); 
       border-top: 4px solid #fff; 
       border-bottom: 4px solid #fff;
-      position: relative;
     }
     .cutin-text { text-align: center; transform: rotate(7deg); }
-    .cutin-en { font-size: 52px; font-weight: 900; color: rgba(255,255,255,0.15); letter-spacing: 12px; position: absolute; top: -15px; left: 0; width: 100%; z-index: 1; }
-    .cutin-ja { font-size: 44px; font-weight: 900; color: #fff; text-shadow: 3px 4px 0 #000, -2px -2px 0 #ef4444; position: relative; z-index: 2; letter-spacing: 8px; }
+    .cutin-en { font-size: 44px; font-weight: 900; color: rgba(255,255,255,0.15); letter-spacing: 10px; position: absolute; top: -10px; left: 0; width: 100%; z-index: 1; }
+    .cutin-ja { font-size: 38px; font-weight: 900; color: #fff; text-shadow: 3px 3px 0 #000, -2px -2px 0 #ef4444; position: relative; z-index: 2; letter-spacing: 6px; }
 
     /* === レース画面 & 上部進行度バー === */
     #race-screen { background: #000; }
@@ -307,7 +307,7 @@
     .hud-box { 
       background: rgba(15,23,42,0.85); 
       border: 2px solid var(--accent-blue); 
-      padding: 6px 12px; 
+      padding: 4px 12px; 
       border-radius: 6px; 
       font-size: 16px; 
       font-weight: bold; 
@@ -316,7 +316,7 @@
     
     /* 上部進行度バー */
     .top-progress-track { 
-      height: 20px; 
+      height: 18px; 
       background: rgba(15, 23, 42, 0.9); 
       border-radius: 10px; 
       position: relative; 
@@ -327,56 +327,56 @@
     .runner-marker { position: absolute; top: 0; height: 100%; width: 4px; transition: left 0.1s linear; }
     .m-player { background: var(--accent-blue); z-index: 5; box-shadow: 0 0 8px var(--accent-blue); width: 6px; }
     .m-cpu { background: var(--accent-red); z-index: 4; }
-    .goal-flag { position: absolute; right: 4px; top: 1px; font-size: 12px; z-index: 6; }
+    .goal-flag { position: absolute; right: 4px; top: 0px; font-size: 11px; z-index: 6; }
 
-    .race-ui-bottom { height: 42vh; background: var(--panel-bg); border-top: 4px solid #475569; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .race-ui-bottom { height: 42vh; background: var(--panel-bg); border-top: 4px solid #475569; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
     
     .player-status-row { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
-    .p-name { font-size: 15px; font-weight: bold; color: #fff; }
-    .stm-container { width: 60%; height: 14px; background: #0f172a; border-radius: 8px; border: 1px solid #475569; overflow: hidden; }
+    .p-name { font-size: 14px; font-weight: bold; color: #fff; }
+    .stm-container { width: 60%; height: 12px; background: #0f172a; border-radius: 6px; border: 1px solid #475569; overflow: hidden; }
     .stm-bar { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); transition: width 0.1s linear; }
     .stm-bar.danger { background: linear-gradient(90deg, #ef4444, #f87171); }
 
     /* 下部左右セパレートスキルエリア */
-    .skills-area { display: flex; gap: 10px; flex: 1; margin-top: 4px; }
-    .auto-flasks { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .flask-row { display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 6px; border-radius: 6px; height: 48%; border: 1px solid #334155; }
-    .flask-icon { width: 22px; height: 28px; border: 2px solid #475569; border-radius: 4px 4px 10px 10px; position: relative; overflow: hidden; background: #1e293b; }
+    .skills-area { display: flex; gap: 8px; flex: 1; }
+    .auto-flasks { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .flask-row { display: flex; align-items: center; gap: 6px; background: #0f172a; padding: 4px 6px; border-radius: 6px; height: 48%; border: 1px solid #334155; }
+    .flask-icon { width: 20px; height: 26px; border: 2px solid #475569; border-radius: 4px 4px 10px 10px; position: relative; overflow: hidden; background: #1e293b; }
     .flask-fill { position: absolute; bottom: 0; left: 0; width: 100%; background: var(--accent-blue); transition: height 0.1s linear; }
     .flask-info { display: flex; flex-direction: column; }
-    .flask-name { font-size: 12px; font-weight: bold; color: var(--accent-blue); }
-    .flask-desc { font-size: 10px; color: var(--text-sub); }
+    .flask-name { font-size: 11px; font-weight: bold; color: var(--accent-blue); }
+    .flask-desc { font-size: 9px; color: var(--text-sub); }
 
-    .manual-syringe { flex: 0 0 110px; display: flex; flex-direction: column; }
+    .manual-syringe { flex: 0 0 100px; display: flex; flex-direction: column; }
     .syringe-btn { flex: 1; background: linear-gradient(to bottom, #ef4444, #b91c1c); border: 2px solid #fca5a5; border-radius: 8px; color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 0 #7f1d1d; }
     .syringe-btn:active:not(.used) { transform: translateY(3px); box-shadow: 0 0 0 #7f1d1d; }
     .syringe-btn.used { background: #475569; border-color: #64748b; color: #94a3b8; box-shadow: none; cursor: not-allowed; }
-    .s-icon { font-size: 22px; }
-    .s-name { font-size: 13px; font-weight: bold; }
+    .s-icon { font-size: 20px; }
+    .s-name { font-size: 12px; font-weight: bold; }
 
-    #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 58vh; display: flex; justify-content: center; align-items: center; font-size: 80px; font-weight: bold; color: var(--accent-gold); text-shadow: 0 0 20px #000, 4px 4px 0 #000; z-index: 30; }
+    #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 58vh; display: flex; justify-content: center; align-items: center; font-size: 70px; font-weight: bold; color: var(--accent-gold); text-shadow: 0 0 20px #000, 4px 4px 0 #000; z-index: 30; }
     #finish-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 58vh; background: rgba(255,255,255,0.85); display: flex; justify-content: center; align-items: center; z-index: 40; }
-    .finish-text { font-size: 64px; font-weight: 900; color: #000; font-style: italic; letter-spacing: 4px; }
+    .finish-text { font-size: 56px; font-weight: 900; color: #000; font-style: italic; letter-spacing: 4px; }
     .slime-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 58vh; pointer-events: none; z-index: 25; background: radial-gradient(circle at center, transparent 40%, rgba(132, 204, 22, 0.4) 100%); opacity: 0; }
     .slime-overlay.active { opacity: 1; }
 
     /* === リザルト画面 === */
-    #result-screen { background: var(--bg-color); justify-content: flex-start; align-items: center; padding-top: 16px; }
-    .result-title { font-size: 28px; color: var(--accent-gold); margin-bottom: 8px; text-shadow: 2px 2px 0 #000; z-index: 10; }
-    .podium-container { width: 340px; height: 240px; position: relative; margin-bottom: 16px; z-index: 5; }
+    #result-screen { background: var(--bg-color); justify-content: flex-start; align-items: center; padding-top: 12px; }
+    .result-title { font-size: 26px; color: var(--accent-gold); margin-bottom: 6px; text-shadow: 2px 2px 0 #000; z-index: 10; }
+    .podium-container { width: 320px; height: 220px; position: relative; margin-bottom: 12px; z-index: 5; }
     #podiumCanvas { width: 100%; height: 100%; }
-    .result-list { width: 90%; max-width: 380px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; z-index: 10; }
-    .result-row { display: flex; align-items: center; padding: 10px; background: #1e293b; border-radius: 6px; }
+    .result-list { width: 90%; max-width: 360px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; z-index: 10; }
+    .result-row { display: flex; align-items: center; padding: 8px 12px; background: #1e293b; border-radius: 6px; }
     .result-row.rank-1 { background: linear-gradient(90deg, rgba(250, 204, 21, 0.2), #1e293b); border: 1px solid var(--accent-gold); }
-    .res-rank { font-size: 18px; font-weight: bold; width: 36px; color: var(--text-sub); }
-    .rank-1 .res-rank { color: var(--accent-gold); font-size: 22px; }
-    .res-name { flex: 1; font-size: 15px; font-weight: bold; }
-    .res-time { font-size: 13px; color: var(--accent-blue); font-family: monospace; }
-    .prize-box { background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; padding: 10px 20px; border-radius: 8px; font-size: 18px; color: #10b981; font-weight: bold; margin-bottom: 16px; z-index: 10; }
+    .res-rank { font-size: 16px; font-weight: bold; width: 32px; color: var(--text-sub); }
+    .rank-1 .res-rank { color: var(--accent-gold); font-size: 20px; }
+    .res-name { flex: 1; font-size: 14px; font-weight: bold; }
+    .res-time { font-size: 12px; color: var(--accent-blue); font-family: monospace; }
+    .prize-box { background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; padding: 8px 16px; border-radius: 8px; font-size: 16px; color: #10b981; font-weight: bold; margin-bottom: 16px; z-index: 10; }
 
     /* === PvPロビー === */
-    .lobby-box { background: #0f172a; border: 1px solid #475569; border-radius: 8px; padding: 14px; margin-top: 14px; min-height: 140px; }
-    .member-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #334155; font-size: 13px; }
+    .lobby-box { background: #0f172a; border: 1px solid #475569; border-radius: 8px; padding: 12px; margin-top: 12px; min-height: 130px; }
+    .member-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #334155; font-size: 12px; }
   </style>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
@@ -384,14 +384,13 @@
 
   <!-- 1. タイトル画面 -->
   <div id="title-screen" class="screen">
-    <!-- 💰 ヘッダー所持金表示 -->
     <div class="header-bar"><div class="money-wrapper"><div class="money-disp" id="title-money">0 Z$</div></div></div>
 
     <div class="title-banner">
       <img src="/zombielogo.webp" alt="ZOMBIE RACE" class="title-logo-img">
     </div>
 
-    <!-- 📖 チュートリアルボックス（完全復元版） -->
+    <!-- 📖 チュートリアルボックス -->
     <div class="tutorial-box">
       <h2>📖 ゾンビマスターへの道</h2>
       <p>1. <strong>探索（スカウト）</strong>で暗闇の目をタップして素質ある検体を捕まえろ！<br>
@@ -427,7 +426,7 @@
   <div id="scout-screen" class="screen hidden">
     <div class="header-bar"><div class="money-wrapper"><div class="money-disp" id="scout-header-money">0 Z$</div></div></div>
     <div class="panel">
-      <h2 style="color:var(--accent-blue); margin-bottom:14px; text-align:center;">🔬 検体レーダー</h2>
+      <h2 style="color:var(--accent-blue); margin-bottom:12px; text-align:center;">🔬 検体レーダー</h2>
       <div class="input-group">
         <label>探索エリア (初期補正)</label>
         <select id="scout-city">
@@ -451,13 +450,14 @@
         <label>個体名 (コードネーム)</label>
         <input type="text" id="scout-name" placeholder="例: ジョン・ドウ" maxlength="10">
       </div>
-      <button id="do-scout-btn" class="retro-btn" style="width:100%; margin-top:16px; background:linear-gradient(to bottom, #ef4444, #b91c1c); border-color:#fca5a5;">探索開始</button>
-      <button id="back-to-title-1" class="retro-btn" style="width:100%; margin-top:10px; background:transparent; border-color:#475569;">戻る</button>
+      <button id="do-scout-btn" class="retro-btn" style="width:100%; margin-top:14px; background:linear-gradient(to bottom, #ef4444, #b91c1c); border-color:#fca5a5;">探索開始</button>
+      <button id="back-to-title-1" class="retro-btn" style="width:100%; margin-top:8px; background:transparent; border-color:#475569;">戻る</button>
     </div>
     
-    <div id="found-overlay" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:50; display:flex; justify-content:center; align-items:center; flex-direction:column;">
-      <h1 style="color:#000; font-size:32px; letter-spacing:4px; margin-bottom:20px;">検体確保!!</h1>
-      <div style="width:100px; height:100px; background:#000; border-radius:50%; animation:pulse 0.5s infinite alternate;"></div>
+    <!-- 確保成功オーバーレイ（ゾンビ表示） -->
+    <div id="found-overlay" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.95); z-index:50; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+      <h1 style="color:var(--accent-gold); font-size:28px; letter-spacing:4px; margin-bottom:16px;">検体確保!!</h1>
+      <div id="found-zombie-preview" style="width:140px; height:140px; background:#0f172a; border-radius:8px; border:2px solid var(--accent-blue);"></div>
     </div>
   </div>
 
@@ -466,8 +466,8 @@
     <div class="panel" style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
       <div class="nurture-header">
         <div>
-          <div style="font-size:12px; color:var(--text-sub);">個体名</div>
-          <div id="nurture-zombie-name" style="font-size:22px; font-weight:bold;">---</div>
+          <div style="font-size:11px; color:var(--text-sub);">個体名</div>
+          <div id="nurture-zombie-name" style="font-size:20px; font-weight:bold;">---</div>
         </div>
         <div class="nurture-turn" id="nurture-turn-txt">残 5 調整</div>
       </div>
@@ -487,12 +487,12 @@
       </div>
 
       <div class="command-container">
-        <button class="cmd-btn" data-cmd="spd"><span style="font-size:20px; display:block; margin-bottom:2px;">🏃</span>ランニング<br><span style="font-size:10px; color:#94a3b8;">速↑ 気↓</span></button>
-        <button class="cmd-btn" data-cmd="pow"><span style="font-size:20px; display:block; margin-bottom:2px;">🥩</span>捕食訓練<br><span style="font-size:10px; color:#94a3b8;">力↑ 異↓</span></button>
-        <button class="cmd-btn" data-cmd="stm"><span style="font-size:20px; display:block; margin-bottom:2px;">🏊</span>血の遊泳<br><span style="font-size:10px; color:#94a3b8;">体↑ 速↓</span></button>
+        <button class="cmd-btn" data-cmd="spd"><span style="font-size:18px; display:block;">🏃</span>ランニング<br><span style="font-size:9px; color:#94a3b8;">速↑ 気↓</span></button>
+        <button class="cmd-btn" data-cmd="pow"><span style="font-size:18px; display:block;">🥩</span>捕食訓練<br><span style="font-size:9px; color:#94a3b8;">力↑ 異↓</span></button>
+        <button class="cmd-btn" data-cmd="stm"><span style="font-size:18px; display:block;">🏊</span>血の遊泳<br><span style="font-size:9px; color:#94a3b8;">体↑ 速↓</span></button>
       </div>
 
-      <button id="send-to-garage-btn" class="retro-btn hidden" style="width:100%; margin-top:16px; background:linear-gradient(to bottom, #0284c7, #0369a1); border-color:#38bdf8;">牧場(ガレージ)へ送る</button>
+      <button id="send-to-garage-btn" class="retro-btn hidden" style="width:100%; margin-top:12px; background:linear-gradient(to bottom, #0284c7, #0369a1); border-color:#38bdf8;">牧場(ガレージ)へ送る</button>
 
       <div id="nurture-result-overlay" class="hidden">
         <div id="drumroll-text" class="drumroll">調整中...</div>
@@ -502,12 +502,12 @@
     </div>
   </div>
 
-  <!-- 4. 逃がす画面（3体超過保護） -->
+  <!-- 4. 逃がす画面 -->
   <div id="release-screen" class="screen hidden" style="background:rgba(15,23,42,0.95); z-index:200;">
-    <div class="panel" style="margin-top:40px;">
-      <h2 style="color:var(--accent-red); text-align:center; margin-bottom:12px;">⚠️ キャパシティ上限</h2>
-      <p style="font-size:13px; text-align:center; margin-bottom:16px; color:var(--text-sub);">牧場の管理上限(3体)を超えました。<br>不要な検体を逃がしてください。</p>
-      <div id="release-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+    <div class="panel" style="margin-top:30px;">
+      <h2 style="color:var(--accent-red); text-align:center; margin-bottom:10px;">⚠️ キャパシティ上限</h2>
+      <p style="font-size:12px; text-align:center; margin-bottom:14px; color:var(--text-sub);">牧場の管理上限(3体)を超えました。<br>不要な検体を逃がしてください。</p>
+      <div id="release-list" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
   </div>
 
@@ -515,11 +515,11 @@
   <div id="garage-screen" class="screen hidden">
     <div class="header-bar"><div class="money-wrapper"><div class="money-disp" id="garage-money">0 Z$</div></div></div>
     <div class="panel" style="flex:1; overflow-y:auto; padding-top:10px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h2 style="color:var(--accent-blue);">🧟 管理中検体 (<span id="garage-count">0</span>/3)</h2>
       </div>
       <div id="garage-list"></div>
-      <button id="back-to-title-2" class="retro-btn" style="width:100%; margin-top:16px; background:transparent; border-color:#475569;">タイトルへ</button>
+      <button id="back-to-title-2" class="retro-btn" style="width:100%; margin-top:14px; background:transparent; border-color:#475569;">タイトルへ</button>
     </div>
   </div>
 
@@ -527,8 +527,8 @@
   <div id="shop-screen" class="screen hidden">
     <div class="header-bar"><div class="money-wrapper"><div class="money-disp" id="shop-money">0 Z$</div></div></div>
     <div class="panel">
-      <h2 style="color:#10b981; text-align:center; margin-bottom:6px;">💉 闇市ドーピング</h2>
-      <p style="text-align:center; font-size:13px; color:var(--text-sub);">対象: <span id="shop-target-name" style="color:#fff; font-weight:bold;">---</span></p>
+      <h2 style="color:#10b981; text-align:center; margin-bottom:4px;">💉 闇市ドーピング</h2>
+      <p style="text-align:center; font-size:12px; color:var(--text-sub);">対象: <span id="shop-target-name" style="color:#fff; font-weight:bold;">---</span></p>
       <div class="shop-grid">
         <div class="shop-item"><h4>筋力増強剤</h4><p>速さ +2〜4</p><button class="shop-btn" data-price="300" data-stat="speed">300 Z$</button></div>
         <div class="shop-item"><h4>凶暴化ガス</h4><p>力強さ +2〜4</p><button class="shop-btn" data-price="300" data-stat="power">300 Z$</button></div>
@@ -536,7 +536,7 @@
         <div class="shop-item"><h4>精神安定剤</h4><p>気性 +2〜4</p><button class="shop-btn" data-price="300" data-stat="mentality">300 Z$</button></div>
         <div class="shop-item" style="grid-column: span 2;"><h4>変異ウイルス</h4><p>異能 +2〜4</p><button class="shop-btn" data-price="300" data-stat="magic">300 Z$</button></div>
       </div>
-      <button id="close-shop-btn" class="retro-btn" style="width:100%; margin-top:20px; background:transparent; border-color:#475569;">戻る</button>
+      <button id="close-shop-btn" class="retro-btn" style="width:100%; margin-top:16px; background:transparent; border-color:#475569;">戻る</button>
     </div>
   </div>
 
@@ -545,49 +545,49 @@
     <div class="panel">
       <h2 style="color:var(--accent-red); text-align:center;">🏙️ 出走エリア選択</h2>
       <div id="city-list" class="city-list"></div>
-      <button id="back-to-garage-1" class="retro-btn" style="width:100%; margin-top:20px; background:transparent; border-color:#475569;">牧場へ戻る</button>
+      <button id="back-to-garage-1" class="retro-btn" style="width:100%; margin-top:16px; background:transparent; border-color:#475569;">牧場へ戻る</button>
     </div>
   </div>
 
   <!-- 8. 通信対戦ロビー -->
   <div id="pvp-screen" class="screen hidden">
     <div class="panel">
-      <h2 style="color:#facc15; text-align:center; margin-bottom:14px;">🌐 地下闘技場 (PvP)</h2>
-      <div style="text-align:center; font-size:12px; color:var(--text-sub); margin-bottom:14px;" id="pvp-net-status">初期化中...</div>
+      <h2 style="color:#facc15; text-align:center; margin-bottom:12px;">🌐 地下闘技場 (PvP)</h2>
+      <div style="text-align:center; font-size:11px; color:var(--text-sub); margin-bottom:12px;" id="pvp-net-status">初期化中...</div>
       
       <div class="input-group">
         <label>出走検体</label>
         <select id="pvp-zombie-select"></select>
       </div>
 
-      <div style="background:#1e293b; padding:14px; border-radius:8px; border:1px solid #475569; margin-bottom:14px;">
-        <h3 style="font-size:13px; color:var(--accent-blue); margin-bottom:6px;">ルームを作る (ホスト)</h3>
-        <select id="pvp-city-select" style="width:100%; padding:8px; margin-bottom:8px; background:#0f172a; color:#fff; border:1px solid #475569;">
+      <div style="background:#1e293b; padding:12px; border-radius:8px; border:1px solid #475569; margin-bottom:12px;">
+        <h3 style="font-size:12px; color:var(--accent-blue); margin-bottom:4px;">ルームを作る (ホスト)</h3>
+        <select id="pvp-city-select" style="width:100%; padding:6px; margin-bottom:6px; background:#0f172a; color:#fff; border:1px solid #475569;">
           <option value="fukuoka">福岡 (300m)</option>
           <option value="osaka">大阪 (400m)</option>
           <option value="nagoya">名古屋 (400m)</option>
           <option value="sapporo">札幌 (500m)</option>
           <option value="tokyo">東京 (400m)</option>
         </select>
-        <button id="create-room-btn" class="retro-btn" style="width:100%; font-size:13px; padding:8px;">部屋を立てる</button>
+        <button id="create-room-btn" class="retro-btn" style="width:100%; font-size:12px; padding:6px;">部屋を立てる</button>
       </div>
 
-      <div style="background:#1e293b; padding:14px; border-radius:8px; border:1px solid #475569;">
-        <h3 style="font-size:13px; color:var(--accent-gold); margin-bottom:6px;">ルームに入る (ゲスト)</h3>
-        <input type="text" id="room-id-input" placeholder="ホストのIDを入力" style="width:100%; padding:8px; margin-bottom:8px; background:#0f172a; color:#fff; border:1px solid #475569;">
-        <button id="join-room-btn" class="retro-btn" style="width:100%; font-size:13px; padding:8px; border-color:#ca8a04;">入室する</button>
+      <div style="background:#1e293b; padding:12px; border-radius:8px; border:1px solid #475569;">
+        <h3 style="font-size:12px; color:var(--accent-gold); margin-bottom:4px;">ルームに入る (ゲスト)</h3>
+        <input type="text" id="room-id-input" placeholder="ホストのIDを入力" style="width:100%; padding:6px; margin-bottom:6px; background:#0f172a; color:#fff; border:1px solid #475569;">
+        <button id="join-room-btn" class="retro-btn" style="width:100%; font-size:12px; padding:6px; border-color:#ca8a04;">入室する</button>
       </div>
 
       <div id="room-lobby" class="hidden lobby-box">
-        <div style="font-size:11px; color:var(--text-sub); text-align:center; margin-bottom:6px;">あなたのルームID</div>
-        <div id="lobby-room-id" style="font-size:18px; font-weight:bold; color:#fff; text-align:center; background:#000; padding:6px; border-radius:4px; user-select:all; margin-bottom:12px;">---</div>
-        <div style="font-size:13px; color:var(--accent-blue); margin-bottom:6px;">コース: <span id="lobby-city-name" style="color:#fff;">---</span></div>
-        <div style="font-size:13px; color:var(--accent-blue); margin-bottom:6px;">参加メンバー</div>
-        <div id="member-list" style="margin-bottom:12px;"></div>
+        <div style="font-size:11px; color:var(--text-sub); text-align:center; margin-bottom:4px;">あなたのルームID</div>
+        <div id="lobby-room-id" style="font-size:16px; font-weight:bold; color:#fff; text-align:center; background:#000; padding:6px; border-radius:4px; user-select:all; margin-bottom:10px;">---</div>
+        <div style="font-size:12px; color:var(--accent-blue); margin-bottom:4px;">コース: <span id="lobby-city-name" style="color:#fff;">---</span></div>
+        <div style="font-size:12px; color:var(--accent-blue); margin-bottom:4px;">参加メンバー</div>
+        <div id="member-list" style="margin-bottom:10px;"></div>
         <button id="start-pvp-race-btn" class="retro-btn" style="width:100%; background:linear-gradient(to bottom, #ef4444, #b91c1c);">全員揃ったら出走！</button>
       </div>
 
-      <button id="back-to-title-pvp" class="retro-btn" style="width:100%; margin-top:20px; background:transparent; border-color:#475569;">タイトルへ</button>
+      <button id="back-to-title-pvp" class="retro-btn" style="width:100%; margin-top:16px; background:transparent; border-color:#475569;">タイトルへ</button>
     </div>
   </div>
 
@@ -599,7 +599,7 @@
     </div>
   </div>
 
-  <!-- 10. カットイン画面（ペルソナ風スタイリッシュ） -->
+  <!-- 10. カットイン画面 -->
   <div id="cutin-screen" class="screen hidden">
     <div class="cutin-bg">
       <div class="cutin-text">
@@ -609,10 +609,9 @@
     </div>
   </div>
 
-  <!-- 11. レース画面 & 上部進行度バー -->
+  <!-- 11. レース画面 -->
   <div id="race-screen" class="screen hidden">
     <div style="position:relative;">
-      <!-- 上部HUD ＆ 進行度バー -->
       <div class="hud-top">
         <div class="hud-row">
           <div class="hud-box">残 <span id="hud-dist" style="color:var(--accent-gold);">400m</span></div>
@@ -639,7 +638,6 @@
         <div class="stm-container"><div class="stm-bar" id="p-stm-bar" style="width:100%;"></div></div>
       </div>
 
-      <!-- 下部セパレートスキルエリア -->
       <div class="skills-area">
         <div class="auto-flasks">
           <div class="flask-row">
@@ -667,16 +665,16 @@
   <div id="result-screen" class="screen hidden">
     <h1 class="result-title">RACE RESULT</h1>
     <div class="podium-container">
-      <canvas id="podiumCanvas" width="360" height="260"></canvas>
+      <canvas id="podiumCanvas" width="320" height="220"></canvas>
     </div>
     
-    <div id="champ-notice" class="hidden" style="color:var(--accent-red); font-weight:bold; font-size:16px; margin-bottom:10px; text-shadow:0 0 8px var(--accent-red);">
+    <div id="champ-notice" class="hidden" style="color:var(--accent-red); font-weight:bold; font-size:15px; margin-bottom:8px; text-shadow:0 0 8px var(--accent-red);">
       👑 サーバー最速記録更新！！
     </div>
 
     <div class="result-list" id="result-list"></div>
     <div class="prize-box" id="prize-money">獲得賞金: 0 Z$</div>
-    <button id="retry-btn" class="retro-btn" style="width:80%; max-width:280px; margin-bottom:30px;">ガレージへ戻る</button>
+    <button id="retry-btn" class="retro-btn" style="width:80%; max-width:260px; margin-bottom:24px;">ガレージへ戻る</button>
   </div>
 
   <script src="/src/main.js" type="module"></script>
