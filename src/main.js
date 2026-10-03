@@ -54,6 +54,19 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
+// 📊 ステータス減衰ロジック（案B：2段階減衰）
+// ==========================================
+function getEffectiveStat(val) {
+  if (val <= 100) {
+    return val;
+  } else if (val <= 200) {
+    return 100 + (val - 100) * 0.5;
+  } else {
+    return 150 + (val - 200) * 0.1;
+  }
+}
+
+// ==========================================
 // 🌐 Supabase オンラインデータ同期機能
 // ==========================================
 async function fetchOnlineChamps() {
@@ -1103,7 +1116,32 @@ function showPaddock() {
   const lanePadding = 30;
   const laneW = (canvas.width - lanePadding * 2) / 4;
   
-  runners.push({ id: 0, name: z.name, title: getTitle(z), isPlayer: true, x: lanePadding + laneW*0 + laneW/2, y: 400, dist: 0, stm: z.stamina * 10, maxStm: z.stamina * 10, spdAttr: z.speed, powAttr: z.power, mntAttr: z.mentality, magAttr: z.magic, colorInfo: z.colorInfo, sizeInfo: z.sizeInfo, style: z.style, boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: z.videoIndex, skillCd: Math.floor(Math.random() * 150) + 150 });
+  // 🏃 プレイヤーランナー設定（案Bの実効値をレース処理に適用）
+  runners.push({ 
+    id: 0, 
+    name: z.name, 
+    title: getTitle(z), 
+    isPlayer: true, 
+    x: lanePadding + laneW*0 + laneW/2, 
+    y: 400, 
+    dist: 0, 
+    stm: getEffectiveStat(z.stamina) * 10, 
+    maxStm: getEffectiveStat(z.stamina) * 10, 
+    spdAttr: getEffectiveStat(z.speed), 
+    powAttr: getEffectiveStat(z.power), 
+    mntAttr: getEffectiveStat(z.mentality), 
+    magAttr: getEffectiveStat(z.magic), 
+    colorInfo: z.colorInfo, 
+    sizeInfo: z.sizeInfo, 
+    style: z.style, 
+    boostTimer: 0, 
+    knockback: 0, 
+    isHard: false, 
+    barrierPower: 0, 
+    isSlacking: false, 
+    videoIndex: z.videoIndex, 
+    skillCd: Math.floor(Math.random() * 150) + 150 
+  });
   
   const playerTotal = z.speed + z.power + z.stamina + z.mentality + z.magic;
   const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
@@ -1465,7 +1503,7 @@ function update() {
       if (currentGameMode === 'story' && currentCity.id === 'tokyo' && r.id === 1) {
         if (remainingDistance <= 150 && !r.hasMadDoped) {
           r.hasMadDoped = true;
-          liveCommentary = `⚠️️ Dr.マッドゾンビが究極の薬を注射！【マッハ＋バリア】発動！！`;
+          liveCommentary = `⚠️ Dr.マッドゾンビが究極の薬を注射！【マッハ＋バリア】発動！！`;
           triggerSkill(SYRINGE_SKILLS.find(s=>s.id==='mach'), r);
           triggerSkill(SYRINGE_SKILLS.find(s=>s.id==='barrier'), r);
         }
