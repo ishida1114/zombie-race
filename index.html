@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ZOMBIE RACE - 終末最速決定戦</title>
+  <title>ZOMBIE RACE</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
     
@@ -32,27 +32,28 @@
     .money-disp { font-size: 22px; font-weight: 900; color: var(--accent-gold); }
 
     /* === タイトル画面 === */
-    #title-screen { justify-content: center; align-items: center; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
-    .title-banner { margin-bottom: 20px; text-align: center; }
-    .title-banner h1 { font-size: 42px; color: var(--accent-red); text-shadow: 0 4px 15px rgba(239, 68, 68, 0.6); letter-spacing: 4px; margin-bottom: 8px; }
-    .title-banner p { color: var(--accent-blue); font-size: 14px; }
+    #title-screen { justify-content: flex-start; align-items: center; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); padding: 20px 0; }
+    
+    /* 🖼️ タイトルロゴエリア */
+    .title-banner { margin-top: 10px; margin-bottom: 16px; text-align: center; }
+    .title-logo-img { max-width: 280px; width: 80%; height: auto; filter: drop-shadow(0 0 15px rgba(56, 189, 248, 0.4)); }
     
     /* 📖 チュートリアルボックス */
     .tutorial-box {
       background: rgba(30, 41, 59, 0.85); border: 2px solid var(--accent-blue); border-radius: 12px;
-      padding: 20px; margin: 0 20px 30px 20px; max-width: 500px; width: calc(100% - 40px);
+      padding: 16px 20px; margin: 0 20px 24px 20px; max-width: 500px; width: calc(100% - 40px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
-    .tutorial-box h2 { color: var(--accent-gold); font-size: 18px; border-bottom: 1px solid var(--accent-gold); padding-bottom: 8px; margin-bottom: 12px; }
-    .tutorial-box p { font-size: 14px; line-height: 1.6; margin-bottom: 16px; color: #e2e8f0; }
-    .tutorial-box h3 { color: var(--accent-blue); font-size: 16px; margin-bottom: 8px; }
+    .tutorial-box h2 { color: var(--accent-gold); font-size: 18px; border-bottom: 1px solid var(--accent-gold); padding-bottom: 6px; margin-bottom: 10px; }
+    .tutorial-box p { font-size: 13px; line-height: 1.6; margin-bottom: 12px; color: #e2e8f0; }
+    .tutorial-box h3 { color: var(--accent-blue); font-size: 15px; margin-bottom: 6px; }
     .tutorial-box ul { padding-left: 20px; font-size: 13px; line-height: 1.5; color: #cbd5e1; }
-    .tutorial-box li { margin-bottom: 6px; }
+    .tutorial-box li { margin-bottom: 4px; }
 
-    .nav-menu { display: flex; flex-direction: column; gap: 16px; width: 80%; max-width: 320px; }
+    .nav-menu { display: flex; flex-direction: column; gap: 14px; width: 80%; max-width: 320px; margin-bottom: 20px; }
     .retro-btn {
       background: linear-gradient(to bottom, #334155, #1e293b); color: var(--text-main); border: 2px solid #475569;
-      padding: 16px; font-size: 18px; font-family: 'DotGothic16', sans-serif; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 #0f172a; transition: all 0.1s;
+      padding: 14px; font-size: 18px; font-family: 'DotGothic16', sans-serif; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 #0f172a; transition: all 0.1s;
     }
     .retro-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #0f172a; }
 
@@ -70,8 +71,8 @@
     .zc-style { background: #0f172a; padding: 2px 8px; border-radius: 12px; font-size: 12px; color: var(--accent-blue); }
     .zc-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font-size: 12px; text-align: center; color: #cbd5e1; margin-bottom: 8px; }
     .zc-record { font-size: 12px; color: var(--accent-gold); text-align: right; margin-bottom: 8px; }
-    .zc-actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 8px; }
-    .zc-btn { padding: 8px 4px; font-size: 12px; font-family: 'DotGothic16'; border: none; border-radius: 4px; cursor: pointer; color: #fff; font-weight: bold; }
+    .zc-actions { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .zc-btn { padding: 8px 2px; font-size: 11px; font-family: 'DotGothic16'; border: none; border-radius: 4px; cursor: pointer; color: #fff; font-weight: bold; }
     .btn-race { background: var(--accent-blue); }
     .btn-shop { background: #10b981; }
     .btn-del { background: var(--accent-red); }
@@ -206,14 +207,13 @@
 </head>
 <body>
 
-  <!-- 1. タイトル画面 (チュートリアル付き) -->
+  <!-- 1. タイトル画面 -->
   <div id="title-screen" class="screen">
     <div class="title-banner">
-      <h1>ZOMBIE RACE</h1>
-      <p>終末最速決定戦</p>
+      <img src="/logo.webp" alt="ZOMBIE RACE" class="title-logo-img" onerror="this.onerror=null; this.src='/logo.png';">
     </div>
 
-    <!-- 💡 チュートリアルボックス -->
+    <!-- 📖 チュートリアルボックス -->
     <div class="tutorial-box">
       <h2>📖 ゾンビマスターへの道</h2>
       <p>1. <strong>探索（スカウト）</strong>で強力な検体を捕まえろ！<br>
