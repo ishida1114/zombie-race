@@ -29,14 +29,15 @@
       padding: 10px; background: rgba(15, 23, 42, 0.8);
       position: sticky; top: 0; z-index: 50;
     }
+    /* JS側で money.webp の背景とスタイルを上書きします */
     .money-disp { font-size: 22px; font-weight: 900; color: var(--accent-gold); }
 
     /* === タイトル画面 === */
-    #title-screen { justify-content: flex-start; align-items: center; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); padding: 20px 0; }
+    #title-screen { justify-content: flex-start; align-items: center; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); padding-top: 40px; }
     
     /* 🖼️ タイトルロゴエリア */
-    .title-banner { margin-top: 10px; margin-bottom: 16px; text-align: center; }
-    .title-logo-img { max-width: 280px; width: 80%; height: auto; filter: drop-shadow(0 0 15px rgba(56, 189, 248, 0.4)); }
+    .title-banner { margin-bottom: 20px; text-align: center; width: 100%; display: flex; justify-content: center; }
+    .title-logo-img { max-width: 320px; width: 85%; height: auto; filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.6)); }
     
     /* 📖 チュートリアルボックス */
     .tutorial-box {
@@ -201,7 +202,6 @@
     /* === PvPロビー === */
     .lobby-box { background: #0f172a; border: 1px solid #475569; border-radius: 8px; padding: 16px; margin-top: 16px; min-height: 150px; }
     .member-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #334155; font-size: 14px; }
-
   </style>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
@@ -209,8 +209,9 @@
 
   <!-- 1. タイトル画面 -->
   <div id="title-screen" class="screen">
+    <!-- 💡 タイトルロゴ (zombielogo.webp) -->
     <div class="title-banner">
-      <img src="/logo.webp" alt="ZOMBIE RACE" class="title-logo-img" onerror="this.onerror=null; this.src='/logo.png';">
+      <img src="/zombielogo.webp" alt="ZOMBIE RACE" class="title-logo-img" onerror="this.onerror=null; this.src='/logo.png';">
     </div>
 
     <!-- 📖 チュートリアルボックス -->
@@ -238,6 +239,7 @@
 
   <!-- 2. スカウト画面 -->
   <div id="scout-screen" class="screen hidden">
+    <!-- 💰 ヘッダーにお金表示 (JSで背景 money.webp 適用) -->
     <div class="header-bar"><div class="money-disp" id="title-money">0 Z$</div></div>
     <div class="panel">
       <h2 style="color:var(--accent-blue); margin-bottom:16px; text-align:center;">🔬 検体レーダー</h2>
@@ -267,7 +269,6 @@
       <button id="do-scout-btn" class="retro-btn" style="width:100%; margin-top:20px; background:var(--accent-red); border-color:#fca5a5;">探索開始</button>
       <button id="back-to-title-1" class="retro-btn" style="width:100%; margin-top:12px; background:transparent;">戻る</button>
     </div>
-    
     <div id="found-overlay" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:50; display:flex; justify-content:center; align-items:center; flex-direction:column;">
       <h1 style="color:#000; font-size:32px; letter-spacing:4px; margin-bottom:20px;">検体確保!!</h1>
       <div style="width:100px; height:100px; background:#000; border-radius:50%; animation:pulse 0.5s infinite alternate;"></div>
@@ -278,17 +279,11 @@
   <div id="nurture-screen" class="screen hidden">
     <div class="panel" style="flex:1; display:flex; flex-direction:column;">
       <div class="nurture-header">
-        <div>
-          <div style="font-size:12px; color:var(--text-sub);">個体名</div>
-          <div id="nurture-zombie-name" style="font-size:24px; font-weight:bold;">---</div>
-        </div>
+        <div><div style="font-size:12px; color:var(--text-sub);">個体名</div><div id="nurture-zombie-name" style="font-size:24px; font-weight:bold;">---</div></div>
         <div class="nurture-turn" id="nurture-turn-txt">残 5 調整</div>
       </div>
-
       <div class="nurture-layout">
-        <div class="nurture-visual">
-          <canvas id="zombieCanvas" width="160" height="160" style="width:100%; height:100%; object-fit:contain;"></canvas>
-        </div>
+        <div class="nurture-visual"><canvas id="zombieCanvas" width="160" height="160" style="width:100%; height:100%; object-fit:contain;"></canvas></div>
         <div class="nurture-stats-box">
           <div class="stat-row"><span>脚質</span><span id="stat-style" style="color:var(--accent-gold);">---</span></div>
           <div class="stat-row"><span>速さ</span><span id="stat-spd">0</span></div>
@@ -298,15 +293,12 @@
           <div class="stat-row"><span>異能</span><span id="stat-mag">0</span></div>
         </div>
       </div>
-
       <div class="command-container">
         <button class="cmd-btn" data-cmd="spd"><span style="font-size:24px; display:block; margin-bottom:4px;">🏃</span>ランニング<br><span style="font-size:10px; color:#94a3b8;">速↑ 気↓</span></button>
         <button class="cmd-btn" data-cmd="pow"><span style="font-size:24px; display:block; margin-bottom:4px;">🥩</span>捕食訓練<br><span style="font-size:10px; color:#94a3b8;">力↑ 異↓</span></button>
         <button class="cmd-btn" data-cmd="stm"><span style="font-size:24px; display:block; margin-bottom:4px;">🏊</span>血の遊泳<br><span style="font-size:10px; color:#94a3b8;">体↑ 速↓</span></button>
       </div>
-
       <button id="send-to-garage-btn" class="retro-btn hidden" style="width:100%; margin-top:auto; background:var(--accent-blue);">牧場(ガレージ)へ送る</button>
-
       <div id="nurture-result-overlay" class="hidden">
         <div id="drumroll-text" class="drumroll">調整中...</div>
         <div id="result-label" class="result-label hidden">大成功!!</div>
@@ -326,6 +318,7 @@
 
   <!-- 5. ガレージ（牧場）画面 -->
   <div id="garage-screen" class="screen hidden">
+    <!-- 💰 ヘッダーにお金表示 (JSで背景 money.webp 適用) -->
     <div class="header-bar"><div class="money-disp" id="garage-money">0 Z$</div></div>
     <div class="panel" style="flex:1; overflow-y:auto; padding-top:10px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -338,6 +331,7 @@
 
   <!-- 6. ショップ（強化）画面 -->
   <div id="shop-screen" class="screen hidden">
+    <!-- 💰 ヘッダーにお金表示 (JSで背景 money.webp 適用) -->
     <div class="header-bar"><div class="money-disp" id="shop-money">0 Z$</div></div>
     <div class="panel">
       <h2 style="color:#10b981; text-align:center; margin-bottom:8px;">💉 闇市ドーピング</h2>
