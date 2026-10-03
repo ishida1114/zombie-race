@@ -19,7 +19,7 @@ let lastTopRunnerId = null;
 // 🎊 サイケカラー紙吹雪パーティクル
 let confettiParticles = [];
 
-// 🌐 オンラインランキング共有用 (JSONBlob API エンドポイント)
+// 🌐 オンラインランキング共有用 (発行済みの正しいURL)
 const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/01a10163-5363-72b5-81b5-0735cc9f9e10';
 
 // 🖼️ 新規素材のロード
@@ -76,7 +76,7 @@ async function updateOnlineChamps(newChamps) {
 }
 
 // ==========================================
-// 🎵 音響管理システム (画面中央上部に配置 ＆ 重なり防止)
+// 🎵 音響管理システム
 // ==========================================
 const AudioManager = {
   basePathBGM: 'audio/bgm/',
@@ -895,7 +895,7 @@ window.doRelease = (idx) => {
 };
 
 async function renderCitySelect() {
-  await fetchOnlineChamps(); // 💡 遠征先一覧を開くたびにオンラインの最新王者を非同期取得
+  await fetchOnlineChamps(); 
   const container = document.getElementById('city-list'); if(!container) return;
   container.innerHTML = '';
   
@@ -1241,13 +1241,14 @@ document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
   flashEffect.alpha = 0.8; flashEffect.color = '#ffffff'; triggerSkill(currentSyringe, runners[0]);
 });
 
-function doFinish() {
+// 💡 関数全体を async に変更
+async function doFinish() {
   raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
   
   AudioManager.playSE('goalin');
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  setTimeout(() => {
+  setTimeout(async () => { // 💡 ここも async に変更
     raceState = 'FINISHED'; 
     document.getElementById('finish-overlay').classList.add('hidden');
     
@@ -1266,7 +1267,7 @@ function doFinish() {
       if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
         weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
         isChampUpdated = true;
-        updateOnlineChamps(weeklyChamps); // 💡 1着でレコード更新時にオンライン同期送信
+        await updateOnlineChamps(weeklyChamps); // 💡 await を追加して確実に送信完了を待つ
       }
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
