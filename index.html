@@ -8,71 +8,31 @@
   <!-- 🌐 P2Pリアルタイム対戦用ライブラリ -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
-  <!-- 💡 トップ画面のチュートリアル ＆ money.webp 用のピンポイント追加スタイル -->
+  <!-- 💡 money.webp 背景 ＆ くっきり読める黒フチ装飾 -->
   <style>
-    /* 💰 money.webp 背景 ＋ 黒フチ付き所持金表示 */
     .title-money-box {
       background-image: url('/money.webp');
       background-repeat: no-repeat;
       background-position: center;
       background-size: contain;
-      padding: 12px 36px;
+      padding: 10px 30px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin: 6px 0 16px 0;
-      min-width: 200px;
-      min-height: 60px;
+      margin: 4px 0 12px 0;
+      min-width: 180px;
+      min-height: 54px;
     }
 
     .title-money-text {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 900;
       color: #facc15;
-      /* くっきり読める黒フチ装飾 */
       text-shadow: 
         2px  2px 0 #000, -2px -2px 0 #000,
         2px -2px 0 #000, -2px  2px 0 #000,
         0    2px 0 #000,  0   -2px 0 #000,
         2px  0   0 #000, -2px  0   0 #000;
-    }
-
-    /* 📖 バナー直下のチュートリアルボックス */
-    .title-tutorial-box {
-      background: rgba(30, 41, 59, 0.88);
-      border: 2px solid #38bdf8;
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin: 8px 16px 12px 16px;
-      max-width: 440px;
-      text-align: left;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.6);
-    }
-
-    .title-tutorial-box h3 {
-      color: #facc15;
-      font-size: 15px;
-      border-bottom: 1px solid #facc15;
-      padding-bottom: 4px;
-      margin-bottom: 8px;
-    }
-
-    .title-tutorial-box p {
-      font-size: 12px;
-      line-height: 1.5;
-      color: #e2e8f0;
-      margin-bottom: 8px;
-    }
-
-    .title-tutorial-box ul {
-      padding-left: 16px;
-      font-size: 11px;
-      line-height: 1.5;
-      color: #cbd5e1;
-    }
-
-    .title-tutorial-box li {
-      margin-bottom: 4px;
     }
   </style>
 </head>
@@ -82,15 +42,8 @@
     <div id="title-screen">
       <div class="title-logo-wrapper"><img src="/zombielogo.webp" alt="ZOMBIE DERBY" class="title-logo-img" /></div>
       
-      <!-- 📖 1. バナー下のチュートリアル枠（注射＆フラスコ説明を追加） -->
-      <div class="title-tutorial-box">
-        <h3>📖 ゾンビマスターへの道</h3>
-        <p>探索で強力な個体を確保し、5ターンのドーピングで育てて全国のコースへ遠征しよう！</p>
-        <ul>
-          <li><strong style="color: #ef4444;">💉 注射器（手動スキル）</strong>：1レース【1回限定】！ここぞという勝負所でタップして一発逆転！</li>
-          <li><strong style="color: #4ade80;">🧪 フラスコ（自動スキル）</strong>：ゲージが100%になると自動で繰り出される攻撃・妨害技！</li>
-        </ul>
-      </div>
+      <!-- 📖 1. バナー直下に「遊び方＆パラメータ」ボタンを配置 -->
+      <button id="nav-howto-btn" class="retro-btn-small" style="margin: 8px 0 10px 0; border-color: #facc15; color: #facc15; font-size: 14px; padding: 8px 16px;">📖 遊び方＆パラメータ</button>
 
       <!-- 💰 2. money.webp 背景 ＋ 黒フチ文字の所持金表示 -->
       <div class="title-money-box">
@@ -101,11 +54,10 @@
         <button id="nav-scout-btn" class="retro-btn"><span>探索 (スカウト)</span></button>
         <button id="nav-garage-btn" class="retro-btn"><span>牧場 (ガレージ)</span></button>
         <button id="nav-pvp-btn" class="retro-btn btn-pvp"><span>🌐 オンライン対戦部屋</span></button>
-        <button id="nav-howto-btn" class="retro-btn-small" style="margin-top: 12px; border-color: #facc15; color: #facc15;">📖 遊び方＆パラメータ</button>
       </div>
     </div>
 
-    <!-- 📖 遊び方モーダル -->
+    <!-- 📖 遊び方モーダル（ゾンビマスターへの道 ＋ 注射・フラスコ解説を統合） -->
     <div id="howto-modal" class="modal-overlay hidden">
       <div class="modal-content">
         <button class="modal-close-btn" id="close-howto-btn">✕</button>
@@ -116,7 +68,12 @@
             <li><strong>検体をスカウト（探索）</strong><br>タイトル画面の「探索 (スカウト)」をクリック！エリア（タイプ）と希望の脚質を選び、名前をつけたら探索開始！</li>
             <li><strong>5ターンのドーピング育成</strong><br>3種類の調整コマンド（神経投与／筋組織拡張／防腐処理）でパラメータを強化！「大成功」を狙って最強の個体に育て上げよう！</li>
             <li><strong>牧場からレースへ遠征</strong><br>育成が完了したら「牧場 (ガレージ)」へ。出走させたいゾンビを選び、全国の会場（コース）へいざ遠征！</li>
-            <li><strong>一発逆転の「注射」を打ち込め！</strong><br>レース中、左下の「注射」カードは<strong>1レースにつき1度だけ</strong>手動で発動可能！ここぞという勝負所でタップして大逆転を狙え！</li>
+            <li><strong>一発逆転の「注射」＆自動発動の「フラスコ」！</strong><br>
+              <span class="sub-list">
+                - <strong style="color: #ef4444;">💉 注射器（手動スキル）</strong>：1レースにつき<strong>【1回限定】</strong>！任意のタイミングでタップして発動する大逆転の切り札！<br>
+                - <strong style="color: #4ade80;">🧪 フラスコ（自動スキル）</strong>：時間経過や異能値でゲージが溜まり、<strong>100%になると自動で繰り出される</strong>攻撃・妨害技！
+              </span>
+            </li>
           </ol>
         </div>
 
@@ -269,7 +226,7 @@
       <div id="paddock-grid" class="paddock-grid"></div>
     </div>
 
-    <!-- ⚡ 都市カットイン画面★ -->
+    <!-- ⚡ 都市カットイン画面 -->
     <div id="cutin-screen" class="hidden">
       <div class="cutin-bg"></div>
       <div class="cutin-content">
