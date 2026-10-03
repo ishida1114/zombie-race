@@ -19,7 +19,7 @@ let lastTopRunnerId = null;
 // 🎊 サイケカラー紙吹雪パーティクル
 let confettiParticles = [];
 
-// 🌐 オンラインランキング共有用 (JSONBlob API)
+// 🌐 オンラインランキング共有用 URL
 const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/01a10163-5363-72b5-81b5-0735cc9f9e10';
 
 // 🖼️ 新規素材のロード
@@ -46,11 +46,11 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 🌐 オンラインデータ同期機能 (CORSエラー完全吸収)
+// 🌐 オンラインデータ同期機能 (キャッシュ回避対策済み)
 // ==========================================
 async function fetchOnlineChamps() {
   try {
-    const res = await fetch(ONLINE_RANKING_URL, { mode: 'cors' });
+    const res = await fetch(ONLINE_RANKING_URL + '?t=' + Date.now());
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
@@ -59,7 +59,7 @@ async function fetchOnlineChamps() {
       }
     }
   } catch (err) {
-    console.warn('[OnlineSync] 取得スキップ (ローカル動作継続):', err);
+    console.warn('[OnlineSync] 取得エラー:', err);
   }
 }
 
@@ -67,12 +67,11 @@ async function updateOnlineChamps(newChamps) {
   try {
     await fetch(ONLINE_RANKING_URL, {
       method: 'PUT',
-      mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newChamps)
     });
   } catch (err) {
-    console.warn('[OnlineSync] 送信スキップ (ローカル保存継続):', err);
+    console.warn('[OnlineSync] 送信エラー:', err);
   }
 }
 
@@ -1242,13 +1241,13 @@ document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
   flashEffect.alpha = 0.8; flashEffect.color = '#ffffff'; triggerSkill(currentSyringe, runners[0]);
 });
 
-function doFinish() {
+async function doFinish() {
   raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
   
   AudioManager.playSE('goalin');
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  setTimeout(() => {
+  setTimeout(async () => {
     raceState = 'FINISHED'; 
     document.getElementById('finish-overlay').classList.add('hidden');
     
@@ -1267,8 +1266,7 @@ function doFinish() {
       if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
         weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
         isChampUpdated = true;
-        // 💡 エラーを出さずにバックグラウンドでオンライン送信
-        updateOnlineChamps(weeklyChamps); 
+        await updateOnlineChamps(weeklyChamps); 
       }
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
@@ -1596,11 +1594,50 @@ function update() {
   ctx.restore(); requestAnimationFrame(update);
 }
 
+// ==========================================
+// 🚨 テストボタンをタイトル画面に追加
+// ==========================================
+function addDebugButton() {
+  if(document.getElementById('sync-test-btn')) return;
+  const testBtn = document.createElement('button');
+  testBtn.id = 'sync-test-btn';
+  testBtn.textContent = '🌐 通信テスト';
+  testBtn.className = 'retro-btn-small';
+  testBtn.style.cssText = 'position: absolute; bottom: 10px; right: 10px; background: #e11d48; color: #fff; z-index: 9999;';
+  
+  testBtn.onclick = async () => {
+    try {
+      alert("【送信テスト】JSONBlobへデータを送信します...");
+      const testData = { "fukuoka": { "name": "テスト成功！", "time": "9.99" } };
+      
+      const putRes = await fetch(ONLINE_RANKING_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData)
+      });
+      
+      if (!putRes.ok) throw new Error("送信失敗 (ステータス: " + putRes.status + ")");
+      alert("✅ 送信成功！\n\n続いて受信テストを行います...");
+      
+      const getRes = await fetch(ONLINE_RANKING_URL + '?t=' + Date.now());
+      if (!getRes.ok) throw new Error("受信失敗 (ステータス: " + getRes.status + ")");
+      
+      const getData = await getRes.json();
+      alert("🎉 完全成功！\n\n取得したデータ:\n" + JSON.stringify(getData, null, 2));
+      
+    } catch(e) {
+      alert("❌ エラー発生！原因:\n" + e.message);
+    }
+  };
+  document.getElementById('title-screen').appendChild(testBtn);
+}
+
 function init() {
   updateMoneyDisp();
   initPeerJS();
   AudioManager.init();
   fetchOnlineChamps();
+  addDebugButton(); // テストボタン表示
   
   const navScout = document.getElementById('nav-scout-btn');
   if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
