@@ -8,24 +8,24 @@
   <!-- 🌐 P2Pリアルタイム対戦用ライブラリ -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
-  <!-- 💡 money.webp 背景 ＆ くっきり読める黒フチ装飾 -->
+  <!-- 💡 money.webp 背景大型化 ＆ 黒フチ装飾 -->
   <style>
     .title-money-box {
       background-image: url('/money.webp');
       background-repeat: no-repeat;
       background-position: center;
-      background-size: contain;
-      padding: 10px 30px;
+      background-size: 260px 80px;
+      padding: 14px 40px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin: 4px 0 12px 0;
-      min-width: 180px;
-      min-height: 54px;
+      margin: 6px 0 16px 0;
+      min-width: 260px;
+      min-height: 80px;
     }
 
     .title-money-text {
-      font-size: 19px;
+      font-size: 22px;
       font-weight: 900;
       color: #facc15;
       text-shadow: 
@@ -42,10 +42,10 @@
     <div id="title-screen">
       <div class="title-logo-wrapper"><img src="/zombielogo.webp" alt="ZOMBIE DERBY" class="title-logo-img" /></div>
       
-      <!-- 📖 1. バナー直下に「遊び方＆パラメータ」ボタンを配置 -->
+      <!-- 📖 1. バナー直下に「遊び方＆パラメータ」ボタン配置 -->
       <button id="nav-howto-btn" class="retro-btn-small" style="margin: 8px 0 10px 0; border-color: #facc15; color: #facc15; font-size: 14px; padding: 8px 16px;">📖 遊び方＆パラメータ</button>
 
-      <!-- 💰 2. money.webp 背景 ＋ 黒フチ文字の所持金表示 -->
+      <!-- 💰 2. money.webp 大型背景 ＋ 所持金表示 -->
       <div class="title-money-box">
         <span class="title-money-text">所持金: <span id="title-money">0</span> Z$</span>
       </div>
@@ -57,7 +57,7 @@
       </div>
     </div>
 
-    <!-- 📖 遊び方モーダル（ゾンビマスターへの道 ＋ 注射・フラスコ解説を統合） -->
+    <!-- 📖 遊び方モーダル -->
     <div id="howto-modal" class="modal-overlay hidden">
       <div class="modal-content">
         <button class="modal-close-btn" id="close-howto-btn">✕</button>

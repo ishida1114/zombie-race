@@ -43,7 +43,7 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 🎵 音響管理システム (画面左上にボタン配置)
+// 🎵 音響管理システム (画面中央上部に配置)
 // ==========================================
 const AudioManager = {
   basePathBGM: 'audio/bgm/',
@@ -114,6 +114,7 @@ const AudioManager = {
     return this.isMuted;
   },
 
+  // 💡 音オンオフボタンを画面中央上部（Center）へ修正配置
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -122,9 +123,10 @@ const AudioManager = {
     btn.style.cssText = `
       position: fixed;
       top: 12px;
-      left: 12px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 9999;
-      padding: 6px 14px;
+      padding: 6px 16px;
       font-size: 13px;
       font-weight: bold;
       background: rgba(15, 23, 42, 0.9);
@@ -132,7 +134,7 @@ const AudioManager = {
       border: 1px solid #38bdf8;
       border-radius: 20px;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.6);
       transition: all 0.2s;
     `;
     btn.onclick = (e) => {
@@ -247,7 +249,6 @@ const STORY_BOSSES = {
   tokyo:   { name: 'Dr.マッドゾンビ', title: '最悪の異能科学者', quote: '「フハハ！究極のワクチンで我らは【超ゾンビ】となる！」' }
 };
 
-// 🔥 東京ボスのステータス大幅底上げ (案B)
 const STORY_DIFFICULTY = {
   fukuoka: { min: -0.15, max: 0.05 },
   osaka:   { min: -0.15, max: 0.10 },
@@ -256,7 +257,6 @@ const STORY_DIFFICULTY = {
   tokyo:   { min: 0.15,  max: 0.40 }
 };
 
-// 💡 フリーレースの都市別補正 (ベース90%に掛け合わせ)
 const FREE_CITY_MULTIPLIERS = {
   fukuoka: 0.88,
   osaka:   0.92,
@@ -305,10 +305,16 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   
   for (let i = 0; i < data.data.length; i += 4) {
     const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
-    if (g > 65 && g > r * 1.12 && g > b * 1.12) {
+    // 💡 背景の鮮やかな緑だけを消すように判定を厳格化（ゾンビの肌を残す）
+    if (g > 90 && g > r * 1.35 && g > b * 1.35) {
       data.data[i+3] = 0; 
     }
   }
+  
+  cx.putImageData(data, 0, 0); 
+  lastValidCanvases[idx] = c;
+  return c;
+}
   
   cx.putImageData(data, 0, 0); 
   lastValidCanvases[idx] = c;
@@ -604,7 +610,6 @@ function renderGarage() {
   if (myZombies.length === 0) list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:40px 20px;">検体が居ません。<br>探索してください。</div>';
 }
 
-// 🏷️ 牧場（ガレージ）での名前変更機能
 window.renameZombie = (idx) => {
   const currentName = myZombies[idx].name;
   const newName = prompt("新しい検体名を入力してください", currentName);
@@ -625,7 +630,6 @@ window.openCitySelect = (idx, mode = 'story') => {
 
 window.deleteZombie = (idx) => { if(confirm('本当に逃がしますか？')) { myZombies.splice(idx, 1); saveGame(); renderGarage(); } };
 
-// 💉 牧場強化（ショップ）：+2〜+4（ごく稀に+5）ランダム ＆ ドラムロール
 window.openShop = (idx) => {
   activeZombieIndex = idx; updateMoneyDisp();
   const targetEl = document.getElementById('shop-target-name');
@@ -665,7 +669,6 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
 
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
-// 👀 スカウト前ゾンビの目タップミニゲーム
 function startEyeTapMiniGame(onComplete) {
   let overlay = document.getElementById('eye-minigame-overlay');
   if (!overlay) {
@@ -759,43 +762,26 @@ function doScout() {
     myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
     
     const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
-    setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 1500);
+    setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
   });
 }
 
 function updateNurtureUI() {
   const z = myZombies[activeZombieIndex]; if (!z) return;
-  document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`; 
-  document.getElementById('nurture-zombie-name').textContent = z.name;
-  document.getElementById('stat-style').textContent = z.style; 
-  document.getElementById('stat-spd').textContent = z.speed; 
-  document.getElementById('stat-pow').textContent = z.power; 
-  document.getElementById('stat-stm').textContent = z.stamina; 
-  document.getElementById('stat-mnt').textContent = z.mentality; 
-  document.getElementById('stat-mag').textContent = z.magic;
-  
+  document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`; document.getElementById('nurture-zombie-name').textContent = z.name;
+  document.getElementById('stat-style').textContent = z.style; document.getElementById('stat-spd').textContent = z.speed; document.getElementById('stat-pow').textContent = z.power; document.getElementById('stat-stm').textContent = z.stamina; document.getElementById('stat-mnt').textContent = z.mentality; document.getElementById('stat-mag').textContent = z.magic;
   const zCtx = document.getElementById('zombieCanvas').getContext('2d');
   zCtx.imageSmoothingEnabled = false;
   zCtx.clearRect(0, 0, 160, 160);
   drawZombieCharacter(zCtx, 80, 20, 80, 110, { ...z, knockback: 0 }, updateChromaKeyFrame(z.videoIndex, 80, 110), false);
-  
-  if (z.remainingTurns <= 0) { 
-    document.querySelector('.command-container').classList.add('hidden'); 
-    document.getElementById('send-to-garage-btn').classList.remove('hidden'); 
-  } else { 
-    document.querySelector('.command-container').classList.remove('hidden'); 
-    document.getElementById('send-to-garage-btn').classList.add('hidden'); 
-  }
+  if (z.remainingTurns <= 0) { document.querySelector('.command-container').classList.add('hidden'); document.getElementById('send-to-garage-btn').classList.remove('hidden'); } else { document.querySelector('.command-container').classList.remove('hidden'); document.getElementById('send-to-garage-btn').classList.add('hidden'); }
 }
 
 let activeDrumrollAudio = null;
 
 function executeCommand(type) {
   if (isNurturing) return; isNurturing = true;
-  document.getElementById('nurture-result-overlay').classList.remove('hidden'); 
-  document.getElementById('drumroll-text').classList.remove('hidden'); 
-  document.getElementById('result-label').classList.add('hidden'); 
-  document.getElementById('result-status-changes').classList.add('hidden');
+  document.getElementById('nurture-result-overlay').classList.remove('hidden'); document.getElementById('drumroll-text').classList.remove('hidden'); document.getElementById('result-label').classList.add('hidden'); document.getElementById('result-status-changes').classList.add('hidden');
   
   activeDrumrollAudio = AudioManager.playSE('drumroll');
   
@@ -816,9 +802,7 @@ function showNurtureResult(type) {
   if (type === 'spd') { ms='speed'; ss='mentality'; mName='速さ'; sName='気性'; } else if (type === 'pow') { ms='power'; ss='magic'; mName='力強さ'; sName='異能'; } else if (type === 'stm') { ms='stamina'; ss='speed'; mName='体力'; sName='速さ'; }
   let inc = rType===2?20:(rType===1?10:3); let dec = rType===2?-5:(rType===1?-3:-1);
   
-  document.getElementById('drumroll-text').classList.add('hidden'); 
-  document.getElementById('result-label').classList.remove('hidden'); 
-  document.getElementById('result-status-changes').classList.remove('hidden');
+  document.getElementById('drumroll-text').classList.add('hidden'); document.getElementById('result-label').classList.remove('hidden'); document.getElementById('result-status-changes').classList.remove('hidden');
   const rl = document.getElementById('result-label');
   
   if(rType===2){ 
@@ -1211,7 +1195,6 @@ function triggerSkill(skillData, userRunner) {
   else if (skillData.id === 'stone') { let target = runners.find(r=>r.id!==userRunner.id); runners.forEach(r => { if (r.id !== userRunner.id && Math.abs(r.dist - userRunner.dist) < Math.abs(target.dist - userRunner.dist)) target = r; }); particles.push({ type: 'stone_throw', startX: userRunner.x, startY: userRunner.y, targetX: target.x, targetY: target.y, progress: 0, targetRunner: target }); } 
   else if (skillData.id === 'hard') { userRunner.isHard = true; userRunner.knockback = effectivePower; createExplosion(userRunner.x, userRunner.y, '#cbd5e1', 20, 2, 3, 'spark'); setTimeout(() => { userRunner.isHard = false; }, effectivePower * 30); } 
   else if (skillData.id === 'barrier') { 
-    // 🛡️ バリア時間を 6秒 に延長
     userRunner.barrierPower = effectivePower; 
     createExplosion(userRunner.x, userRunner.y, '#a855f7', 30, 4, 3, 'spark'); 
     setTimeout(() => { userRunner.barrierPower = 0; }, 6000); 
@@ -1279,7 +1262,6 @@ function doFinish() {
   }, 2500);
 }
 
-// 🎊 サイケカラー紙吹雪パーティクル生成関数
 function initConfettiParticles() {
   confettiParticles = [];
   const colors = ['#ff007f', '#00f0ff', '#cc00ff', '#39ff14', '#ffe600', '#ff0055'];
@@ -1396,7 +1378,7 @@ function update() {
     runners.forEach((r, i) => {
       if (i !== 0 && remainingDistance < 380) {
         const isTokyoBoss = (currentGameMode === 'story' && currentCity.id === 'tokyo' && i === 1);
-        r.skillCd -= dt * (isTokyoBoss ? 1.5 : 1.0); // 👑 東京ボス技能発動スピード1.5倍 (案C)
+        r.skillCd -= dt * (isTokyoBoss ? 1.5 : 1.0); 
         if (r.skillCd <= 0) { 
           const cpuSkill = ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)];
           triggerSkill(cpuSkill, r); 
@@ -1408,7 +1390,6 @@ function update() {
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
       
-      // 👑 東京ボスのラスト150m「マッドドーピング」 (案A)
       if (currentGameMode === 'story' && currentCity.id === 'tokyo' && r.id === 1) {
         if (remainingDistance <= 150 && !r.hasMadDoped) {
           r.hasMadDoped = true;
