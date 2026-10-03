@@ -47,7 +47,7 @@ const AudioManager = {
       document.removeEventListener('click', unlock);
     };
     
-    // 💡 画面どこを触っても最初の1回でBGM即座に全面解禁
+    // 画面初回操作でBGM完全解禁
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
     document.addEventListener('click', unlock);
@@ -72,7 +72,7 @@ const AudioManager = {
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button'); btn.id = 'sound-toggle-btn'; btn.className = 'sound-toggle-btn';
-    btn.style.cssText = `position: fixed; top: 12px; left: 12px; z-index: 9999; padding: 6px 14px; font-size: 13px; font-weight: bold; background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: all 0.2s; font-family: 'DotGothic16', sans-serif;`;
+    btn.style.cssText = `position: fixed; top: 12px; left: 12px; z-index: 9999; padding: 6px 14px; font-size: 13px; font-weight: bold; background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'DotGothic16', sans-serif !important;`;
     btn.onclick = (e) => { e.stopPropagation(); this.toggleMute(); };
     document.body.appendChild(btn); this.updateMuteButtonUI();
   },
@@ -180,14 +180,7 @@ const STORY_BOSSES = {
   tokyo:   { name: 'Dr.マッドゾンビ', title: '最悪の異能科学者', quote: '「フハハ！究極のワクチンで我らは【超ゾンビ】となる！」' }
 };
 
-const STORY_DIFFICULTY = { 
-  fukuoka: { min: -0.15, max: 0.05 }, 
-  osaka:   { min: -0.15, max: 0.10 }, 
-  nagoya:  { min: -0.10, max: 0.10 }, 
-  sapporo: { min: -0.10, max: 0.15 }, 
-  tokyo:   { min: 0.15, max: 0.40 } // 🔥 案B: 東京ボス補正+15%〜+40%に大幅超絶強化
-};
-
+const STORY_DIFFICULTY = { fukuoka: { min: -0.15, max: 0.05 }, osaka: { min: -0.15, max: 0.10 }, nagoya: { min: -0.10, max: 0.10 }, sapporo: { min: -0.10, max: 0.15 }, tokyo: { min: 0.15, max: 0.40 } };
 const FREE_CITY_MULTIPLIERS = { fukuoka: 0.88, osaka: 0.92, nagoya: 0.96, sapporo: 1.00, tokyo: 1.04 };
 const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }];
 const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨漢', scaleX: 1.25, scaleY: 1.3 }, { name: '肥満', scaleX: 1.3, scaleY: 0.95 }];
@@ -344,16 +337,12 @@ function drawLiveCommentary() {
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`🎤 ${liveCommentary}`, canvas.width / 2, 27); ctx.restore();
 }
 
-// 💡 money.webp 背景と黒フチつきスタイルの確実適用
 function updateMoneyDisp() { 
-  ['title-money', 'garage-money', 'shop-money'].forEach(id => {
+  const ids = ['title-money', 'scout-header-money', 'garage-money', 'shop-money'];
+  ids.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.textContent = `${zombieMoney} Z$`; 
-      const parent = el.parentElement;
-      if (parent) { 
-        parent.className = 'money-wrapper';
-      }
     }
   });
 }
@@ -408,7 +397,6 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
 });
 document.getElementById('close-shop-btn').onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
 
-// 👀 zombie_eye.mp4 を使用した探索ミニゲーム
 function startEyeTapMiniGame(onComplete) {
   let overlay = document.getElementById('eye-minigame-overlay');
   if (!overlay) {
@@ -506,7 +494,6 @@ function showSuccessCutinImage() {
   imgOverlay.style.display = 'flex'; setTimeout(() => { imgOverlay.style.display = 'none'; }, 1200);
 }
 
-// 💡 3体超過時に必ず逃がす画面へ誘導する分岐保護
 document.getElementById('send-to-garage-btn').onclick = () => {
   document.getElementById('nurture-screen').classList.add('hidden');
   if (myZombies.length > 3) {
@@ -580,7 +567,7 @@ function showStoryCutscene(city, onComplete) {
         <div style="font-size: 18px; font-weight: bold; color: #facc15; margin: 6px 0;">【${boss.title}】${boss.name}</div>
         <div style="font-size: 13px; font-style: italic; color: #f8fafc; margin-top: 6px; line-height: 1.4;">${boss.quote}</div>
       </div>
-      <button id="story-start-btn" style="width: 100%; padding: 14px; font-size: 18px; font-weight: bold; background: linear-gradient(135deg, ${city.color}, #0369a1); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-family: 'DotGothic16', sans-serif;">出走準備（検体確認へ）</button>
+      <button id="story-start-btn" class="retro-btn" style="width: 100%; padding: 14px; font-size: 18px; background: linear-gradient(135deg, ${city.color}, #0369a1);">出走準備（検体確認へ）</button>
     </div>
   `;
   modal.style.display = 'flex';
@@ -606,14 +593,13 @@ function showEndingTruthModal() {
         <div style="background: rgba(15, 23, 42, 0.7); padding: 12px; border-left: 4px solid #93c5fd; border-radius: 6px;"><div style="color: #93c5fd; font-weight: bold;">❄️ 【札幌】凍血のDr.ゼロの真実</div><div style="color: #e2e8f0; margin-top: 4px; line-height: 1.4;">極寒施設で立ち塞がった所長は、ウイルスの死滅条件を解明するため、自らを凍結実験台にして生き延びていた研究者だった。</div></div>
         <div style="background: rgba(15, 23, 42, 0.9); padding: 12px; border-left: 4px solid #e11d48; border-radius: 6px; border: 1px solid #f43f5e;"><div style="color: #f43f5e; font-weight: bold;">💉 【東京＆衝撃の結末】特効薬の真実</div><div style="color: #fff; margin-top: 4px; line-height: 1.5; font-weight: bold;">すべてのボスを倒し、ついにワクチンを自分に投与したあなた。<br>しかし、人間に戻るどころか知性と圧倒的筋力を兼ね備えた最悪の『超ゾンビ（新世界の王）』として覚醒してしまったのだった…！</div></div>
       </div>
-      <button id="truth-close-btn" style="width: 100%; padding: 14px; font-size: 16px; font-weight: bold; margin-top: 20px; background: linear-gradient(135deg, #e11d48, #9f1239); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-family: 'DotGothic16', sans-serif;">真相を受け入れ、ガレージへ戻る</button>
+      <button id="truth-close-btn" class="retro-btn" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 20px; background: linear-gradient(135deg, #e11d48, #9f1239);">真相を受け入れ、ガレージへ戻る</button>
     </div>
   `;
   modal.style.display = 'flex';
   document.getElementById('truth-close-btn').onclick = () => { modal.style.display = 'none'; };
 }
 
-// 💡 フリー・ストーリー問わず、パドック画面でのボタン消滅を完全防ぎレースへ遷移させる
 function showPaddock() {
   const z = myZombies[activeZombieIndex || 0]; if(!z) return;
   const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
@@ -679,8 +665,8 @@ function showPaddock() {
   });
   
   const btnWrapper = document.createElement('div'); 
-  btnWrapper.style.cssText = 'margin-top:24px; text-align:center; opacity:1;'; 
-  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn" style="width:100%; max-width:300px; background:linear-gradient(to bottom, #ef4444, #b91c1c);">レースへ向かう</button>`;
+  btnWrapper.style.cssText = 'margin-top:20px; text-align:center; display:flex; justify-content:center;'; 
+  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn" style="width:100%; max-width:280px; background:linear-gradient(to bottom, #ef4444, #b91c1c);">レースへ向かう</button>`;
   grid.appendChild(btnWrapper);
   
   document.getElementById('paddock-screen').classList.remove('hidden');
@@ -762,12 +748,18 @@ document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
 });
 
 function doFinish() {
-  raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
+  raceState = 'FINISH_SLOW'; 
+  document.getElementById('slime-overlay').classList.remove('active'); 
+  document.getElementById('finish-overlay').classList.remove('hidden');
   AudioManager.playSE('goalin');
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
   setTimeout(() => {
-    raceState = 'FINISHED'; const sorted = [...runners].sort((a, b) => b.dist - a.dist); const playerRank = sorted.findIndex(r => r.id === 0) + 1;
+    raceState = 'FINISHED'; 
+    document.getElementById('finish-overlay').classList.add('hidden'); // 💡 FINISH文字を確実に消す
+    
+    const sorted = [...runners].sort((a, b) => b.dist - a.dist); 
+    const playerRank = sorted.findIndex(r => r.id === 0) + 1;
     const z = myZombies[activeZombieIndex || 0]; if(z) z.matches++; let prize = 0;
     
     let isChampUpdated = false; let isStoryAllClear = false;
@@ -790,12 +782,14 @@ function doFinish() {
         isStoryAllClear = true;
       }
     } 
-    else if (playerRank === 2) prize = (currentGameMode === 'free') ? Math.floor(currentCity.freeBasePrize * 0.6) : 300; 
-    else if (playerRank === 3) prize = (currentGameMode === 'free') ? Math.floor(currentCity.freeBasePrize * 0.2) : 100; 
+    else if (playerRank === 2) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 300) * 0.6) : 300; 
+    else if (playerRank === 3) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 300) * 0.2) : 100; 
     else prize = 50;
     
     zombieMoney += prize; saveGame(); 
+    // 💡 獲得賞金をキレイな文字列でセット
     document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
+    
     const noticeEl = document.getElementById('champ-notice');
     if (isChampUpdated) noticeEl.classList.remove('hidden'); else noticeEl.classList.add('hidden');
 
