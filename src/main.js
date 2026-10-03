@@ -83,12 +83,14 @@ const AudioManager = {
       if (!this.currentBGM && !this.isMuted) this.playBGM('opening');
       document.removeEventListener('click', unlock);
       document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('pointerdown', unlock);
     };
     document.addEventListener('click', unlock);
     document.addEventListener('touchstart', unlock);
+    document.addEventListener('pointerdown', unlock);
 
     document.addEventListener('click', (e) => {
-      const btn = e.target.closest('button, .btn, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
+      const btn = e.target.closest('button, .btn, .retro-btn, .retro-btn-small, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
       if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
     });
   },
@@ -229,11 +231,11 @@ function getTitle(z) {
 }
 
 const CITIES = [
-  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka' },
-  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya' },
-  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【中級】フルアーマーの元警備隊長。', nextCity: 'sapporo' },
-  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【上級】凍結施設から逃げた元所長。', nextCity: 'tokyo' },
-  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【ラスボス】闇市ドーピングのマッドサイエンティスト。', nextCity: null }
+  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka', freeBasePrize: 300 },
+  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya', freeBasePrize: 400 },
+  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【中級】フルアーマーの元警備隊長。', nextCity: 'sapporo', freeBasePrize: 500 },
+  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【上級】凍結施設から逃げた元所長。', nextCity: 'tokyo', freeBasePrize: 700 },
+  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【ラスボス】闇市ドーピングのマッドサイエンティスト。', nextCity: null, freeBasePrize: 1000 }
 ];
 let currentCity = CITIES[0];
 
@@ -245,12 +247,22 @@ const STORY_BOSSES = {
   tokyo:   { name: 'Dr.マッドゾンビ', title: '最悪の異能科学者', quote: '「フハハ！究極のワクチンで我らは【超ゾンビ】となる！」' }
 };
 
+// 🔥 東京ボスのステータス大幅底上げ (案B)
 const STORY_DIFFICULTY = {
   fukuoka: { min: -0.15, max: 0.05 },
   osaka:   { min: -0.15, max: 0.10 },
   nagoya:  { min: -0.10, max: 0.10 },
   sapporo: { min: -0.10, max: 0.15 },
-  tokyo:   { min: -0.05, max: 0.20 }
+  tokyo:   { min: 0.15,  max: 0.40 }
+};
+
+// 💡 フリーレースの都市別補正 (ベース90%に掛け合わせ)
+const FREE_CITY_MULTIPLIERS = {
+  fukuoka: 0.88,
+  osaka:   0.92,
+  nagoya:  0.96,
+  sapporo: 1.00,
+  tokyo:   1.04
 };
 
 const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }];
@@ -320,8 +332,8 @@ const SYRINGE_SKILLS = [
 ];
 
 let currentAutoFlasks = []; let currentSyringe = null; let syringeUsed = false;
-
 let peer = null; let peerConnections = []; let myPeerId = null; let isPvpMode = false; let pvpMembers = [];
+let hasIntruder = false;
 
 function initPeerJS() {
   if (typeof Peer === 'undefined') { document.getElementById('pvp-net-status').textContent = 'P2P通信未対応'; return; }
@@ -482,9 +494,15 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     if (isKnockback) targetCtx.rotate(-0.35);
     
     let filterStr = 'none';
-    if (isKnockback) filterStr = 'brightness(180%) sepia(80%) hue-rotate(-30deg)'; 
-    else if (zData.isHard) filterStr = 'grayscale(100%) brightness(0.8)'; 
-    else if (isExhausted) filterStr = 'grayscale(80%) brightness(0.6)';
+    if (zData.colorInfo && zData.colorInfo.filter !== 'none') {
+      filterStr = zData.colorInfo.filter;
+    } else if (isKnockback) {
+      filterStr = 'brightness(180%) sepia(80%) hue-rotate(-30deg)'; 
+    } else if (zData.isHard) {
+      filterStr = 'grayscale(100%) brightness(0.8)'; 
+    } else if (isExhausted) {
+      filterStr = 'grayscale(80%) brightness(0.6)';
+    }
     
     targetCtx.filter = filterStr; 
     targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); 
@@ -504,7 +522,7 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
     targetCtx.strokeStyle = '#000';
     targetCtx.strokeText(dispName, 0, -5);
     
-    targetCtx.fillStyle = zData.id === 0 ? '#38bdf8' : '#cbd5e1'; 
+    targetCtx.fillStyle = zData.id === 0 ? '#38bdf8' : (zData.colorInfo && zData.colorInfo.filter !== 'none' ? '#ef4444' : '#cbd5e1'); 
     targetCtx.fillText(dispName, 0, -5);
   }
   
@@ -554,25 +572,7 @@ function updateMoneyDisp() {
   ['title-money', 'garage-money', 'shop-money'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.textContent = `${zombieMoney} Z$`;
-      el.style.textShadow = '3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 0 -3px 0 #000, 3px 0 0 #000, -3px 0 0 #000';
-      el.style.webkitTextStroke = '1.5px #000';
-      el.style.color = '#facc15';
-      el.style.fontWeight = '900';
-      el.style.fontSize = '22px';
-
-      const parent = el.parentElement || el;
-      if (parent) {
-        parent.style.backgroundImage = 'url("/money.webp")';
-        parent.style.backgroundRepeat = 'no-repeat';
-        parent.style.backgroundPosition = 'center';
-        parent.style.backgroundSize = '220px 80px';
-        parent.style.padding = '20px 48px';
-        parent.style.display = 'inline-flex';
-        parent.style.alignItems = 'center';
-        parent.style.justifyContent = 'center';
-        parent.style.minWidth = '200px';
-      }
+      el.textContent = zombieMoney;
     }
   });
 }
@@ -580,7 +580,10 @@ function updateMoneyDisp() {
 function renderGarage() {
   updateMoneyDisp();
   AudioManager.playBGM('opening');
-  const list = document.getElementById('garage-list'); list.innerHTML = ''; document.getElementById('garage-count').textContent = myZombies.length;
+  const list = document.getElementById('garage-list'); if (!list) return;
+  list.innerHTML = ''; 
+  const countEl = document.getElementById('garage-count'); if (countEl) countEl.textContent = myZombies.length;
+  
   myZombies.forEach((z, idx) => {
     const card = document.createElement('div'); card.className = 'zombie-card';
     let recordHtml = z.bestTime ? `<div class="zc-record">👑 ${z.bestTime}s (${z.bestCity})</div>` : '';
@@ -592,6 +595,7 @@ function renderGarage() {
         <button class="zc-btn btn-race" onclick="openCitySelect(${idx}, 'story')">ストーリー</button>
         <button class="zc-btn btn-race" style="background:#ca8a04;" onclick="openCitySelect(${idx}, 'free')">フリーレース</button>
         <button class="zc-btn btn-shop" onclick="openShop(${idx})">強化</button>
+        <button class="zc-btn btn-del" style="background:#64748b;" onclick="renameZombie(${idx})">名前変更</button>
         <button class="zc-btn btn-del" onclick="deleteZombie(${idx})">逃がす</button>
       </div>
     `;
@@ -599,6 +603,17 @@ function renderGarage() {
   });
   if (myZombies.length === 0) list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:40px 20px;">検体が居ません。<br>探索してください。</div>';
 }
+
+// 🏷️ 牧場（ガレージ）での名前変更機能
+window.renameZombie = (idx) => {
+  const currentName = myZombies[idx].name;
+  const newName = prompt("新しい検体名を入力してください", currentName);
+  if (newName && newName.trim() !== "") {
+    myZombies[idx].name = newName.trim();
+    saveGame();
+    renderGarage();
+  }
+};
 
 window.openCitySelect = (idx, mode = 'story') => { 
   activeZombieIndex = idx; 
@@ -610,11 +625,13 @@ window.openCitySelect = (idx, mode = 'story') => {
 
 window.deleteZombie = (idx) => { if(confirm('本当に逃がしますか？')) { myZombies.splice(idx, 1); saveGame(); renderGarage(); } };
 
-// 💉 牧場強化（ショップ）のテコ入れ：+2〜+4（ごく稀に+5）ランダム ＆ ドラムロール
+// 💉 牧場強化（ショップ）：+2〜+4（ごく稀に+5）ランダム ＆ ドラムロール
 window.openShop = (idx) => {
   activeZombieIndex = idx; updateMoneyDisp();
-  document.getElementById('shop-target-name').textContent = myZombies[idx].name;
-  document.getElementById('garage-screen').classList.add('hidden'); document.getElementById('shop-screen').classList.remove('hidden');
+  const targetEl = document.getElementById('shop-target-name');
+  if (targetEl) targetEl.textContent = myZombies[idx].name;
+  document.getElementById('garage-screen').classList.add('hidden'); 
+  document.getElementById('shop-screen').classList.remove('hidden');
 };
 
 document.querySelectorAll('.shop-btn').forEach(btn => {
@@ -630,7 +647,6 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
         if(drum) drum.pause();
         AudioManager.playSE('success');
         
-        // +2 〜 +4 （10%で超成功 +5）
         const isCritical = Math.random() < 0.1;
         const inc = isCritical ? 5 : Math.floor(Math.random() * 3) + 2;
         
@@ -709,7 +725,7 @@ function startEyeTapMiniGame(onComplete) {
     if (hitCount >= targetHits) {
       overlay.style.display = 'none';
       if (videoElem.parentNode) videoElem.parentNode.removeChild(videoElem);
-      onComplete(true); // 全成功ボーナスあり
+      onComplete(true);
     } else {
       moveVideo();
     }
@@ -724,7 +740,6 @@ function doScout() {
   startEyeTapMiniGame((isBonus) => {
     let spd = 40 + Math.floor(Math.random()*20), pow = 40 + Math.floor(Math.random()*20), stm = 40 + Math.floor(Math.random()*20), mnt = 40 + Math.floor(Math.random()*20), mag = 40 + Math.floor(Math.random()*20);
     
-    // 👀 タップミニゲーム成功ボーナス！
     if (isBonus) {
       spd += 3; pow += 3; stm += 3; mnt += 3; mag += 3;
       alert('✨ 捕捉大成功！素質が開花し、初期ステータス ALL +3 ボーナス獲得！');
@@ -744,26 +759,43 @@ function doScout() {
     myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
     
     const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
-    setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 2000);
+    setTimeout(() => { overlay.classList.add('hidden'); document.getElementById('scout-screen').classList.add('hidden'); updateNurtureUI(); document.getElementById('nurture-screen').classList.remove('hidden'); }, 1500);
   });
 }
 
 function updateNurtureUI() {
   const z = myZombies[activeZombieIndex]; if (!z) return;
-  document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`; document.getElementById('nurture-zombie-name').textContent = z.name;
-  document.getElementById('stat-style').textContent = z.style; document.getElementById('stat-spd').textContent = z.speed; document.getElementById('stat-pow').textContent = z.power; document.getElementById('stat-stm').textContent = z.stamina; document.getElementById('stat-mnt').textContent = z.mentality; document.getElementById('stat-mag').textContent = z.magic;
+  document.getElementById('nurture-turn-txt').textContent = `残 ${z.remainingTurns} 調整`; 
+  document.getElementById('nurture-zombie-name').textContent = z.name;
+  document.getElementById('stat-style').textContent = z.style; 
+  document.getElementById('stat-spd').textContent = z.speed; 
+  document.getElementById('stat-pow').textContent = z.power; 
+  document.getElementById('stat-stm').textContent = z.stamina; 
+  document.getElementById('stat-mnt').textContent = z.mentality; 
+  document.getElementById('stat-mag').textContent = z.magic;
+  
   const zCtx = document.getElementById('zombieCanvas').getContext('2d');
   zCtx.imageSmoothingEnabled = false;
   zCtx.clearRect(0, 0, 160, 160);
   drawZombieCharacter(zCtx, 80, 20, 80, 110, { ...z, knockback: 0 }, updateChromaKeyFrame(z.videoIndex, 80, 110), false);
-  if (z.remainingTurns <= 0) { document.querySelector('.command-container').classList.add('hidden'); document.getElementById('send-to-garage-btn').classList.remove('hidden'); } else { document.querySelector('.command-container').classList.remove('hidden'); document.getElementById('send-to-garage-btn').classList.add('hidden'); }
+  
+  if (z.remainingTurns <= 0) { 
+    document.querySelector('.command-container').classList.add('hidden'); 
+    document.getElementById('send-to-garage-btn').classList.remove('hidden'); 
+  } else { 
+    document.querySelector('.command-container').classList.remove('hidden'); 
+    document.getElementById('send-to-garage-btn').classList.add('hidden'); 
+  }
 }
 
 let activeDrumrollAudio = null;
 
 function executeCommand(type) {
   if (isNurturing) return; isNurturing = true;
-  document.getElementById('nurture-result-overlay').classList.remove('hidden'); document.getElementById('drumroll-text').classList.remove('hidden'); document.getElementById('result-label').classList.add('hidden'); document.getElementById('result-status-changes').classList.add('hidden');
+  document.getElementById('nurture-result-overlay').classList.remove('hidden'); 
+  document.getElementById('drumroll-text').classList.remove('hidden'); 
+  document.getElementById('result-label').classList.add('hidden'); 
+  document.getElementById('result-status-changes').classList.add('hidden');
   
   activeDrumrollAudio = AudioManager.playSE('drumroll');
   
@@ -777,7 +809,6 @@ function executeCommand(type) {
   }, 100);
 }
 
-// 💥 大成功時の success_cutin.png 表示演出
 function showNurtureResult(type) {
   AudioManager.playSE('success');
   const rand = Math.random(); let rType = rand < 0.2 ? 2 : (rand > 0.85 ? 0 : 1);
@@ -785,10 +816,11 @@ function showNurtureResult(type) {
   if (type === 'spd') { ms='speed'; ss='mentality'; mName='速さ'; sName='気性'; } else if (type === 'pow') { ms='power'; ss='magic'; mName='力強さ'; sName='異能'; } else if (type === 'stm') { ms='stamina'; ss='speed'; mName='体力'; sName='速さ'; }
   let inc = rType===2?20:(rType===1?10:3); let dec = rType===2?-5:(rType===1?-3:-1);
   
-  document.getElementById('drumroll-text').classList.add('hidden'); document.getElementById('result-label').classList.remove('hidden'); document.getElementById('result-status-changes').classList.remove('hidden');
+  document.getElementById('drumroll-text').classList.add('hidden'); 
+  document.getElementById('result-label').classList.remove('hidden'); 
+  document.getElementById('result-status-changes').classList.remove('hidden');
   const rl = document.getElementById('result-label');
   
-  // 🔥 大成功（rType === 2）で success_cutin.png 画像カットイン！
   if(rType===2){ 
     rl.textContent='大成功!!'; rl.className='result-label lbl-great'; 
     flashEffect.alpha = 1.0; flashEffect.color = '#facc15';
@@ -803,7 +835,6 @@ function showNurtureResult(type) {
   setTimeout(() => { myZombies[activeZombieIndex][ms]+=inc; myZombies[activeZombieIndex][ss]+=dec; myZombies[activeZombieIndex].remainingTurns--; saveGame(); document.getElementById('nurture-result-overlay').classList.add('hidden'); isNurturing = false; updateNurtureUI(); }, 1500);
 }
 
-// 🖼️ success_cutin.png ポップアップ表示関数
 function showSuccessCutinImage() {
   let imgOverlay = document.getElementById('success-cutin-pop');
   if (!imgOverlay) {
@@ -838,6 +869,7 @@ document.getElementById('send-to-garage-btn').onclick = () => {
     document.getElementById('release-screen').classList.remove('hidden');
   } else { renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); }
 };
+
 window.doRelease = (idx) => { 
   myZombies.splice(idx, 1); 
   saveGame(); 
@@ -860,10 +892,15 @@ function renderCitySelect() {
     if (!isUnlocked) btn.style.opacity = '0.5';
 
     const champ = weeklyChamps[city.id];
-    let champHtml = champ ? `<div class="city-champ">👑 週次王者: ${champ.name} (${champ.time}s)</div>` : `<div class="city-champ">👑 週次王者: 記録なし</div>`;
-    
+    let champHtml = champ ? `<div class="city-champ">👑 サーバー王者: ${champ.name} (${champ.time}s)</div>` : `<div class="city-champ">👑 サーバー王者: まだ誰もいません！</div>`;
     let lockTag = isUnlocked ? '' : '<span style="color:#ef4444; font-weight:bold;"> [未解放]</span>';
-    btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)${lockTag}</span><span class="city-desc">${city.desc}</span>${champHtml}`;
+    
+    let descHtml = city.desc;
+    if (currentGameMode === 'free' && isUnlocked) {
+      descHtml += `<br><span style="color:#facc15; font-weight:bold; font-size:12px;">💰 1着賞金: ${city.freeBasePrize} Z$</span>`;
+    }
+
+    btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)${lockTag}</span><span class="city-desc">${descHtml}</span>${champHtml}`;
     
     if (isUnlocked) {
       btn.onclick = () => { 
@@ -1006,7 +1043,8 @@ function showEndingTruthModal() {
 
 function showPaddock() {
   const z = myZombies[activeZombieIndex || 0]; if(!z) return;
-  const grid = document.getElementById('paddock-grid'); grid.innerHTML = '';
+  const grid = document.getElementById('paddock-grid'); if(!grid) return;
+  grid.innerHTML = '';
   
   runners.length = 0; const laneW = canvas.width / 4;
   
@@ -1014,6 +1052,8 @@ function showPaddock() {
   
   const playerTotal = z.speed + z.power + z.stamina + z.mentality + z.magic;
   const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
+
+  hasIntruder = false;
 
   for (let i = 1; i < 4; i++) {
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
@@ -1023,6 +1063,14 @@ function showPaddock() {
       const boss = STORY_BOSSES[currentCity.id];
       name = boss.name;
       bossTitle = boss.title;
+    }
+
+    let isIntruder = false;
+    if (currentGameMode === 'free' && i === 1 && Math.random() < 0.10) {
+      isIntruder = true;
+      hasIntruder = true;
+      name = '漆黒の暴走体';
+      bossTitle = '乱入検体';
     }
 
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
@@ -1041,8 +1089,15 @@ function showPaddock() {
       cpuMnt = Math.round((weights[3] / wSum) * targetTotal);
       cpuMag = Math.round((weights[4] / wSum) * targetTotal);
     } else {
-      const rate = (Math.random() * 0.2) - 0.10;
-      const targetTotal = playerTotal * (1 + rate);
+      let targetTotal;
+      if (isIntruder) {
+        targetTotal = playerTotal * 1.0;
+      } else {
+        const cityMult = FREE_CITY_MULTIPLIERS[currentCity.id] || 1.0;
+        const rate = (Math.random() * 0.10) - 0.05;
+        targetTotal = playerTotal * 0.90 * cityMult * (1 + rate);
+      }
+      
       const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
       const wSum = weights.reduce((a, b) => a + b, 0);
 
@@ -1058,13 +1113,17 @@ function showPaddock() {
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
     const cpuStm = Math.max(100, cpuStmVal * 10);
-    const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150 };
+    const cpuColorInfo = isIntruder ? { filter: 'brightness(0) drop-shadow(0 0 10px #ef4444)' } : ZOMBIE_COLORS[0];
+
+    const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: cpuColorInfo, sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150, isIntruder: isIntruder };
     runners.push(cpuZ);
   }
 
   runners.forEach((r, i) => {
     const card = document.createElement('div'); card.className = `pd-card c-${i}`; card.style.animationDelay = `${i * 0.2}s`;
-    card.innerHTML = `<div class="pd-name"><span class="pd-title">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/10) + r.mntAttr + r.magAttr}</div>`;
+    let titleStyle = r.isIntruder ? 'color:#ef4444; font-weight:900;' : '';
+    let nameStyle = r.isIntruder ? 'color:#ef4444; text-shadow:0 0 5px #ef4444;' : '';
+    card.innerHTML = `<div class="pd-name" style="${nameStyle}"><span class="pd-title" style="${titleStyle}">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/10) + r.mntAttr + r.magAttr}</div>`;
     grid.appendChild(card);
   });
   
@@ -1086,7 +1145,11 @@ function startRaceCutin() {
 
 function setupRaceState() {
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
-  liveCommentary = `各検体スタート位置につきました！距離${totalDistance}mの勝負！`;
+  if (hasIntruder) {
+    liveCommentary = `⚠️ 警告！正体不明の【漆黒の暴走体】が乱入してきました！！`;
+  } else {
+    liveCommentary = `各検体スタート位置につきました！距離${totalDistance}mの勝負！`;
+  }
   lastTopRunnerId = null;
 
   AudioManager.playBGM(currentCity.id);
@@ -1147,7 +1210,12 @@ function triggerSkill(skillData, userRunner) {
   else if (skillData.id === 'poison') { const targets = runners.filter(r => r.id !== userRunner.id && r.dist > userRunner.dist && r.dist - userRunner.dist < 300); if (targets.length > 0) { targets.forEach(t => { particles.push({ type: 'poison_line', startX: userRunner.x, startY: userRunner.y, targetX: t.x, targetY: t.y, width: 20, life: 1.0 }); applyKnockback(t, effectivePower); }); } else { particles.push({ type: 'poison_laser', x: userRunner.x, y: userRunner.y, width: 40, life: 1.0 }); } } 
   else if (skillData.id === 'stone') { let target = runners.find(r=>r.id!==userRunner.id); runners.forEach(r => { if (r.id !== userRunner.id && Math.abs(r.dist - userRunner.dist) < Math.abs(target.dist - userRunner.dist)) target = r; }); particles.push({ type: 'stone_throw', startX: userRunner.x, startY: userRunner.y, targetX: target.x, targetY: target.y, progress: 0, targetRunner: target }); } 
   else if (skillData.id === 'hard') { userRunner.isHard = true; userRunner.knockback = effectivePower; createExplosion(userRunner.x, userRunner.y, '#cbd5e1', 20, 2, 3, 'spark'); setTimeout(() => { userRunner.isHard = false; }, effectivePower * 30); } 
-  else if (skillData.id === 'barrier') { userRunner.barrierPower = effectivePower; createExplosion(userRunner.x, userRunner.y, '#a855f7', 30, 4, 3, 'spark'); setTimeout(() => { userRunner.barrierPower = 0; }, 3000); } 
+  else if (skillData.id === 'barrier') { 
+    // 🛡️ バリア時間を 6秒 に延長
+    userRunner.barrierPower = effectivePower; 
+    createExplosion(userRunner.x, userRunner.y, '#a855f7', 30, 4, 3, 'spark'); 
+    setTimeout(() => { userRunner.barrierPower = 0; }, 6000); 
+  } 
   else if (skillData.id === 'heal') { userRunner.stm = Math.min(userRunner.maxStm, userRunner.stm + effectivePower * 2.0); createExplosion(userRunner.x, userRunner.y, '#4ade80', 40, 2, 3, 'fire'); } 
   else if (skillData.id === 'mach') { userRunner.boostTimer = effectivePower * 2.0; createExplosion(userRunner.x, userRunner.y, '#facc15', 50, 6, 4, 'spark'); } 
 }
@@ -1165,14 +1233,18 @@ function doFinish() {
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
   setTimeout(() => {
-    raceState = 'FINISHED'; const sorted = [...runners].sort((a, b) => b.dist - a.dist); const playerRank = sorted.findIndex(r => r.id === 0) + 1;
+    raceState = 'FINISHED'; 
+    document.getElementById('finish-overlay').classList.add('hidden');
+    
+    const sorted = [...runners].sort((a, b) => b.dist - a.dist); const playerRank = sorted.findIndex(r => r.id === 0) + 1;
     const z = myZombies[activeZombieIndex || 0]; if(z) z.matches++; let prize = 0;
     
     let isChampUpdated = false;
     let isStoryAllClear = false;
 
     if (playerRank === 1) { 
-      if(z) z.wins++; prize = 500; 
+      if(z) z.wins++; 
+      prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 300) : 500;
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
       const currentChamp = weeklyChamps[currentCity.id];
@@ -1187,7 +1259,9 @@ function doFinish() {
         isStoryAllClear = true;
       }
     } 
-    else if (playerRank === 2) prize = 300; else if (playerRank === 3) prize = 100; else prize = 50;
+    else if (playerRank === 2) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 300) * 0.6) : 300; 
+    else if (playerRank === 3) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 300) * 0.2) : 100; 
+    else prize = 50;
     
     zombieMoney += prize; saveGame(); 
     document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
@@ -1274,7 +1348,6 @@ function renderPodiumFrame() {
     drawZombieCharacter(pCtx, 220+40, 160-80, 64, 80, currentSortedRunners[2], pc, false, false);
   }
 
-  // 🎊 サイケカラー紙吹雪の更新＆描画
   confettiParticles.forEach(p => {
     p.x += p.vx;
     p.y += p.vy;
@@ -1307,7 +1380,7 @@ function update() {
     }
 
     if (startCountdown > 0) { cdEl.textContent = Math.ceil(startCountdown); } 
-    else { cdEl.textContent = "START!"; liveCommentary = "一斉にスタート！！激しい位置取り合戦だ！"; setTimeout(() => { if (raceState === 'RACING') cdEl.classList.add('hidden'); }, 1000); raceState = 'RACING'; startTime = Date.now(); }
+    else { cdEl.textContent = "START!"; if (!hasIntruder) liveCommentary = "一斉にスタート！！激しい位置取り合戦だ！"; setTimeout(() => { if (raceState === 'RACING') cdEl.classList.add('hidden'); }, 1000); raceState = 'RACING'; startTime = Date.now(); }
   }
 
   let dt = raceState === 'FINISH_SLOW' ? 0.2 : 1.0; 
@@ -1322,7 +1395,8 @@ function update() {
 
     runners.forEach((r, i) => {
       if (i !== 0 && remainingDistance < 380) {
-        r.skillCd -= dt; 
+        const isTokyoBoss = (currentGameMode === 'story' && currentCity.id === 'tokyo' && i === 1);
+        r.skillCd -= dt * (isTokyoBoss ? 1.5 : 1.0); // 👑 東京ボス技能発動スピード1.5倍 (案C)
         if (r.skillCd <= 0) { 
           const cpuSkill = ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)];
           triggerSkill(cpuSkill, r); 
@@ -1333,6 +1407,17 @@ function update() {
 
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
+      
+      // 👑 東京ボスのラスト150m「マッドドーピング」 (案A)
+      if (currentGameMode === 'story' && currentCity.id === 'tokyo' && r.id === 1) {
+        if (remainingDistance <= 150 && !r.hasMadDoped) {
+          r.hasMadDoped = true;
+          liveCommentary = `⚠️ Dr.マッドゾンビが究極の薬を注射！【マッハ＋バリア】発動！！`;
+          triggerSkill(SYRINGE_SKILLS.find(s=>s.id==='mach'), r);
+          triggerSkill(SYRINGE_SKILLS.find(s=>s.id==='barrier'), r);
+        }
+      }
+
       if (!r.isSlacking && Math.random() < 0.003 && r.mntAttr < 70) { 
         if (Math.random() < (70 - r.mntAttr) * 0.01) { 
           r.isSlacking = true; r.knockback = 60; 
@@ -1500,11 +1585,11 @@ function init() {
   initPeerJS();
   AudioManager.init();
   
-  document.getElementById('nav-scout-btn').onclick = () => { 
-    document.getElementById('title-screen').classList.add('hidden'); 
-    document.getElementById('scout-screen').classList.remove('hidden'); 
-  };
-  document.getElementById('nav-garage-btn').onclick = () => { 
+  const navScout = document.getElementById('nav-scout-btn');
+  if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
+  
+  const navGarage = document.getElementById('nav-garage-btn');
+  if(navGarage) navGarage.onclick = () => { 
     document.getElementById('title-screen').classList.add('hidden'); 
     if (myZombies.length > 3) {
       document.getElementById('send-to-garage-btn').click();
@@ -1513,26 +1598,43 @@ function init() {
       document.getElementById('garage-screen').classList.remove('hidden'); 
     }
   };
-  document.getElementById('nav-pvp-btn').onclick = () => { 
-    updatePvpSelectUI(); 
-    document.getElementById('title-screen').classList.add('hidden'); 
-    document.getElementById('pvp-screen').classList.remove('hidden'); 
-  };
-  
-  document.getElementById('nav-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.remove('hidden'); };
-  document.getElementById('close-howto-btn').onclick = () => { document.getElementById('howto-modal').classList.add('hidden'); };
-  document.getElementById('howto-modal').addEventListener('click', (e) => {
-    if (e.target.id === 'howto-modal') document.getElementById('howto-modal').classList.add('hidden');
-  });
 
-  document.getElementById('do-scout-btn').onclick = doScout;
-  document.getElementById('back-to-title-1').onclick = () => { document.getElementById('scout-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
-  document.getElementById('back-to-title-2').onclick = () => { document.getElementById('garage-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
-  document.getElementById('back-to-title-pvp').onclick = () => { document.getElementById('pvp-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
-  document.getElementById('back-to-garage-1').onclick = () => { document.getElementById('city-select-screen').classList.add('hidden'); document.getElementById('garage-screen').classList.remove('hidden'); };
-  document.getElementById('retry-btn').onclick = () => { isGameRunning = false; isPvpMode = false; document.getElementById('result-screen').classList.add('hidden'); document.getElementById('race-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
-  
+  const navPvp = document.getElementById('nav-pvp-btn');
+  if(navPvp) navPvp.onclick = () => { updatePvpSelectUI(); document.getElementById('title-screen').classList.add('hidden'); document.getElementById('pvp-screen').classList.remove('hidden'); };
+
+  const navHowto = document.getElementById('nav-howto-btn');
+  if(navHowto) navHowto.onclick = () => { document.getElementById('howto-modal').classList.remove('hidden'); };
+
+  const closeHowto = document.getElementById('close-howto-btn');
+  if(closeHowto) closeHowto.onclick = () => { document.getElementById('howto-modal').classList.add('hidden'); };
+
+  const howtoModal = document.getElementById('howto-modal');
+  if(howtoModal) howtoModal.addEventListener('click', (e) => { if (e.target.id === 'howto-modal') howtoModal.classList.add('hidden'); });
+
+  const doScoutBtn = document.getElementById('do-scout-btn');
+  if(doScoutBtn) doScoutBtn.onclick = doScout;
+
+  const back1 = document.getElementById('back-to-title-1');
+  if(back1) back1.onclick = () => { document.getElementById('scout-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
+
+  const back2 = document.getElementById('back-to-title-2');
+  if(back2) back2.onclick = () => { document.getElementById('garage-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
+
+  const backPvp = document.getElementById('back-to-title-pvp');
+  if(backPvp) backPvp.onclick = () => { document.getElementById('pvp-screen').classList.add('hidden'); document.getElementById('title-screen').classList.remove('hidden'); AudioManager.playBGM('opening'); };
+
+  const backGarage1 = document.getElementById('back-to-garage-1');
+  if(backGarage1) backGarage1.onclick = () => { document.getElementById('city-select-screen').classList.add('hidden'); document.getElementById('garage-screen').classList.remove('hidden'); };
+
+  const retryBtn = document.getElementById('retry-btn');
+  if(retryBtn) retryBtn.onclick = () => { isGameRunning = false; isPvpMode = false; document.getElementById('result-screen').classList.add('hidden'); document.getElementById('race-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
+
   document.querySelectorAll('.cmd-btn').forEach(btn => { btn.onclick = () => { executeCommand(btn.dataset.cmd); }; });
+  
+  const closeShop = document.getElementById('close-shop-btn');
+  if(closeShop) closeShop.onclick = () => { document.getElementById('shop-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
+
   requestAnimationFrame(update);
 }
+
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
