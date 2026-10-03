@@ -19,6 +19,9 @@ let lastTopRunnerId = null;
 // 🎊 サイケカラー紙吹雪パーティクル
 let confettiParticles = [];
 
+// 🌐 オンラインランキング共有用 (JSONBlob API エンドポイント)
+const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/1356882299833835520';
+
 // 🖼️ 新規素材のロード
 const successCutinImg = new Image();
 successCutinImg.src = '/success_cutin.png';
@@ -43,7 +46,37 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 🎵 音響管理システム (重複停止の確実化)
+// 🌐 オンラインデータ同期機能
+// ==========================================
+async function fetchOnlineChamps() {
+  try {
+    const res = await fetch(ONLINE_RANKING_URL);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        weeklyChamps = data;
+        localStorage.setItem('weeklyChamps', JSON.stringify(weeklyChamps));
+      }
+    }
+  } catch (err) {
+    console.warn('[OnlineSync] サーバーからのランキング取得に失敗 (オフライン動作):', err);
+  }
+}
+
+async function updateOnlineChamps(newChamps) {
+  try {
+    await fetch(ONLINE_RANKING_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newChamps)
+    });
+  } catch (err) {
+    console.warn('[OnlineSync] サーバーへのランキング送信に失敗 (オフライン動作):', err);
+  }
+}
+
+// ==========================================
+// 🎵 音響管理システム (画面中央上部に配置 ＆ 重なり防止)
 // ==========================================
 const AudioManager = {
   basePathBGM: 'audio/bgm/',
@@ -157,7 +190,6 @@ const AudioManager = {
     if (!this.bgmList[key]) return;
     if (this.currentBGMKey === key && this.currentBGM && !this.currentBGM.paused) return;
     
-    // 💡 確実に前のBGMを停止
     this.stopBGM();
     this.currentBGMKey = key;
 
@@ -168,7 +200,6 @@ const AudioManager = {
     audio.loop = true;
     audio.volume = 0.5;
     
-    // 💡 即座にインスタンスを代入し、非同期再生完了前でも stopBGM で停止可能にする
     this.currentBGM = audio;
 
     audio.play().catch(err => {
@@ -863,8 +894,10 @@ window.doRelease = (idx) => {
   }
 };
 
-function renderCitySelect() {
-  const container = document.getElementById('city-list'); container.innerHTML = '';
+async function renderCitySelect() {
+  await fetchOnlineChamps(); // 💡 遠征先一覧を開くたびにオンラインの最新王者を非同期取得
+  const container = document.getElementById('city-list'); if(!container) return;
+  container.innerHTML = '';
   
   CITIES.forEach(city => {
     const isUnlocked = currentGameMode === 'free' || clearedCities.includes(city.id);
@@ -1028,7 +1061,6 @@ function showPaddock() {
   grid.innerHTML = '';
   
   runners.length = 0; 
-  // 💡 左右にパディング(30px)を設けて両端のレーンを中央寄りに調整
   const lanePadding = 30;
   const laneW = (canvas.width - lanePadding * 2) / 4;
   
@@ -1234,6 +1266,7 @@ function doFinish() {
       if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
         weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
         isChampUpdated = true;
+        updateOnlineChamps(weeklyChamps); // 💡 1着でレコード更新時にオンライン同期送信
       }
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
@@ -1565,6 +1598,7 @@ function init() {
   updateMoneyDisp();
   initPeerJS();
   AudioManager.init();
+  fetchOnlineChamps(); // 💡 起動時に最新のオンラインランキングを取得
   
   const navScout = document.getElementById('nav-scout-btn');
   if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
