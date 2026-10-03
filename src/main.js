@@ -80,18 +80,6 @@ async function updateOnlineChamps(newChamps) {
   }
 }
 
-async function updateOnlineChamps(newChamps) {
-  try {
-    await fetch(ONLINE_RANKING_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newChamps)
-    });
-  } catch (err) {
-    console.warn('[OnlineSync] サーバーへのランキング送信に失敗 (オフライン動作):', err);
-  }
-}
-
 // ==========================================
 // 🎵 音響管理システム
 // ==========================================
@@ -141,7 +129,7 @@ const AudioManager = {
 
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button, .btn, .retro-btn, .retro-btn-small, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
-      if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
+      if (btn && btn.id !== 'sound-toggle-btn' && btn.id !== 'test-sync-btn') this.playSE('button');
     });
   },
 
@@ -1258,14 +1246,13 @@ document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
   flashEffect.alpha = 0.8; flashEffect.color = '#ffffff'; triggerSkill(currentSyringe, runners[0]);
 });
 
-// 💡 関数全体を async に変更
 async function doFinish() {
   raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
   
   AudioManager.playSE('goalin');
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  setTimeout(async () => { // 💡 ここも async に変更
+  setTimeout(async () => { 
     raceState = 'FINISHED'; 
     document.getElementById('finish-overlay').classList.add('hidden');
     
@@ -1280,12 +1267,10 @@ async function doFinish() {
       prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 300) : 500;
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
-      const currentChamp = weeklyChamps[currentCity.id];
-      if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
-        weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
-        isChampUpdated = true;
-        await updateOnlineChamps(weeklyChamps); // 💡 await を追加して確実に送信完了を待つ
-      }
+      // 💡 1着なら常にサーバーへ最新タイムを送信・更新
+      weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
+      isChampUpdated = true;
+      await updateOnlineChamps(weeklyChamps);
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
         clearedCities.push(currentCity.nextCity);
@@ -1616,7 +1601,21 @@ function init() {
   updateMoneyDisp();
   initPeerJS();
   AudioManager.init();
-  fetchOnlineChamps(); // 💡 起動時に最新のオンラインランキングを取得
+  fetchOnlineChamps(); 
+
+  // 🧪 デバッグ用：画面右下に「オンラインテスト送信」ボタンを生成
+  if (!document.getElementById('test-sync-btn')) {
+    const testBtn = document.createElement('button');
+    testBtn.id = 'test-sync-btn';
+    testBtn.textContent = '🌐 オンラインテスト送信';
+    testBtn.style.cssText = 'position:fixed; bottom:12px; right:12px; z-index:99999; padding:8px 14px; background:#facc15; color:#000; font-weight:bold; border:none; border-radius:8px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.5);';
+    testBtn.onclick = async () => {
+      weeklyChamps['fukuoka'] = { name: "テスト送信成功", time: "18.50" };
+      await updateOnlineChamps(weeklyChamps);
+      alert('✨ テスト送信が完了しました！JSONBlobの画面（F5）を確認してください。');
+    };
+    document.body.appendChild(testBtn);
+  }
   
   const navScout = document.getElementById('nav-scout-btn');
   if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
