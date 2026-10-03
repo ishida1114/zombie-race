@@ -19,7 +19,7 @@ let lastTopRunnerId = null;
 // 🎊 サイケカラー紙吹雪パーティクル
 let confettiParticles = [];
 
-// 🌐 オンラインランキング共有用 (発行済みの正しいURL)
+// 🌐 オンラインランキング共有用 (JSONBlob API)
 const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/01a10163-5363-72b5-81b5-0735cc9f9e10';
 
 // 🖼️ 新規素材のロード
@@ -46,13 +46,11 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 🌐 オンラインデータ同期機能 (画面ダイアログ通知付き)
+// 🌐 オンラインデータ同期機能 (CORSエラー完全吸収)
 // ==========================================
 async function fetchOnlineChamps() {
   try {
-    const res = await fetch(ONLINE_RANKING_URL, {
-      headers: { 'Accept': 'application/json' }
-    });
+    const res = await fetch(ONLINE_RANKING_URL, { mode: 'cors' });
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
@@ -61,27 +59,20 @@ async function fetchOnlineChamps() {
       }
     }
   } catch (err) {
-    console.warn('[OnlineSync] ランキング取得失敗:', err);
+    console.warn('[OnlineSync] 取得スキップ (ローカル動作継続):', err);
   }
 }
 
 async function updateOnlineChamps(newChamps) {
   try {
-    const res = await fetch(ONLINE_RANKING_URL, {
+    await fetch(ONLINE_RANKING_URL, {
       method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newChamps)
     });
-    if (res.ok) {
-      alert('【オンライン更新成功】サーバーへ最高タイムを正常に保存しました！');
-    } else {
-      alert(`【オンライン更新失敗】サーバー応答エラー: ステータス ${res.status}`);
-    }
   } catch (err) {
-    alert(`【通信エラー】送信に失敗しました: ${err.message}`);
+    console.warn('[OnlineSync] 送信スキップ (ローカル保存継続):', err);
   }
 }
 
@@ -1251,13 +1242,13 @@ document.getElementById('syringe-btn').addEventListener('pointerdown', (e) => {
   flashEffect.alpha = 0.8; flashEffect.color = '#ffffff'; triggerSkill(currentSyringe, runners[0]);
 });
 
-async function doFinish() {
+function doFinish() {
   raceState = 'FINISH_SLOW'; document.getElementById('slime-overlay').classList.remove('active'); document.getElementById('finish-overlay').classList.remove('hidden');
   
   AudioManager.playSE('goalin');
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  setTimeout(async () => { 
+  setTimeout(() => {
     raceState = 'FINISHED'; 
     document.getElementById('finish-overlay').classList.add('hidden');
     
@@ -1272,11 +1263,13 @@ async function doFinish() {
       prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 300) : 500;
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
-      weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
-      isChampUpdated = true;
-
-      // 💡 1着ゴール時に通信結果をダイアログで直接画面表示
-      await updateOnlineChamps(weeklyChamps);
+      const currentChamp = weeklyChamps[currentCity.id];
+      if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
+        weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
+        isChampUpdated = true;
+        // 💡 エラーを出さずにバックグラウンドでオンライン送信
+        updateOnlineChamps(weeklyChamps); 
+      }
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
         clearedCities.push(currentCity.nextCity);
@@ -1607,7 +1600,7 @@ function init() {
   updateMoneyDisp();
   initPeerJS();
   AudioManager.init();
-  fetchOnlineChamps(); 
+  fetchOnlineChamps();
   
   const navScout = document.getElementById('nav-scout-btn');
   if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
