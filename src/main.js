@@ -6,28 +6,17 @@ let shakeTime = 0; let scrollY = 0; let globalTime = 0;
 let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
-// 📖 モード管理 ('story' | 'free')
 let currentGameMode = 'story';
 let podiumAnimationId = null;
 let currentSortedRunners = [];
 let currentWinningTime = "0.00";
-
-// 🎤 リアルタイム実況テロップ変数
 let liveCommentary = "レース開始直前！各検体、枠順につきました。";
 let lastTopRunnerId = null;
-
-// 🎊 サイケカラー紙吹雪パーティクル
 let confettiParticles = [];
 
-// 🖼️ 新規素材のロード
-const successCutinImg = new Image();
-successCutinImg.src = '/success_cutin.png';
+const successCutinImg = new Image(); successCutinImg.src = '/success_cutin.png';
+const eyeVideo = document.createElement('video'); eyeVideo.src = '/zombie_eye.mp4'; eyeVideo.loop = true; eyeVideo.muted = true; eyeVideo.playsInline = true;
 
-const eyeVideo = document.createElement('video');
-eyeVideo.src = '/zombie_eye.mp4';
-eyeVideo.loop = true; eyeVideo.muted = true; eyeVideo.playsInline = true;
-
-// 🛣️ 都市別地面画像の動的ロード管理
 const ROAD_IMAGES = {
   tokyo:   { src: '/roadtokyo.webp',   img: new Image(), loaded: false },
   osaka:   { src: '/roadoosaka.webp',  img: new Image(), loaded: false },
@@ -37,14 +26,9 @@ const ROAD_IMAGES = {
 };
 
 Object.keys(ROAD_IMAGES).forEach(cityId => {
-  const item = ROAD_IMAGES[cityId];
-  item.img.src = item.src;
-  item.img.onload = () => { item.loaded = true; };
+  const item = ROAD_IMAGES[cityId]; item.img.src = item.src; item.img.onload = () => { item.loaded = true; };
 });
 
-// ==========================================
-// 🎵 音響管理システム
-// ==========================================
 const AudioManager = {
   basePathBGM: 'audio/bgm/', basePathSE: 'audio/se/',
   bgmList: { opening: 'opening.m4a', tokyo: 'tokyo.m4a', osaka: 'oosaka.m4a', nagoya: 'nagoya.mp4', fukuoka: 'fukuoka.mp4', sapporo: 'sapporo.m4a', ending: 'ending.mp4' },
@@ -58,15 +42,18 @@ const AudioManager = {
       this.audioUnlocked = true;
       const dummy = new Audio(); dummy.play().catch(() => {});
       if (!this.currentBGM && !this.isMuted) this.playBGM('opening');
-      document.removeEventListener('click', unlock); document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
     };
-    document.addEventListener('click', unlock); document.addEventListener('touchstart', unlock);
+    // 💡 画面を最初に触った瞬間にBGMを自動再生
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('keydown', unlock);
+
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('button, .btn, .city-btn, .zc-btn, .cmd-btn, .shop-btn, [role="button"]');
       if (btn && btn.id !== 'sound-toggle-btn') this.playSE('button');
     });
   },
-
   toggleMute() {
     this.isMuted = !this.isMuted;
     if (this.isMuted) { if (this.currentBGM) this.currentBGM.pause(); } 
@@ -77,7 +64,6 @@ const AudioManager = {
     }
     this.updateMuteButtonUI(); return this.isMuted;
   },
-
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button'); btn.id = 'sound-toggle-btn'; btn.className = 'sound-toggle-btn';
@@ -85,12 +71,10 @@ const AudioManager = {
     btn.onclick = (e) => { e.stopPropagation(); this.toggleMute(); };
     document.body.appendChild(btn); this.updateMuteButtonUI();
   },
-
   updateMuteButtonUI() {
     const btn = document.getElementById('sound-toggle-btn');
     if (btn) { btn.textContent = this.isMuted ? '🔇 音: OFF' : '🔊 音: ON'; btn.style.color = this.isMuted ? '#94a3b8' : '#38bdf8'; btn.style.borderColor = this.isMuted ? '#64748b' : '#38bdf8'; }
   },
-
   playBGM(key) {
     if (!this.bgmList[key]) return;
     if (this.currentBGMKey === key && this.currentBGM && !this.currentBGM.paused) return;
@@ -100,11 +84,7 @@ const AudioManager = {
     audio.loop = true; audio.volume = 0.5;
     audio.play().then(() => { this.currentBGM = audio; }).catch(err => { console.warn(`[AudioManager] BGM再生失敗 (${path}):`, err); });
   },
-
-  stopBGM() {
-    if (this.currentBGM) { this.currentBGM.pause(); this.currentBGM.currentTime = 0; this.currentBGM = null; }
-  },
-
+  stopBGM() { if (this.currentBGM) { this.currentBGM.pause(); this.currentBGM.currentTime = 0; this.currentBGM = null; } },
   playSE(key) {
     if (this.isMuted || !this.seList[key]) return null;
     const path = this.basePathSE + this.seList[key]; const se = new Audio(path);
@@ -113,7 +93,6 @@ const AudioManager = {
   }
 };
 
-// 📦 データ管理
 let myZombies = JSON.parse(localStorage.getItem('myZombies')) || [];
 let zombieMoney = parseInt(localStorage.getItem('zombieMoney')) || 0;
 let weeklyChamps = JSON.parse(localStorage.getItem('weeklyChamps')) || {};
@@ -137,8 +116,7 @@ myZombies.forEach(z => {
 });
 let activeZombieIndex = null; let isNurturing = false;
 
-// 🌐 オンラインランキング機能（JSONBlob通信）
-const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/YOUR_BLOB_ID_HERE'; // ★ここに取得したIDを入れてください
+const ONLINE_RANKING_URL = 'https://jsonblob.com/api/jsonBlob/YOUR_BLOB_ID_HERE';
 
 async function syncOnlineRanking() {
   if (ONLINE_RANKING_URL.includes('YOUR_BLOB_ID')) return;
@@ -158,9 +136,7 @@ async function syncOnlineRanking() {
 async function updateOnlineRanking() {
   if (ONLINE_RANKING_URL.includes('YOUR_BLOB_ID')) return;
   try {
-    await fetch(ONLINE_RANKING_URL, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(weeklyChamps)
-    });
+    await fetch(ONLINE_RANKING_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(weeklyChamps) });
   } catch (e) { console.warn("オンラインランキング更新失敗:", e); }
 }
 
@@ -195,36 +171,17 @@ const STORY_BOSSES = {
   tokyo:   { name: 'Dr.マッドゾンビ', title: '最悪の異能科学者', quote: '「フハハ！究極のワクチンで我らは【超ゾンビ】となる！」' }
 };
 
-// 💡 ストーリー難易度（東京を大幅強化）
-const STORY_DIFFICULTY = {
-  fukuoka: { min: -0.15, max: 0.05 },
-  osaka:   { min: -0.15, max: 0.10 },
-  nagoya:  { min: -0.10, max: 0.10 },
-  sapporo: { min: -0.10, max: 0.15 },
-  tokyo:   { min: 0.15, max: 0.40 } // 🔥 案B：+15%〜+40%に超絶強化
-};
-
-// 💡 フリーレースの都市別補正（ベース90%に対する乗数）
-const FREE_CITY_MULTIPLIERS = {
-  fukuoka: 0.88,
-  osaka:   0.92,
-  nagoya:  0.96,
-  sapporo: 1.00,
-  tokyo:   1.04
-};
-
+const STORY_DIFFICULTY = { fukuoka: { min: -0.15, max: 0.05 }, osaka: { min: -0.15, max: 0.10 }, nagoya: { min: -0.10, max: 0.10 }, sapporo: { min: -0.10, max: 0.15 }, tokyo: { min: 0.15, max: 0.40 } };
+const FREE_CITY_MULTIPLIERS = { fukuoka: 0.88, osaka: 0.92, nagoya: 0.96, sapporo: 1.00, tokyo: 1.04 };
 const ZOMBIE_COLORS = [{ name: '標準', filter: 'none' }];
 const ZOMBIE_SIZES = [{ name: '標準', scaleX: 1.0, scaleY: 1.0 }, { name: '巨漢', scaleX: 1.25, scaleY: 1.3 }, { name: '肥満', scaleX: 1.3, scaleY: 0.95 }];
 const RUNNING_STYLES = ['逃げ', '先行', '差し', '追込'];
 const CPU_NAMES = ['田中', '鈴木', '山田', '店長', '部長', '課長', 'バイト', '新人', '先輩'];
-
 const VIDEO_SOURCES = ['/zombie1.mp4', '/zombie2.mp4', '/zombie3.mp4', '/zombie4.mp4', '/zombie5.mp4'];
-const zombieVideos = []; const offCanvases = []; const offCtxs = [];
-const lastValidCanvases = [];
+const zombieVideos = []; const offCanvases = []; const offCtxs = []; const lastValidCanvases = [];
 
 VIDEO_SOURCES.forEach(src => {
-  const v = document.createElement('video');
-  v.src = src; v.loop = true; v.muted = true; v.playsInline = true; v.autoplay = true;
+  const v = document.createElement('video'); v.src = src; v.loop = true; v.muted = true; v.playsInline = true; v.autoplay = true;
   v.addEventListener('canplay', () => v.play().catch(() => {}));
   zombieVideos.push(v);
   const c = document.createElement('canvas'); offCanvases.push(c); 
@@ -241,59 +198,30 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   const vw = v.videoWidth || 100; const vh = v.videoHeight || 100;
   cx.drawImage(v, 0, 0, vw, vh, 0, 0, targetW, targetH);
   const data = cx.getImageData(0, 0, targetW, targetH);
-  
-  for (let i = 0; i < data.data.length; i += 4) {
-    const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
-    if (g > 65 && g > r * 1.12 && g > b * 1.12) { data.data[i+3] = 0; }
-  }
+  for (let i = 0; i < data.data.length; i += 4) { const r = data.data[i], g = data.data[i+1], b = data.data[i+2]; if (g > 65 && g > r * 1.12 && g > b * 1.12) { data.data[i+3] = 0; } }
   cx.putImageData(data, 0, 0); lastValidCanvases[idx] = c; return c;
 }
 
 const runners = []; const effects = []; let particles = [];
-
-const ALL_SKILLS = [
-  { id: 'meteor', name: 'メテオ', desc: '隕石爆発でライバル大打撃', type: 'auto', speed: 0.045 },
-  { id: 'lightning', name: '雷', desc: '雷撃で自分以外の敵を数秒麻痺！', type: 'auto', speed: 0.050 },
-  { id: 'frog', name: 'カエル', desc: '巨大カエルで視界ジャック', type: 'auto', speed: 0.070 },
-  { id: 'poison', name: '毒液', desc: '前方の敵に毒ダメージ', type: 'auto', speed: 0.060 },
-  { id: 'stone', name: '小石', desc: '最寄りの敵に石を投げつけ', type: 'auto', speed: 0.090 }
-];
-const SYRINGE_SKILLS = [
-  { id: 'mach', name: 'マッハ', desc: '一定時間超絶ダッシュ！' },
-  { id: 'heal', name: 'ヒール', desc: 'スタミナを大幅超回復！' },
-  { id: 'barrier', name: 'バリア', desc: '一定時間完全無敵！' },
-  { id: 'psycho', name: 'サイコ', desc: '最寄りの敵を狙い撃ち大爆発！' }
-];
+const ALL_SKILLS = [{ id: 'meteor', name: 'メテオ', desc: '隕石爆発で大打撃', type: 'auto', speed: 0.045 }, { id: 'lightning', name: '雷', desc: '雷撃で敵を麻痺', type: 'auto', speed: 0.050 }, { id: 'frog', name: 'カエル', desc: '巨大カエル', type: 'auto', speed: 0.070 }, { id: 'poison', name: '毒液', desc: '毒ダメージ', type: 'auto', speed: 0.060 }, { id: 'stone', name: '小石', desc: '石を投げつけ', type: 'auto', speed: 0.090 }];
+const SYRINGE_SKILLS = [{ id: 'mach', name: 'マッハ', desc: '超ダッシュ' }, { id: 'heal', name: 'ヒール', desc: '大幅超回復' }, { id: 'barrier', name: 'バリア', desc: '完全無敵' }, { id: 'psycho', name: 'サイコ', desc: '大爆発' }];
 
 let currentAutoFlasks = []; let currentSyringe = null; let syringeUsed = false;
-let peer = null; let peerConnections = []; let myPeerId = null; let isPvpMode = false; let pvpMembers = [];
-// 🏁 乱入ライバルフラグ
-let hasIntruder = false;
+let peer = null; let peerConnections = []; let myPeerId = null; let isPvpMode = false; let pvpMembers = []; let hasIntruder = false;
 
 function initPeerJS() {
   if (typeof Peer === 'undefined') { document.getElementById('pvp-net-status').textContent = 'P2P通信未対応'; return; }
-  const randomId = 'zombie-' + Math.floor(Math.random() * 8999 + 1000);
-  peer = new Peer(randomId);
+  const randomId = 'zombie-' + Math.floor(Math.random() * 8999 + 1000); peer = new Peer(randomId);
   peer.on('open', (id) => { myPeerId = id; document.getElementById('pvp-net-status').textContent = `オンライン (ID: ${id})`; });
   peer.on('connection', (conn) => { peerConnections.push(conn); setupConnEvents(conn); });
 }
 
 function setupConnEvents(conn) {
   conn.on('data', (data) => {
-    if (data.type === 'JOIN_ROOM') {
-      pvpMembers.push({ id: conn.peer, name: data.zombieName });
-      updateLobbyUI(); broadcast({ type: 'UPDATE_MEMBERS', members: pvpMembers, cityId: currentCity.id });
-    } else if (data.type === 'UPDATE_MEMBERS') {
-      pvpMembers = data.members;
-      if(data.cityId) { const foundCity = CITIES.find(c => c.id === data.cityId); if(foundCity) currentCity = foundCity; }
-      updateLobbyUI();
-    } else if (data.type === 'START_RACE') {
-      isPvpMode = true;
-      if(data.cityId) { const foundCity = CITIES.find(c => c.id === data.cityId); if(foundCity) currentCity = foundCity; }
-      document.getElementById('pvp-screen').classList.add('hidden'); showPaddock();
-    } else if (data.type === 'SYNC_SKILL') {
-      const runner = runners.find(r => r.id === data.runnerId); if (runner) triggerSkill(data.skill, runner);
-    }
+    if (data.type === 'JOIN_ROOM') { pvpMembers.push({ id: conn.peer, name: data.zombieName }); updateLobbyUI(); broadcast({ type: 'UPDATE_MEMBERS', members: pvpMembers, cityId: currentCity.id }); } 
+    else if (data.type === 'UPDATE_MEMBERS') { pvpMembers = data.members; if(data.cityId) { const foundCity = CITIES.find(c => c.id === data.cityId); if(foundCity) currentCity = foundCity; } updateLobbyUI(); } 
+    else if (data.type === 'START_RACE') { isPvpMode = true; if(data.cityId) { const foundCity = CITIES.find(c => c.id === data.cityId); if(foundCity) currentCity = foundCity; } document.getElementById('pvp-screen').classList.add('hidden'); showPaddock(); } 
+    else if (data.type === 'SYNC_SKILL') { const runner = runners.find(r => r.id === data.runnerId); if (runner) triggerSkill(data.skill, runner); }
   });
 }
 
@@ -301,7 +229,7 @@ function broadcast(data) { peerConnections.forEach(c => { if(c.open) c.send(data
 
 function updatePvpSelectUI() {
   const zSelect = document.getElementById('pvp-zombie-select'); zSelect.innerHTML = '';
-  if (myZombies.length === 0) { zSelect.innerHTML = '<option value="-1">検体が居ません（探索してください）</option>'; } 
+  if (myZombies.length === 0) { zSelect.innerHTML = '<option value="-1">検体が居ません</option>'; } 
   else { myZombies.forEach((z, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = `${z.name} (速${z.speed} 体${z.stamina} ${z.style})`; zSelect.appendChild(opt); }); }
 }
 
@@ -350,30 +278,21 @@ function applyKnockback(runner, baseKnockback) {
   else { 
     runner.knockback = Math.max(runner.knockback, finalKnockback); runner.stm = Math.max(0, runner.stm - (finalKnockback * 0.5)); 
     effects.push({ text: `ギャッ!`, runner: runner, isBalloon: true, life: 40, bgColor: '#ef4444', textColor: '#fff' }); 
-    createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); AudioManager.playSE('damage');
-    liveCommentary = `💥 ${runner.name}にダメージヒット！足止めされている！`;
+    createExplosion(runner.x, runner.y, '#dc2626', 20, 4, 3, 'blood'); AudioManager.playSE('damage'); liveCommentary = `💥 ${runner.name}にダメージヒット！足止めされている！`;
   }
 }
 
 function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCanvas, isExhausted, isRacing = false) {
   targetCtx.save(); const isKnockback = zData.knockback > 0;
-  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)'; targetCtx.beginPath(); targetCtx.ellipse(x, y + height - 5, (width / 2 - 4) * zData.sizeInfo.scaleX, 6, 0, 0, Math.PI * 2); targetCtx.fill();
-  targetCtx.translate(x, y + height);
+  targetCtx.fillStyle = 'rgba(0, 0, 0, 0.45)'; targetCtx.beginPath(); targetCtx.ellipse(x, y + height - 5, (width / 2 - 4) * zData.sizeInfo.scaleX, 6, 0, 0, Math.PI * 2); targetCtx.fill(); targetCtx.translate(x, y + height);
   if (processedCanvas) {
     targetCtx.save(); targetCtx.scale(zData.sizeInfo.scaleX, zData.sizeInfo.scaleY);
     if (isKnockback) targetCtx.rotate(-0.35);
-    
     let filterStr = 'none';
-    if (zData.colorInfo && zData.colorInfo.filter !== 'none') {
-      filterStr = zData.colorInfo.filter; // 💡 乱入者の漆黒フィルターを適用
-    } else if (isKnockback) {
-      filterStr = 'brightness(180%) sepia(80%) hue-rotate(-30deg)'; 
-    } else if (zData.isHard) {
-      filterStr = 'grayscale(100%) brightness(0.8)'; 
-    } else if (isExhausted) {
-      filterStr = 'grayscale(80%) brightness(0.6)';
-    }
-    
+    if (zData.colorInfo && zData.colorInfo.filter !== 'none') { filterStr = zData.colorInfo.filter; } 
+    else if (isKnockback) { filterStr = 'brightness(180%) sepia(80%) hue-rotate(-30deg)'; } 
+    else if (zData.isHard) { filterStr = 'grayscale(100%) brightness(0.8)'; } 
+    else if (isExhausted) { filterStr = 'grayscale(80%) brightness(0.6)'; }
     targetCtx.filter = filterStr; targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); targetCtx.restore();
   }
   if (isRacing) {
@@ -409,14 +328,24 @@ function drawLiveCommentary() {
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`🎤 ${liveCommentary}`, canvas.width / 2, 27); ctx.restore();
 }
 
+// 💡 修正：money.webp の背景画像を確実に適用する
 function updateMoneyDisp() { 
   ['title-money', 'garage-money', 'shop-money'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.textContent = `${zombieMoney} Z$`; el.style.textShadow = '3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 0 -3px 0 #000, 3px 0 0 #000, -3px 0 0 #000';
-      el.style.webkitTextStroke = '1.5px #000'; el.style.color = '#facc15'; el.style.fontWeight = '900'; el.style.fontSize = '22px';
-      const parent = el.parentElement || el;
-      if (parent) { parent.style.backgroundImage = 'url("/money.webp")'; parent.style.backgroundRepeat = 'no-repeat'; parent.style.backgroundPosition = 'center'; parent.style.backgroundSize = '220px 80px'; parent.style.padding = '20px 48px'; parent.style.display = 'inline-flex'; parent.style.alignItems = 'center'; parent.style.justifyContent = 'center'; parent.style.minWidth = '200px'; }
+      el.textContent = `${zombieMoney} Z$`; 
+      const parent = el.parentElement;
+      if (parent) { 
+        parent.style.backgroundImage = 'url("/money.webp")'; 
+        parent.style.backgroundRepeat = 'no-repeat'; 
+        parent.style.backgroundPosition = 'center'; 
+        parent.style.backgroundSize = '220px 80px'; 
+        parent.style.padding = '20px 48px'; 
+        parent.style.display = 'inline-flex'; 
+        parent.style.alignItems = 'center'; 
+        parent.style.justifyContent = 'center'; 
+        parent.style.minWidth = '200px'; 
+      }
     }
   });
 }
@@ -447,9 +376,7 @@ function renderGarage() {
 window.renameZombie = (idx) => {
   const currentName = myZombies[idx].name;
   const newName = prompt("新しい検体名を入力してください", currentName);
-  if (newName && newName.trim() !== "") {
-    myZombies[idx].name = newName.trim(); saveGame(); renderGarage();
-  }
+  if (newName && newName.trim() !== "") { myZombies[idx].name = newName.trim(); saveGame(); renderGarage(); }
 };
 
 window.openCitySelect = (idx, mode = 'story') => { activeZombieIndex = idx; currentGameMode = mode; document.getElementById('garage-screen').classList.add('hidden'); renderCitySelect(); document.getElementById('city-select-screen').classList.remove('hidden'); };
@@ -592,14 +519,10 @@ function renderCitySelect() {
     
     const champ = weeklyChamps[city.id];
     let champHtml = champ ? `<div class="city-champ">👑 サーバー王者: ${champ.name} (${champ.time}s)</div>` : `<div class="city-champ">👑 サーバー王者: まだ誰もいません！</div>`;
-    
     let lockTag = isUnlocked ? '' : '<span style="color:#ef4444; font-weight:bold;"> [未解放]</span>';
     
-    // 💡 フリーレースの場合は各都市の基本賞金を表示
     let descHtml = city.desc;
-    if (currentGameMode === 'free' && isUnlocked) {
-      descHtml += `<br><span style="color:#facc15; font-weight:bold; font-size:13px;">💰 1着賞金: ${city.freeBasePrize} Z$</span>`;
-    }
+    if (currentGameMode === 'free' && isUnlocked) { descHtml += `<br><span style="color:#facc15; font-weight:bold; font-size:13px;">💰 1着賞金: ${city.freeBasePrize} Z$</span>`; }
 
     btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)${lockTag}</span><span class="city-desc">${descHtml}</span>${champHtml}`;
     
@@ -673,27 +596,20 @@ function showPaddock() {
   
   const playerTotal = z.speed + z.power + z.stamina + z.mentality + z.magic;
   const diffSetting = STORY_DIFFICULTY[currentCity.id] || STORY_DIFFICULTY.fukuoka;
-
   hasIntruder = false;
 
   for (let i = 1; i < 4; i++) {
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)]; let bossTitle = '対戦者';
-    
     if (currentGameMode === 'story' && i === 1 && STORY_BOSSES[currentCity.id]) {
       const boss = STORY_BOSSES[currentCity.id]; name = boss.name; bossTitle = boss.title;
     }
     
-    // ⚠️ 案②：フリーレースで10%の確率で同等強度の「乱入ライバル」出現！
     let isIntruder = false;
     if (currentGameMode === 'free' && i === 1 && Math.random() < 0.10) {
-      isIntruder = true;
-      hasIntruder = true;
-      name = '漆黒の暴走体';
-      bossTitle = '乱入検体';
+      isIntruder = true; hasIntruder = true; name = '漆黒の暴走体'; bossTitle = '乱入検体';
     }
 
     if (isPvpMode && pvpMembers[i]) name = pvpMembers[i].name;
-
     let cpuSpd, cpuPow, cpuStmVal, cpuMnt, cpuMag;
 
     if (currentGameMode === 'story') {
@@ -703,16 +619,13 @@ function showPaddock() {
       const wSum = weights.reduce((a, b) => a + b, 0);
       cpuSpd = Math.round((weights[0] / wSum) * targetTotal); cpuPow = Math.round((weights[1] / wSum) * targetTotal); cpuStmVal = Math.round((weights[2] / wSum) * targetTotal); cpuMnt = Math.round((weights[3] / wSum) * targetTotal); cpuMag = Math.round((weights[4] / wSum) * targetTotal);
     } else {
-      // 💡 フリーレース難易度調整 (ベース90% ＋ 都市別補正)
       let targetTotal;
-      if (isIntruder) {
-        targetTotal = playerTotal * 1.0; // 乱入者はプレイヤーと同等の100%強度！
-      } else {
+      if (isIntruder) { targetTotal = playerTotal * 1.0; } 
+      else {
         const cityMult = FREE_CITY_MULTIPLIERS[currentCity.id] || 1.0;
-        const rate = (Math.random() * 0.10) - 0.05; // 0.90(ベース) ± 5%のゆらぎ
+        const rate = (Math.random() * 0.10) - 0.05; 
         targetTotal = playerTotal * 0.90 * cityMult * (1 + rate);
       }
-      
       const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
       const wSum = weights.reduce((a, b) => a + b, 0);
       cpuSpd = Math.round((weights[0] / wSum) * targetTotal); cpuPow = Math.round((weights[1] / wSum) * targetTotal); cpuStmVal = Math.round((weights[2] / wSum) * targetTotal); cpuMnt = Math.round((weights[3] / wSum) * targetTotal); cpuMag = Math.round((weights[4] / wSum) * targetTotal);
@@ -723,8 +636,6 @@ function showPaddock() {
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
     const cpuStm = Math.max(100, cpuStmVal * 10);
-    
-    // 漆黒フィルター適用（乱入者用）
     const cpuColorInfo = isIntruder ? { filter: 'brightness(0) drop-shadow(0 0 10px #ef4444)' } : ZOMBIE_COLORS[0];
     
     const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: cpuColorInfo, sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150, isIntruder: isIntruder };
@@ -733,10 +644,8 @@ function showPaddock() {
 
   runners.forEach((r, i) => {
     const card = document.createElement('div'); card.className = `pd-card c-${i}`; card.style.animationDelay = `${i * 0.2}s`;
-    
     let titleStyle = r.isIntruder ? 'color:#ef4444; font-weight:900;' : 'color:var(--accent-gold);';
     let nameStyle = r.isIntruder ? 'color:#ef4444; text-shadow:0 0 5px #ef4444;' : '';
-
     card.innerHTML = `<div class="pd-name" style="${nameStyle}"><span class="pd-title" style="${titleStyle}">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/10) + r.mntAttr + r.magAttr}</div>`;
     grid.appendChild(card);
   });
@@ -758,13 +667,8 @@ function startRaceCutin() {
 
 function setupRaceState() {
   totalDistance = currentCity.distance; remainingDistance = totalDistance; globalTime = 0; raceState = 'COUNTDOWN'; startCountdown = 3.0;
-  
-  if (hasIntruder) {
-    liveCommentary = `⚠️ 警告！正体不明の【漆黒の暴走体】が乱入してきました！！`;
-  } else {
-    liveCommentary = `各検体スタート位置につきました！距離${totalDistance}mの勝負！`; 
-  }
-  
+  if (hasIntruder) { liveCommentary = `⚠️ 警告！正体不明の【漆黒の暴走体】が乱入してきました！！`; } 
+  else { liveCommentary = `各検体スタート位置につきました！距離${totalDistance}mの勝負！`; }
   lastTopRunnerId = null;
 
   AudioManager.playBGM(currentCity.id);
@@ -838,21 +742,14 @@ function doFinish() {
 
     if (playerRank === 1) { 
       if(z) z.wins++; 
-      
-      // 💰 フリーレースの場合は都市別賞金、ストーリーは固定500
-      if (currentGameMode === 'free') {
-        prize = currentCity.freeBasePrize || 300;
-      } else {
-        prize = 500;
-      }
-      
+      if (currentGameMode === 'free') { prize = currentCity.freeBasePrize || 300; } else { prize = 500; }
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
       const currentChamp = weeklyChamps[currentCity.id];
       if (!currentChamp || parseFloat(elapsedSec) < parseFloat(currentChamp.time)) {
         weeklyChamps[currentCity.id] = { name: z ? z.name : '名無し', time: elapsedSec };
         isChampUpdated = true;
-        updateOnlineRanking(); // 🌐 オンライン更新
+        updateOnlineRanking(); 
       }
 
       if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
@@ -954,14 +851,11 @@ function update() {
 
     runners.forEach((r, i) => {
       if (i !== 0 && remainingDistance < 380) { 
-        // 👑 東京ストーリーボス(Dr.マッドゾンビ)の異能連発仕様(案C)
         const isTokyoBoss = (currentGameMode === 'story' && currentCity.id === 'tokyo' && i === 1);
         r.skillCd -= dt * (isTokyoBoss ? 1.5 : 1.0); 
-        
         if (r.skillCd <= 0) { 
           const cpuSkill = ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)]; 
-          triggerSkill(cpuSkill, r); 
-          r.skillCd = Math.floor(Math.random() * 250) + 200; 
+          triggerSkill(cpuSkill, r); r.skillCd = Math.floor(Math.random() * 250) + 200; 
         } 
       }
     });
@@ -969,7 +863,6 @@ function update() {
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
       
-      // 👑 案A：東京ボスの確定マッドドーピング（残り150m）
       if (currentGameMode === 'story' && currentCity.id === 'tokyo' && r.id === 1) {
         if (remainingDistance <= 150 && !r.hasMadDoped) {
           r.hasMadDoped = true;
