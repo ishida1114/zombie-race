@@ -114,7 +114,6 @@ const AudioManager = {
     return this.isMuted;
   },
 
-  // 💡 音オンオフボタンを画面中央上部（Center）へ修正配置
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -126,7 +125,7 @@ const AudioManager = {
       left: 50%;
       transform: translateX(-50%);
       z-index: 9999;
-      padding: 6px 14px;
+      padding: 6px 16px;
       font-size: 13px;
       font-weight: bold;
       background: rgba(15, 23, 42, 0.9);
@@ -134,7 +133,7 @@ const AudioManager = {
       border: 1px solid #38bdf8;
       border-radius: 20px;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.6);
       transition: all 0.2s;
     `;
     btn.onclick = (e) => {
@@ -305,16 +304,11 @@ function updateChromaKeyFrame(idx, targetW, targetH) {
   
   for (let i = 0; i < data.data.length; i += 4) {
     const r = data.data[i], g = data.data[i+1], b = data.data[i+2];
-    // 💡 背景用グリーン（GがR・Bより極端に飛び抜けて高いピクセル）のみ透明化
+    // 💡 差額判定で鮮やかな背景グリーンのみを消去
     if (g > 90 && (g - r) > 40 && (g - b) > 40) {
       data.data[i+3] = 0; 
     }
   }
-  
-  cx.putImageData(data, 0, 0); 
-  lastValidCanvases[idx] = c;
-  return c;
-}
   
   cx.putImageData(data, 0, 0); 
   lastValidCanvases[idx] = c;
