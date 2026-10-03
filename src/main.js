@@ -126,7 +126,7 @@ const AudioManager = {
       left: 50%;
       transform: translateX(-50%);
       z-index: 9999;
-      padding: 6px 16px;
+      padding: 6px 14px;
       font-size: 13px;
       font-weight: bold;
       background: rgba(15, 23, 42, 0.9);
@@ -134,7 +134,7 @@ const AudioManager = {
       border: 1px solid #38bdf8;
       border-radius: 20px;
       cursor: pointer;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
       transition: all 0.2s;
     `;
     btn.onclick = (e) => {
