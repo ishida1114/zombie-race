@@ -7,13 +7,96 @@
   <link rel="stylesheet" href="./src/style.css" />
   <!-- 🌐 P2Pリアルタイム対戦用ライブラリ -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <!-- 💡 トップ画面のチュートリアル ＆ money.webp 用のピンポイント追加スタイル -->
+  <style>
+    /* 💰 money.webp 背景 ＋ 黒フチ付き所持金表示 */
+    .title-money-box {
+      background-image: url('/money.webp');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      padding: 12px 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 6px 0 16px 0;
+      min-width: 200px;
+      min-height: 60px;
+    }
+
+    .title-money-text {
+      font-size: 20px;
+      font-weight: 900;
+      color: #facc15;
+      /* くっきり読める黒フチ装飾 */
+      text-shadow: 
+        2px  2px 0 #000, -2px -2px 0 #000,
+        2px -2px 0 #000, -2px  2px 0 #000,
+        0    2px 0 #000,  0   -2px 0 #000,
+        2px  0   0 #000, -2px  0   0 #000;
+    }
+
+    /* 📖 バナー直下のチュートリアルボックス */
+    .title-tutorial-box {
+      background: rgba(30, 41, 59, 0.88);
+      border: 2px solid #38bdf8;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin: 8px 16px 12px 16px;
+      max-width: 440px;
+      text-align: left;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+    }
+
+    .title-tutorial-box h3 {
+      color: #facc15;
+      font-size: 15px;
+      border-bottom: 1px solid #facc15;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+
+    .title-tutorial-box p {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+    }
+
+    .title-tutorial-box ul {
+      padding-left: 16px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+
+    .title-tutorial-box li {
+      margin-bottom: 4px;
+    }
+  </style>
 </head>
 <body>
   <div id="game-container">
     <!-- 🏠 タイトル -->
     <div id="title-screen">
       <div class="title-logo-wrapper"><img src="/zombielogo.webp" alt="ZOMBIE DERBY" class="title-logo-img" /></div>
-      <div class="money-display">所持金: <span id="title-money">0</span> Z$</div>
+      
+      <!-- 📖 1. バナー下のチュートリアル枠（注射＆フラスコ説明を追加） -->
+      <div class="title-tutorial-box">
+        <h3>📖 ゾンビマスターへの道</h3>
+        <p>探索で強力な個体を確保し、5ターンのドーピングで育てて全国のコースへ遠征しよう！</p>
+        <ul>
+          <li><strong style="color: #ef4444;">💉 注射器（手動スキル）</strong>：1レース【1回限定】！ここぞという勝負所でタップして一発逆転！</li>
+          <li><strong style="color: #4ade80;">🧪 フラスコ（自動スキル）</strong>：ゲージが100%になると自動で繰り出される攻撃・妨害技！</li>
+        </ul>
+      </div>
+
+      <!-- 💰 2. money.webp 背景 ＋ 黒フチ文字の所持金表示 -->
+      <div class="title-money-box">
+        <span class="title-money-text">所持金: <span id="title-money">0</span> Z$</span>
+      </div>
+
       <div class="title-btn-group">
         <button id="nav-scout-btn" class="retro-btn"><span>探索 (スカウト)</span></button>
         <button id="nav-garage-btn" class="retro-btn"><span>牧場 (ガレージ)</span></button>
