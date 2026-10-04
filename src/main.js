@@ -6,7 +6,7 @@ let shakeTime = 0; let scrollY = 0; let globalTime = 0;
 let remainingDistance = 400; let totalDistance = 400; let startTime = 0;
 let flashEffect = { alpha: 0, color: '#ffffff' };
 
-// 📖 モード管理 ('story' | 'free')
+// 📖 モード管理 ('story' | 'free' | 'pvp')
 let currentGameMode = 'story';
 let podiumAnimationId = null;
 let currentSortedRunners = [];
@@ -482,6 +482,7 @@ function setupConnEvents(conn) {
       updateLobbyUI();
     } else if (data.type === 'START_RACE') {
       isPvpMode = true;
+      currentGameMode = 'pvp';
       if(data.cityId) {
         const foundCity = CITIES.find(c => c.id === data.cityId);
         if(foundCity) currentCity = foundCity;
@@ -560,6 +561,7 @@ document.getElementById('join-room-btn').onclick = () => {
 document.getElementById('start-pvp-race-btn').onclick = () => {
   broadcast({ type: 'START_RACE', cityId: currentCity.id });
   isPvpMode = true;
+  currentGameMode = 'pvp';
   document.getElementById('pvp-screen').classList.add('hidden');
   showPaddock();
 };
@@ -688,8 +690,7 @@ function drawLiveCommentary() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
-  // 🎲 賭け（BET）が行われている場合は表示を追加
-  let betTxt = currentBetAmount > 0 ? ` [💰BET: ${currentBetAmount}Z$ (${currentOdds}倍)]` : '';
+  let betTxt = (isPvpMode && currentBetAmount > 0) ? ` [💰BET: ${currentBetAmount}Z$ (${currentOdds}倍)]` : '';
   ctx.fillText(`🎤 ${liveCommentary}${betTxt}`, canvas.width / 2, 27);
   ctx.restore();
 }
@@ -703,13 +704,41 @@ function updateMoneyDisp() {
   });
 }
 
+// ③ 捕食ヘルプポップアップ
+window.showPredatorHelp = () => {
+  alert(
+    "🩸【捕食（共食い・限界突破）システム】\n\n" +
+    "成長の限界に達したメインゾンビが、他のゾンビ（生贄）を喰らうことで『すくすく育つ限界ゾーン(softCap)』をさらに拡張する闇の強化儀式です。\n\n" +
+    "【捕食の条件】\n" +
+    "・喰らう側（メイン）: いずれかのステータスが 100 以上\n" +
+    "・生贄（素材）: 評価点が 250 以上（しっかり最後まで育てたゾンビ）\n\n" +
+    "【捕食の効果と代償】\n" +
+    "・softCap（すくすくゾーン）が +5 〜 +12 拡大！（さらに高く育成可能に）\n" +
+    "・捕食回数に応じて★や邪悪な二つ名（【狂乱の】【暴食の王】など）を獲得！\n" +
+    "・代償として気性が -15 低下（狂暴化）します。\n" +
+    "※生贄になったゾンビは完全に消滅します。"
+  );
+};
+
 function renderGarage() {
   updateMoneyDisp();
   AudioManager.playBGM('opening');
   const list = document.getElementById('garage-list'); if (!list) return;
   list.innerHTML = ''; 
-  const countEl = document.getElementById('garage-count'); if (countEl) countEl.textContent = myZombies.length;
   
+  const countEl = document.getElementById('garage-count'); 
+  if (countEl) countEl.textContent = myZombies.length;
+  
+  // ③ 捕食説明ボタンの自動挿入ヘッダー
+  let helpHeader = document.getElementById('predator-help-header');
+  if (!helpHeader && list.parentNode) {
+    helpHeader = document.createElement('div');
+    helpHeader.id = 'predator-help-header';
+    helpHeader.style.cssText = 'text-align: right; padding: 4px 10px; margin-bottom: 8px;';
+    helpHeader.innerHTML = `<button onclick="showPredatorHelp()" style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid #8b5cf6; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; cursor: pointer;">❓ 捕食（限界突破）とは？</button>`;
+    list.parentNode.insertBefore(helpHeader, list);
+  }
+
   myZombies.forEach((z, idx) => {
     const card = document.createElement('div'); card.className = 'zombie-card';
     let recordHtml = z.bestTime ? `<div class="zc-record">👑 ${z.bestTime}s (${z.bestCity})</div>` : '';
@@ -755,6 +784,7 @@ window.renameZombie = (idx) => {
 window.openCitySelect = (idx, mode = 'story') => { 
   activeZombieIndex = idx; 
   currentGameMode = mode;
+  isPvpMode = false;
   document.getElementById('garage-screen').classList.add('hidden'); 
   renderCitySelect(); 
   document.getElementById('city-select-screen').classList.remove('hidden'); 
@@ -835,10 +865,50 @@ function doPredation(mainIdx, preyIdx, preyScore) {
   renderGarage();
 }
 
+// ④ 強化（ショップ）画面の能力リアルタイム表示UI更新
+function updateShopStatsUI() {
+  if (activeZombieIndex === null || !myZombies[activeZombieIndex]) return;
+  const z = myZombies[activeZombieIndex];
+  let statsEl = document.getElementById('shop-target-stats-display');
+  if (!statsEl) {
+    statsEl = document.createElement('div');
+    statsEl.id = 'shop-target-stats-display';
+    statsEl.style.cssText = `
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #38bdf8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 10px auto 16px auto;
+      max-width: 320px;
+      font-size: 13px;
+      color: #f8fafc;
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    `;
+    const targetEl = document.getElementById('shop-target-name');
+    if (targetEl && targetEl.parentNode) {
+      targetEl.parentNode.insertBefore(statsEl, targetEl.nextSibling);
+    }
+  }
+  statsEl.innerHTML = `
+    <span>速: <b style="color:#38bdf8;">${z.speed}</b></span>
+    <span>力: <b style="color:#ef4444;">${z.power}</b></span>
+    <span>体: <b style="color:#4ade80;">${z.stamina}</b></span>
+    <span>気: <b style="color:#facc15;">${z.mentality}</b></span>
+    <span>魔: <b style="color:#c084fc;">${z.magic}</b></span>
+  `;
+}
+
 window.openShop = (idx) => {
   activeZombieIndex = idx; updateMoneyDisp();
   const targetEl = document.getElementById('shop-target-name');
   if (targetEl) targetEl.textContent = myZombies[idx].name;
+  
+  updateShopStatsUI(); // ④ 能力表示
+  
   document.getElementById('garage-screen').classList.add('hidden'); 
   document.getElementById('shop-screen').classList.remove('hidden');
 };
@@ -861,6 +931,7 @@ document.querySelectorAll('.shop-btn').forEach(btn => {
         
         myZombies[activeZombieIndex][stat] += inc;
         saveGame(); updateMoneyDisp();
+        updateShopStatsUI(); // ④ 強化後の能力即時反映
         
         if (isCritical) {
           alert(`🔥【超成功！！】 ステータスが +${inc} 爆発上昇した！`);
@@ -1277,14 +1348,15 @@ function showPaddock() {
     let name = CPU_NAMES[Math.floor(Math.random() * CPU_NAMES.length)];
     let bossTitle = '対戦者';
     
-    if (currentGameMode === 'story' && i === 1 && STORY_BOSSES[currentCity.id]) {
+    // ② オンライン対戦（isPvpMode）時はストーリーボス化しない
+    if (currentGameMode === 'story' && !isPvpMode && i === 1 && STORY_BOSSES[currentCity.id]) {
       const boss = STORY_BOSSES[currentCity.id];
       name = boss.name;
       bossTitle = boss.title;
     }
 
     let isIntruder = false;
-    if (currentGameMode === 'free' && i === 1 && Math.random() < 0.10) {
+    if (currentGameMode === 'free' && !isPvpMode && i === 1 && Math.random() < 0.10) {
       isIntruder = true;
       hasIntruder = true;
       name = '漆黒の暴走体';
@@ -1295,7 +1367,7 @@ function showPaddock() {
 
     let cpuSpd, cpuPow, cpuStmVal, cpuMnt, cpuMag;
 
-    if (currentGameMode === 'story') {
+    if (currentGameMode === 'story' && !isPvpMode) {
       const rate = diffSetting.min + Math.random() * (diffSetting.max - diffSetting.min);
       const targetTotal = 300 * (1 + rate);
       const weights = [Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5];
@@ -1345,20 +1417,33 @@ function showPaddock() {
     grid.appendChild(card);
   });
   
-  // 🎲 オッズ計算
-  currentOdds = calculatePlayerOdds();
-
   const btnWrapper = document.createElement('div'); btnWrapper.style.marginTop = '24px'; btnWrapper.style.animation = 'fadeIn 0.5s 1.2s forwards'; btnWrapper.style.opacity = '0'; 
-  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう (単勝オッズ: ${currentOdds}倍)</span></button>`;
-  grid.appendChild(btnWrapper);
   
+  // ① 賭け（BET）はオンライン対戦（isPvpMode）時のみ
+  if (isPvpMode) {
+    currentOdds = calculatePlayerOdds();
+    btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう (単勝オッズ: ${currentOdds}倍)</span></button>`;
+  } else {
+    currentBetAmount = 0;
+    currentOdds = 1.0;
+    btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう</span></button>`;
+  }
+  
+  grid.appendChild(btnWrapper);
   document.getElementById('paddock-screen').classList.remove('hidden');
+  
   document.getElementById('start-cutin-btn').onclick = () => { 
-    showBetModal();
+    if (isPvpMode) {
+      showBetModal();
+    } else {
+      currentBetAmount = 0;
+      document.getElementById('paddock-screen').classList.add('hidden'); 
+      startRaceCutin();
+    }
   };
 }
 
-// 🎲 賭け金（BET）選択モーダル
+// 🎲 賭け金（BET）選択モーダル（PvP専用）
 function showBetModal() {
   let modal = document.getElementById('bet-modal-overlay');
   if (!modal) {
@@ -1530,15 +1615,15 @@ async function doFinish() {
     let isChampUpdated = false;
     let isStoryAllClear = false;
 
-    // 🎲 賭け（BET）精算ロジック
+    // 🎲 賭け精算（PvP時かつ賭け金がある場合のみ）
     let betPayout = 0;
     if (playerRank === 1) { 
       if(z) z.wins++; 
       prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 80) : 200;
       
-      if (currentBetAmount > 0) {
+      if (isPvpMode && currentBetAmount > 0) {
         betPayout = Math.floor(currentBetAmount * currentOdds);
-        prize += betPayout; // 賭け金×オッズの払戻金を加算！
+        prize += betPayout; 
       }
 
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
@@ -1550,9 +1635,10 @@ async function doFinish() {
         await updateOnlineChamps(currentCity.id, z ? z.name : '名無し', elapsedSec);
       }
 
-      if (currentGameMode === 'story' && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
+      // ② ストーリー時のみ次の都市解放/全クリア判定を行う
+      if (currentGameMode === 'story' && !isPvpMode && currentCity.nextCity && !clearedCities.includes(currentCity.nextCity)) {
         clearedCities.push(currentCity.nextCity);
-      } else if (currentGameMode === 'story' && currentCity.id === 'tokyo') {
+      } else if (currentGameMode === 'story' && !isPvpMode && currentCity.id === 'tokyo') {
         isStoryAllClear = true;
       }
     } 
@@ -1563,7 +1649,7 @@ async function doFinish() {
     zombieMoney += prize; saveGame(); 
     
     let prizeMsg = `獲得賞金: ${prize} Z$`;
-    if (currentBetAmount > 0) {
+    if (isPvpMode && currentBetAmount > 0) {
       if (playerRank === 1) {
         prizeMsg += ` (🎲賭け大勝利: +${betPayout} Z$)`;
       } else {
@@ -1701,7 +1787,7 @@ function update() {
 
     runners.forEach((r, i) => {
       if (i !== 0 && remainingDistance < 380) {
-        const isTokyoBoss = (currentGameMode === 'story' && currentCity.id === 'tokyo' && i === 1);
+        const isTokyoBoss = (currentGameMode === 'story' && !isPvpMode && currentCity.id === 'tokyo' && i === 1);
         r.skillCd -= dt * (isTokyoBoss ? 1.5 : 1.0); 
         if (r.skillCd <= 0) { 
           const cpuSkill = ALL_SKILLS[Math.floor(Math.random()*ALL_SKILLS.length)];
@@ -1714,7 +1800,8 @@ function update() {
     for (let i = 0; i < 4; i++) {
       const r = runners[i]; 
       
-      if (currentGameMode === 'story' && currentCity.id === 'tokyo' && r.id === 1) {
+      // ② オンライン対戦（isPvpMode）時はDr.マッドゾンビの必殺ドーピングを発生させない
+      if (currentGameMode === 'story' && !isPvpMode && currentCity.id === 'tokyo' && r.id === 1) {
         if (remainingDistance <= 150 && !r.hasMadDoped) {
           r.hasMadDoped = true;
           liveCommentary = `⚠️ Dr.マッドゾンビが究極の薬を注射！【マッハ＋バリア】発動！！`;
@@ -1933,7 +2020,16 @@ function init() {
   if(backGarage1) backGarage1.onclick = () => { document.getElementById('city-select-screen').classList.add('hidden'); document.getElementById('garage-screen').classList.remove('hidden'); };
 
   const retryBtn = document.getElementById('retry-btn');
-  if(retryBtn) retryBtn.onclick = () => { isGameRunning = false; isPvpMode = false; document.getElementById('result-screen').classList.add('hidden'); document.getElementById('race-screen').classList.add('hidden'); renderGarage(); document.getElementById('garage-screen').classList.remove('hidden'); };
+  if(retryBtn) retryBtn.onclick = () => { 
+    isGameRunning = false; 
+    isPvpMode = false; 
+    currentBetAmount = 0;
+    currentGameMode = 'story';
+    document.getElementById('result-screen').classList.add('hidden'); 
+    document.getElementById('race-screen').classList.add('hidden'); 
+    renderGarage(); 
+    document.getElementById('garage-screen').classList.remove('hidden'); 
+  };
 
   document.querySelectorAll('.cmd-btn').forEach(btn => { btn.onclick = () => { executeCommand(btn.dataset.cmd); }; });
   
