@@ -54,16 +54,46 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 });
 
 // ==========================================
-// 📊 ステータス減衰ロジック（案B：2段階減衰）
+// 📊 ステータス減衰ロジック ＆ 捕食システム
 // ==========================================
-function getEffectiveStat(val) {
-  if (val <= 100) {
-    return val;
-  } else if (val <= 200) {
-    return 100 + (val - 100) * 0.5;
+
+// ステータスのマイルドな減衰（softCap以降で減衰開始）
+function getEffectiveStat(val, softCap = 100) {
+  if (val <= softCap) {
+    return val; // すくすくゾーン (100%)
+  } else if (val <= softCap + 100) {
+    return softCap + (val - softCap) * 0.5; // 減衰ゾーン (50%)
   } else {
-    return 150 + (val - 200) * 0.1;
+    return softCap + 50 + (val - (softCap + 100)) * 0.1; // 超減衰ゾーン (10%)
   }
+}
+
+// 捕食回数に応じた禍々しい称号
+function getPredatorTitle(wins, preyCount) {
+  const basePreyCount = preyCount || 0;
+  
+  if (basePreyCount >= 5) return '【暴食の王】';
+  if (basePreyCount === 4) return '【異形なる】';
+  if (basePreyCount === 3) return '【喰魔】';
+  if (basePreyCount === 2) return '【捕食者】';
+  if (basePreyCount === 1) return '【狂乱の】';
+  
+  // 捕食0回の場合は従来の勝利数タイトル
+  if (wins >= 50) return ['【生ける伝説】', '【世紀末覇者】', '【神速のバケモノ】'][Math.floor(Math.random()*3)];
+  if (wins >= 10) return ['【常勝の】', '【不沈艦】', '【音速の】'][Math.floor(Math.random()*3)];
+  if (wins >= 1) return ['【歴戦の】', '【傷だらけの】', '【噛みつき魔】'][Math.floor(Math.random()*3)];
+  return ['【駆け出しの】', '【ヨチヨチの】', '【迷い込んだ】'][Math.floor(Math.random()*3)];
+}
+
+// 捕食時の★表示生成
+function getStarString(preyCount) {
+  const count = preyCount || 0;
+  return count > 0 ? ' ★'.repeat(count) : '';
+}
+
+// 評価点計算（餌の品質チェック用）
+function calcEvaluationScore(z) {
+  return z.speed + z.power + Math.floor(z.stamina / 10) + z.mentality + z.magic;
 }
 
 // ==========================================
@@ -199,6 +229,7 @@ const AudioManager = {
     return this.isMuted;
   },
 
+  // 💡 音量ボタンの位置を【画面左下】に変更
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -206,11 +237,10 @@ const AudioManager = {
     btn.className = 'sound-toggle-btn';
     btn.style.cssText = `
       position: fixed;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
+      bottom: 16px;
+      left: 16px;
       z-index: 9999;
-      padding: 6px 16px;
+      padding: 8px 16px;
       font-size: 13px;
       font-weight: bold;
       background: rgba(15, 23, 42, 0.9);
@@ -232,7 +262,7 @@ const AudioManager = {
   updateMuteButtonUI() {
     const btn = document.getElementById('sound-toggle-btn');
     if (btn) {
-      btn.textContent = this.isMuted ? '🔇 音: OFF' : '🔊 音: ON';
+      btn.textContent = this.isMuted ? '🔇 OFF' : '🔊 ON';
       btn.style.color = this.isMuted ? '#94a3b8' : '#38bdf8';
       btn.style.borderColor = this.isMuted ? '#64748b' : '#38bdf8';
     }
@@ -301,6 +331,9 @@ myZombies.forEach(z => {
   if (z.remainingTurns === undefined) z.remainingTurns = 0;
   if (z.matches === undefined) z.matches = 0; if (z.wins === undefined) z.wins = 0;
   if (z.videoIndex === undefined) z.videoIndex = 0;
+  // 追加: 捕食回数とソフトキャップ初期値の保証
+  if (z.preyCount === undefined) z.preyCount = 0;
+  if (z.softCap === undefined) z.softCap = 100;
 });
 let activeZombieIndex = null; let isNurturing = false;
 
@@ -311,19 +344,13 @@ function saveGame() {
   localStorage.setItem('clearedCities', JSON.stringify(clearedCities));
 }
 
-function getTitle(z) {
-  if (z.wins >= 50) return ['生ける伝説', '世紀末覇者', '神速のバケモノ'][Math.floor(Math.random()*3)];
-  if (z.wins >= 10) return ['常勝の', '不沈艦', '音速の'][Math.floor(Math.random()*3)];
-  if (z.matches >= 10) return ['歴戦の', '傷だらけの', '噛みつき魔'][Math.floor(Math.random()*3)];
-  return ['駆け出しの', 'ヨチヨチの', '迷い込んだ'][Math.floor(Math.random()*3)];
-}
-
+// 💰 フリーレース賞金を大幅減額調整
 const CITIES = [
-  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka', freeBasePrize: 300 },
-  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya', freeBasePrize: 400 },
-  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【中級】フルアーマーの元警備隊長。', nextCity: 'sapporo', freeBasePrize: 500 },
-  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【上級】凍結施設から逃げた元所長。', nextCity: 'tokyo', freeBasePrize: 700 },
-  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【ラスボス】闇市ドーピングのマッドサイエンティスト。', nextCity: null, freeBasePrize: 1000 }
+  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka', freeBasePrize: 80 },
+  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya', freeBasePrize: 120 },
+  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【中級】フルアーマーの元警備隊長。', nextCity: 'sapporo', freeBasePrize: 160 },
+  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【上級】凍結施設から逃げた元所長。', nextCity: 'tokyo', freeBasePrize: 220 },
+  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【ラスボス】闇市ドーピングのマッドサイエンティスト。', nextCity: null, freeBasePrize: 300 }
 ];
 let currentCity = CITIES[0];
 
@@ -590,7 +617,13 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
       filterStr = 'grayscale(80%) brightness(0.6)';
     }
     
-    targetCtx.filter = filterStr; 
+    // ★が3以上の場合は邪悪な赤いオーラ（ドロップシャドウ）を追加
+    if (zData.preyCount >= 3) {
+      targetCtx.filter = `drop-shadow(0 0 12px rgba(220, 38, 38, 0.8)) ${filterStr}`;
+    } else {
+      targetCtx.filter = filterStr;
+    }
+    
     targetCtx.drawImage(processedCanvas, -width / 2, -height, width, height); 
     targetCtx.restore();
   }
@@ -673,15 +706,28 @@ function renderGarage() {
   myZombies.forEach((z, idx) => {
     const card = document.createElement('div'); card.className = 'zombie-card';
     let recordHtml = z.bestTime ? `<div class="zc-record">👑 ${z.bestTime}s (${z.bestCity})</div>` : '';
+    
+    // 捕食回数に応じた禍々しい称号と★表示
+    const pTitle = getPredatorTitle(z.wins, z.preyCount);
+    const starStr = getStarString(z.preyCount);
+    const titleColor = z.preyCount >= 3 ? '#e11d48' : (z.preyCount > 0 ? '#d946ef' : '#facc15');
+
     card.innerHTML = `
-      <div class="zc-header"><span class="zc-name"><span class="zc-title">【${getTitle(z)}】</span>${z.name}</span><span class="zc-style">${z.style}</span></div>
+      <div class="zc-header">
+        <span class="zc-name">
+          <span class="zc-title" style="color:${titleColor};">${pTitle}</span>
+          ${z.name} <span style="color:#facc15; font-size:12px;">${starStr}</span>
+        </span>
+        <span class="zc-style">${z.style}</span>
+      </div>
       <div class="zc-stats"><span>速:${z.speed}</span><span>力:${z.power}</span><span>体:${z.stamina}</span><span>気性:${z.mentality}</span><span>異能:${z.magic}</span></div>
       ${recordHtml}
       <div class="zc-actions">
         <button class="zc-btn btn-race" onclick="openCitySelect(${idx}, 'story')">ストーリー</button>
         <button class="zc-btn btn-race" style="background:#ca8a04;" onclick="openCitySelect(${idx}, 'free')">フリーレース</button>
         <button class="zc-btn btn-shop" onclick="openShop(${idx})">強化</button>
-        <button class="zc-btn btn-del" style="background:#64748b;" onclick="renameZombie(${idx})">名前変更</button>
+        <button class="zc-btn btn-del" style="background:#8b5cf6;" onclick="openPredatorMenu(${idx})">捕食</button>
+        <button class="zc-btn btn-del" style="background:#64748b;" onclick="renameZombie(${idx})">名前</button>
         <button class="zc-btn btn-del" onclick="deleteZombie(${idx})">逃がす</button>
       </div>
     `;
@@ -709,6 +755,83 @@ window.openCitySelect = (idx, mode = 'story') => {
 };
 
 window.deleteZombie = (idx) => { if(confirm('本当に逃がしますか？')) { myZombies.splice(idx, 1); saveGame(); renderGarage(); } };
+
+// ==========================================
+// 🩸 捕食（共食い・限界突破）システム
+// ==========================================
+window.openPredatorMenu = (mainIdx) => {
+  const mainZ = myZombies[mainIdx];
+  // 捕食条件1: メイン側のステータスが1つでも100以上であること
+  if (mainZ.speed < 100 && mainZ.power < 100 && mainZ.stamina < 100 && mainZ.mentality < 100 && mainZ.magic < 100) {
+    alert('【捕食失敗】\n喰らう側のステータスが1つも 100 に達していません。まずは捕食できる強さまで育成してください！');
+    return;
+  }
+  
+  const preyList = [];
+  myZombies.forEach((z, i) => {
+    if (i !== mainIdx) {
+      const score = calcEvaluationScore(z);
+      // 捕食条件2: 餌の評価点が250以上であること
+      if (score >= 250) {
+        preyList.push({ index: i, zombie: z, score: score });
+      }
+    }
+  });
+
+  if (preyList.length === 0) {
+    alert('【餌が不足しています】\nガレージに評価点 250以上 の極上素材（生贄）がいません。\n捕食させるために、他の検体を本気で育成してください！');
+    return;
+  }
+
+  let msg = `🩸 【捕食・限界突破】\n${mainZ.name} に喰わせる生贄を選んでください（※生贄は消滅します）\n\n`;
+  preyList.forEach((p, order) => {
+    msg += `[${order + 1}] ${p.zombie.name} (評価点: ${p.score})\n`;
+  });
+  msg += `\n番号を入力してください：`;
+
+  const input = prompt(msg);
+  if (!input) return;
+  const choiceNum = parseInt(input) - 1;
+  
+  if (choiceNum >= 0 && choiceNum < preyList.length) {
+    const preyData = preyList[choiceNum];
+    doPredation(mainIdx, preyData.index, preyData.score);
+  } else {
+    alert('キャンセルしました。');
+  }
+};
+
+function doPredation(mainIdx, preyIdx, preyScore) {
+  const mainZ = myZombies[mainIdx];
+  const preyZ = myZombies[preyIdx];
+  
+  if(!confirm(`本当に ${preyZ.name} を ${mainZ.name} に喰わせますか？\n（生贄は完全に消滅し、戻りません）`)) return;
+
+  AudioManager.playSE('damage');
+  
+  // 品質（評価点）に応じたソフトキャップ拡張量の計算（穏やか微調整版）
+  let capBonus = 5;
+  if (preyScore >= 350) capBonus = 12;
+  else if (preyScore >= 300) capBonus = 8;
+  
+  mainZ.softCap = (mainZ.softCap || 100) + capBonus;
+  mainZ.preyCount = (mainZ.preyCount || 0) + 1;
+  mainZ.mentality = Math.max(10, mainZ.mentality - 15); // 気性悪化ペナルティ
+  
+  // 生贄の削除（インデックスがずれるのを防ぐため後ろから処理）
+  if (mainIdx > preyIdx) {
+    myZombies.splice(mainIdx, 1, mainZ);
+    myZombies.splice(preyIdx, 1);
+  } else {
+    myZombies.splice(preyIdx, 1);
+    myZombies.splice(mainIdx, 1, mainZ);
+  }
+
+  saveGame();
+  
+  alert(`🩸 捕食完了...!!\n\n${mainZ.name} は ${preyZ.name} を喰らい、【限界突破】した！\n・すくすく育つ上限（キャップ）が +${capBonus} 拡大！\n・闘争本能が暴走し、気性が激減した...`);
+  renderGarage();
+}
 
 window.openShop = (idx) => {
   activeZombieIndex = idx; updateMoneyDisp();
@@ -838,7 +961,7 @@ function doScout() {
     }
 
     const vidIdx = Math.floor(Math.random() * VIDEO_SOURCES.length);
-    const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx };
+    const newZ = { name: nameVal, colorInfo: ZOMBIE_COLORS[0], sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: styleVal, speed: spd, power: pow, stamina: stm, mentality: mnt, magic: mag, remainingTurns: 5, matches: 0, wins: 0, videoIndex: vidIdx, preyCount: 0, softCap: 100 };
     myZombies.push(newZ); saveGame(); activeZombieIndex = myZombies.length - 1;
     
     const overlay = document.getElementById('found-overlay'); overlay.classList.remove('hidden');
@@ -1120,17 +1243,17 @@ function showPaddock() {
   runners.push({ 
     id: 0, 
     name: z.name, 
-    title: getTitle(z), 
+    title: getPredatorTitle(z.wins, z.preyCount), 
     isPlayer: true, 
     x: lanePadding + laneW*0 + laneW/2, 
     y: 400, 
     dist: 0, 
-    stm: getEffectiveStat(z.stamina) * 10, 
-    maxStm: getEffectiveStat(z.stamina) * 10, 
-    spdAttr: getEffectiveStat(z.speed), 
-    powAttr: getEffectiveStat(z.power), 
-    mntAttr: getEffectiveStat(z.mentality), 
-    magAttr: getEffectiveStat(z.magic), 
+    stm: getEffectiveStat(z.stamina, z.softCap) * 10, 
+    maxStm: getEffectiveStat(z.stamina, z.softCap) * 10, 
+    spdAttr: getEffectiveStat(z.speed, z.softCap), 
+    powAttr: getEffectiveStat(z.power, z.softCap), 
+    mntAttr: getEffectiveStat(z.mentality, z.softCap), 
+    magAttr: getEffectiveStat(z.magic, z.softCap), 
     colorInfo: z.colorInfo, 
     sizeInfo: z.sizeInfo, 
     style: z.style, 
@@ -1140,6 +1263,7 @@ function showPaddock() {
     barrierPower: 0, 
     isSlacking: false, 
     videoIndex: z.videoIndex, 
+    preyCount: z.preyCount || 0,
     skillCd: Math.floor(Math.random() * 150) + 150 
   });
   
@@ -1208,15 +1332,15 @@ function showPaddock() {
     const cpuStm = Math.max(100, cpuStmVal * 10);
     const cpuColorInfo = isIntruder ? { filter: 'brightness(0) drop-shadow(0 0 10px #ef4444)' } : ZOMBIE_COLORS[0];
 
-    const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: lanePadding + laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: cpuColorInfo, sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150, isIntruder: isIntruder };
+    const cpuZ = { id: i, name: name, title: bossTitle, isPlayer: false, x: lanePadding + laneW*i + laneW/2, y: 400, dist: 0, stm: cpuStm, maxStm: cpuStm, spdAttr: cpuSpd, powAttr: cpuPow, mntAttr: cpuMnt, magAttr: cpuMag, colorInfo: cpuColorInfo, sizeInfo: ZOMBIE_SIZES[Math.floor(Math.random() * ZOMBIE_SIZES.length)], style: RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)], boostTimer: 0, knockback: 0, isHard: false, barrierPower: 0, isSlacking: false, videoIndex: vidIdx, skillCd: Math.floor(Math.random() * 200) + 150, isIntruder: isIntruder, preyCount: 0 };
     runners.push(cpuZ);
   }
 
   runners.forEach((r, i) => {
     const card = document.createElement('div'); card.className = `pd-card c-${i}`; card.style.animationDelay = `${i * 0.2}s`;
-    let titleStyle = r.isIntruder ? 'color:#ef4444; font-weight:900;' : '';
-    let nameStyle = r.isIntruder ? 'color:#ef4444; text-shadow:0 0 5px #ef4444;' : '';
-    card.innerHTML = `<div class="pd-name" style="${nameStyle}"><span class="pd-title" style="${titleStyle}">【${r.title}】</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/10) + r.mntAttr + r.magAttr}</div>`;
+    let titleStyle = r.isIntruder || r.preyCount >= 3 ? 'color:#e11d48; font-weight:900;' : '';
+    let nameStyle = r.isIntruder || r.preyCount >= 3 ? 'color:#ef4444; text-shadow:0 0 5px #ef4444;' : '';
+    card.innerHTML = `<div class="pd-name" style="${nameStyle}"><span class="pd-title" style="${titleStyle}">${r.title}</span>${r.name}</div><div class="pd-stats">脚質: ${r.style} / 評価値: ${r.spdAttr + r.powAttr + Math.floor(r.stm/10) + r.mntAttr + r.magAttr}</div>`;
     grid.appendChild(card);
   });
   
@@ -1336,7 +1460,7 @@ async function doFinish() {
 
     if (playerRank === 1) { 
       if(z) z.wins++; 
-      prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 300) : 500;
+      prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 80) : 200; // 賞金減額対応
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
       const currentChamp = weeklyChamps[currentCity.id];
@@ -1352,9 +1476,9 @@ async function doFinish() {
         isStoryAllClear = true;
       }
     } 
-    else if (playerRank === 2) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 300) * 0.6) : 300; 
-    else if (playerRank === 3) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 300) * 0.2) : 100; 
-    else prize = 50;
+    else if (playerRank === 2) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 80) * 0.4) : 80; 
+    else if (playerRank === 3) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 80) * 0.1) : 20; 
+    else prize = 10;
     
     zombieMoney += prize; saveGame(); 
     document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
@@ -1671,37 +1795,11 @@ function update() {
   ctx.restore(); requestAnimationFrame(update);
 }
 
-// ==========================================
-// 🚨 Supabase 用テストボタン
-// ==========================================
-function addDebugButton() {
-  if(document.getElementById('sync-test-btn')) return;
-  const testBtn = document.createElement('button');
-  testBtn.id = 'sync-test-btn';
-  testBtn.textContent = '🌐 通信テスト';
-  testBtn.className = 'retro-btn-small';
-  testBtn.style.cssText = 'position: absolute; bottom: 10px; right: 10px; background: #e11d48; color: #fff; z-index: 9999;';
-  
-  testBtn.onclick = async () => {
-    try {
-      alert("【Supabase送信テスト】データを送信します...");
-      await updateOnlineChamps('fukuoka', 'テスト成功！', '9.99');
-      alert("✅ 送信処理完了！\n\n続いて受信テストを行います...");
-      await fetchOnlineChamps();
-      alert("🎉 完全成功！\n\n取得したデータ:\n" + JSON.stringify(weeklyChamps, null, 2));
-    } catch(e) {
-      alert("❌ エラー発生！原因:\n" + e.message);
-    }
-  };
-  document.getElementById('title-screen').appendChild(testBtn);
-}
-
 function init() {
   updateMoneyDisp();
   initPeerJS();
   AudioManager.init();
   fetchOnlineChamps();
-  addDebugButton();
   
   const navScout = document.getElementById('nav-scout-btn');
   if(navScout) navScout.onclick = () => { document.getElementById('title-screen').classList.add('hidden'); document.getElementById('scout-screen').classList.remove('hidden'); };
