@@ -16,6 +16,10 @@ let currentWinningTime = "0.00";
 let liveCommentary = "レース開始直前！各検体、枠順につきました。";
 let lastTopRunnerId = null;
 
+// 🎲 賭け（BET）システム管理変数
+let currentBetAmount = 0;
+let currentOdds = 1.0;
+
 // 🎊 サイケカラー紙吹雪パーティクル
 let confettiParticles = [];
 
@@ -57,43 +61,49 @@ Object.keys(ROAD_IMAGES).forEach(cityId => {
 // 📊 ステータス減衰ロジック ＆ 捕食システム
 // ==========================================
 
-// ステータスのマイルドな減衰（softCap以降で減衰開始）
 function getEffectiveStat(val, softCap = 100) {
   if (val <= softCap) {
-    return val; // すくすくゾーン (100%)
+    return val; 
   } else if (val <= softCap + 100) {
-    return softCap + (val - softCap) * 0.5; // 減衰ゾーン (50%)
+    return softCap + (val - softCap) * 0.5; 
   } else {
-    return softCap + 50 + (val - (softCap + 100)) * 0.1; // 超減衰ゾーン (10%)
+    return softCap + 50 + (val - (softCap + 100)) * 0.1; 
   }
 }
 
-// 捕食回数に応じた禍々しい称号
 function getPredatorTitle(wins, preyCount) {
   const basePreyCount = preyCount || 0;
-  
   if (basePreyCount >= 5) return '【暴食の王】';
   if (basePreyCount === 4) return '【異形なる】';
   if (basePreyCount === 3) return '【喰魔】';
   if (basePreyCount === 2) return '【捕食者】';
   if (basePreyCount === 1) return '【狂乱の】';
   
-  // 捕食0回の場合は従来の勝利数タイトル
   if (wins >= 50) return ['【生ける伝説】', '【世紀末覇者】', '【神速のバケモノ】'][Math.floor(Math.random()*3)];
   if (wins >= 10) return ['【常勝の】', '【不沈艦】', '【音速の】'][Math.floor(Math.random()*3)];
   if (wins >= 1) return ['【歴戦の】', '【傷だらけの】', '【噛みつき魔】'][Math.floor(Math.random()*3)];
   return ['【駆け出しの】', '【ヨチヨチの】', '【迷い込んだ】'][Math.floor(Math.random()*3)];
 }
 
-// 捕食時の★表示生成
 function getStarString(preyCount) {
   const count = preyCount || 0;
   return count > 0 ? ' ★'.repeat(count) : '';
 }
 
-// 評価点計算（餌の品質チェック用）
 function calcEvaluationScore(z) {
   return z.speed + z.power + Math.floor(z.stamina / 10) + z.mentality + z.magic;
+}
+
+// 🎲 全ランナーの評価点からプレイヤーのオッズを自動算出
+function calculatePlayerOdds() {
+  if (!runners || runners.length === 0) return 2.0;
+  const player = runners[0];
+  const playerEval = player.spdAttr + player.powAttr + Math.floor(player.stm/10) + player.mntAttr + player.magAttr;
+  const totalEval = runners.reduce((sum, r) => sum + (r.spdAttr + r.powAttr + Math.floor(r.stm/10) + r.mntAttr + r.magAttr), 0);
+  
+  if (playerEval <= 0) return 2.0;
+  const rawOdds = totalEval / playerEval;
+  return Math.max(1.1, Math.round(rawOdds * 10) / 10);
 }
 
 // ==========================================
@@ -130,7 +140,6 @@ async function updateOnlineChamps(cityId, name, time) {
     if (checkRes.ok) {
       const existing = await checkRes.json();
       if (existing && existing.length > 0) {
-        // 更新 (PATCH)
         await fetch(`${SUPABASE_URL}/rest/v1/zombie_rankings?city_id=eq.${cityId}`, {
           method: 'PATCH',
           headers: SUPABASE_HEADERS,
@@ -140,7 +149,6 @@ async function updateOnlineChamps(cityId, name, time) {
           })
         });
       } else {
-        // 新規登録 (POST)
         await fetch(`${SUPABASE_URL}/rest/v1/zombie_rankings`, {
           method: 'POST',
           headers: SUPABASE_HEADERS,
@@ -229,7 +237,6 @@ const AudioManager = {
     return this.isMuted;
   },
 
-  // 💡 音量ボタンの位置を【画面左下】に変更
   createMuteButtonUI() {
     if (document.getElementById('sound-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -331,7 +338,6 @@ myZombies.forEach(z => {
   if (z.remainingTurns === undefined) z.remainingTurns = 0;
   if (z.matches === undefined) z.matches = 0; if (z.wins === undefined) z.wins = 0;
   if (z.videoIndex === undefined) z.videoIndex = 0;
-  // 追加: 捕食回数とソフトキャップ初期値の保証
   if (z.preyCount === undefined) z.preyCount = 0;
   if (z.softCap === undefined) z.softCap = 100;
 });
@@ -344,7 +350,6 @@ function saveGame() {
   localStorage.setItem('clearedCities', JSON.stringify(clearedCities));
 }
 
-// 💰 フリーレース賞金を大幅減額調整
 const CITIES = [
   { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka', freeBasePrize: 80 },
   { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya', freeBasePrize: 120 },
@@ -617,7 +622,6 @@ function drawZombieCharacter(targetCtx, x, y, width, height, zData, processedCan
       filterStr = 'grayscale(80%) brightness(0.6)';
     }
     
-    // ★が3以上の場合は邪悪な赤いオーラ（ドロップシャドウ）を追加
     if (zData.preyCount >= 3) {
       targetCtx.filter = `drop-shadow(0 0 12px rgba(220, 38, 38, 0.8)) ${filterStr}`;
     } else {
@@ -683,7 +687,10 @@ function drawLiveCommentary() {
   ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`🎤 ${liveCommentary}`, canvas.width / 2, 27);
+  
+  // 🎲 賭け（BET）が行われている場合は表示を追加
+  let betTxt = currentBetAmount > 0 ? ` [💰BET: ${currentBetAmount}Z$ (${currentOdds}倍)]` : '';
+  ctx.fillText(`🎤 ${liveCommentary}${betTxt}`, canvas.width / 2, 27);
   ctx.restore();
 }
 
@@ -707,7 +714,6 @@ function renderGarage() {
     const card = document.createElement('div'); card.className = 'zombie-card';
     let recordHtml = z.bestTime ? `<div class="zc-record">👑 ${z.bestTime}s (${z.bestCity})</div>` : '';
     
-    // 捕食回数に応じた禍々しい称号と★表示
     const pTitle = getPredatorTitle(z.wins, z.preyCount);
     const starStr = getStarString(z.preyCount);
     const titleColor = z.preyCount >= 3 ? '#e11d48' : (z.preyCount > 0 ? '#d946ef' : '#facc15');
@@ -761,7 +767,6 @@ window.deleteZombie = (idx) => { if(confirm('本当に逃がしますか？')) {
 // ==========================================
 window.openPredatorMenu = (mainIdx) => {
   const mainZ = myZombies[mainIdx];
-  // 捕食条件1: メイン側のステータスが1つでも100以上であること
   if (mainZ.speed < 100 && mainZ.power < 100 && mainZ.stamina < 100 && mainZ.mentality < 100 && mainZ.magic < 100) {
     alert('【捕食失敗】\n喰らう側のステータスが1つも 100 に達していません。まずは捕食できる強さまで育成してください！');
     return;
@@ -771,7 +776,6 @@ window.openPredatorMenu = (mainIdx) => {
   myZombies.forEach((z, i) => {
     if (i !== mainIdx) {
       const score = calcEvaluationScore(z);
-      // 捕食条件2: 餌の評価点が250以上であること
       if (score >= 250) {
         preyList.push({ index: i, zombie: z, score: score });
       }
@@ -809,16 +813,14 @@ function doPredation(mainIdx, preyIdx, preyScore) {
 
   AudioManager.playSE('damage');
   
-  // 品質（評価点）に応じたソフトキャップ拡張量の計算（穏やか微調整版）
   let capBonus = 5;
   if (preyScore >= 350) capBonus = 12;
   else if (preyScore >= 300) capBonus = 8;
   
   mainZ.softCap = (mainZ.softCap || 100) + capBonus;
   mainZ.preyCount = (mainZ.preyCount || 0) + 1;
-  mainZ.mentality = Math.max(10, mainZ.mentality - 15); // 気性悪化ペナルティ
+  mainZ.mentality = Math.max(10, mainZ.mentality - 15); 
   
-  // 生贄の削除（インデックスがずれるのを防ぐため後ろから処理）
   if (mainIdx > preyIdx) {
     myZombies.splice(mainIdx, 1, mainZ);
     myZombies.splice(preyIdx, 1);
@@ -1239,7 +1241,6 @@ function showPaddock() {
   const lanePadding = 30;
   const laneW = (canvas.width - lanePadding * 2) / 4;
   
-  // 🏃 プレイヤーランナー設定（案Bの実効値をレース処理に適用）
   runners.push({ 
     id: 0, 
     name: z.name, 
@@ -1344,12 +1345,83 @@ function showPaddock() {
     grid.appendChild(card);
   });
   
+  // 🎲 オッズ計算
+  currentOdds = calculatePlayerOdds();
+
   const btnWrapper = document.createElement('div'); btnWrapper.style.marginTop = '24px'; btnWrapper.style.animation = 'fadeIn 0.5s 1.2s forwards'; btnWrapper.style.opacity = '0'; 
-  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう</span></button>`;
+  btnWrapper.innerHTML = `<button class="retro-btn" id="start-cutin-btn"><span>レースへ向かう (単勝オッズ: ${currentOdds}倍)</span></button>`;
   grid.appendChild(btnWrapper);
   
   document.getElementById('paddock-screen').classList.remove('hidden');
-  document.getElementById('start-cutin-btn').onclick = () => { document.getElementById('paddock-screen').classList.add('hidden'); startRaceCutin(); };
+  document.getElementById('start-cutin-btn').onclick = () => { 
+    showBetModal();
+  };
+}
+
+// 🎲 賭け金（BET）選択モーダル
+function showBetModal() {
+  let modal = document.getElementById('bet-modal-overlay');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'bet-modal-overlay';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.95); z-index: 11000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px; box-sizing: border-box; color: #fff; text-align: center;
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="max-width: 440px; width: 100%; background: #1e293b; border: 2px solid #facc15; border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(250,204,21,0.3);">
+      <div style="font-size: 14px; color: #facc15; font-weight: bold; margin-bottom: 8px;">🎲 闇賭け（単勝一発勝負）</div>
+      <h2 style="font-size: 24px; margin: 0 0 12px 0; color: #f8fafc;">1着勝利で一攫千金！</h2>
+      
+      <div style="background: rgba(0,0,0,0.5); padding: 14px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <div style="font-size: 13px; color: #cbd5e1;">【あなたの単勝オッズ】</div>
+        <div style="font-size: 32px; font-weight: bold; color: #facc15; margin: 4px 0;">${currentOdds} 倍</div>
+        <div style="font-size: 12px; color: #94a3b8;">※1位以外の順位は賭け金全額没収（0 Z$）</div>
+      </div>
+
+      <div style="font-size: 14px; color: #cbd5e1; margin-bottom: 12px; text-align: left;">所持金: <span style="color:#facc15; font-weight:bold;">${zombieMoney} Z$</span></div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+        <button class="bet-opt-btn" data-bet="0" style="padding: 12px; font-weight: bold; background: #334155; color: #fff; border: 1px solid #64748b; border-radius: 8px; cursor: pointer;">賭けない (0 Z$)</button>
+        <button class="bet-opt-btn" data-bet="100" style="padding: 12px; font-weight: bold; background: #0284c7; color: #fff; border: none; border-radius: 8px; cursor: pointer;">100 Z$</button>
+        <button class="bet-opt-btn" data-bet="500" style="padding: 12px; font-weight: bold; background: #d946ef; color: #fff; border: none; border-radius: 8px; cursor: pointer;">500 Z$</button>
+        <button class="bet-opt-btn" data-bet="ALL" style="padding: 12px; font-weight: bold; background: #e11d48; color: #fff; border: none; border-radius: 8px; cursor: pointer;">ALL IN (全額)</button>
+      </div>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+
+  modal.querySelectorAll('.bet-opt-btn').forEach(btn => {
+    btn.onclick = () => {
+      let betVal = btn.dataset.bet;
+      if (betVal === 'ALL') {
+        currentBetAmount = zombieMoney;
+      } else {
+        currentBetAmount = parseInt(betVal);
+      }
+
+      if (currentBetAmount > zombieMoney) {
+        alert('所持金が足りません！');
+        return;
+      }
+
+      if (currentBetAmount > 0) {
+        zombieMoney -= currentBetAmount;
+        saveGame();
+        updateMoneyDisp();
+      }
+
+      modal.style.display = 'none';
+      document.getElementById('paddock-screen').classList.add('hidden'); 
+      startRaceCutin();
+    };
+  });
 }
 
 function startRaceCutin() {
@@ -1458,9 +1530,17 @@ async function doFinish() {
     let isChampUpdated = false;
     let isStoryAllClear = false;
 
+    // 🎲 賭け（BET）精算ロジック
+    let betPayout = 0;
     if (playerRank === 1) { 
       if(z) z.wins++; 
-      prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 80) : 200; // 賞金減額対応
+      prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 80) : 200;
+      
+      if (currentBetAmount > 0) {
+        betPayout = Math.floor(currentBetAmount * currentOdds);
+        prize += betPayout; // 賭け金×オッズの払戻金を加算！
+      }
+
       if (z && (!z.bestTime || parseFloat(elapsedSec) < parseFloat(z.bestTime))) { z.bestTime = elapsedSec; z.bestCity = currentCity.name; }
       
       const currentChamp = weeklyChamps[currentCity.id];
@@ -1481,7 +1561,17 @@ async function doFinish() {
     else prize = 10;
     
     zombieMoney += prize; saveGame(); 
-    document.getElementById('prize-money').textContent = `獲得賞金: ${prize} Z$`;
+    
+    let prizeMsg = `獲得賞金: ${prize} Z$`;
+    if (currentBetAmount > 0) {
+      if (playerRank === 1) {
+        prizeMsg += ` (🎲賭け大勝利: +${betPayout} Z$)`;
+      } else {
+        prizeMsg += ` (💀賭け金 ${currentBetAmount} Z$ 没収)`;
+      }
+    }
+    document.getElementById('prize-money').textContent = prizeMsg;
+
     const noticeEl = document.getElementById('champ-notice');
     if (isChampUpdated) noticeEl.classList.remove('hidden'); else noticeEl.classList.add('hidden');
 
