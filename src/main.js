@@ -350,12 +350,13 @@ function saveGame() {
   localStorage.setItem('clearedCities', JSON.stringify(clearedCities));
 }
 
+// 💰 フリーレース賞金を再調整（徐々に増加）
 const CITIES = [
-  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka', freeBasePrize: 80 },
-  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya', freeBasePrize: 120 },
-  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【中級】フルアーマーの元警備隊長。', nextCity: 'sapporo', freeBasePrize: 160 },
-  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【上級】凍結施設から逃げた元所長。', nextCity: 'tokyo', freeBasePrize: 220 },
-  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【ラスボス】闇市ドーピングのマッドサイエンティスト。', nextCity: null, freeBasePrize: 300 }
+  { id: 'fukuoka', name: '福岡', distance: 300, color: '#0284c7', bgType: 'normal', desc: '【初級】最速配達員の成れの果てが待つ街。', nextCity: 'osaka', freeBasePrize: 150 },
+  { id: 'osaka', name: '大阪', distance: 400, color: '#ca8a04', bgType: 'normal', desc: '【中級】サボり魔を生んだ元大口スポンサー。', nextCity: 'nagoya', freeBasePrize: 200 },
+  { id: 'nagoya', name: '名古屋', distance: 400, color: '#16a34a', bgType: 'normal', desc: '【中級】フルアーマーの元警備隊長。', nextCity: 'sapporo', freeBasePrize: 250 },
+  { id: 'sapporo', name: '札幌', distance: 500, color: '#93c5fd', bgType: 'snow', desc: '【上級】凍結施設から逃げた元所長。', nextCity: 'tokyo', freeBasePrize: 320 },
+  { id: 'tokyo', name: '東京', distance: 400, color: '#e11d48', bgType: 'normal', desc: '【ラスボス】闇市ドーピングのマッドサイエンティスト。', nextCity: null, freeBasePrize: 400 }
 ];
 let currentCity = CITIES[0];
 
@@ -1160,6 +1161,8 @@ async function renderCitySelect() {
     let descHtml = city.desc;
     if (currentGameMode === 'free' && isUnlocked) {
       descHtml += `<br><span style="color:#facc15; font-weight:bold; font-size:12px;">💰 1着賞金: ${city.freeBasePrize} Z$</span>`;
+    } else if (currentGameMode === 'story' && isUnlocked) {
+      descHtml += `<br><span style="color:#4ade80; font-weight:bold; font-size:12px;">初回報酬: 200 Z$ ＋ ボス特製ワクチン（気性+1）</span>`;
     }
 
     btn.innerHTML = `<span class="city-name" style="color:${city.color}">${city.name} (${city.distance}m)${lockTag}</span><span class="city-desc">${descHtml}</span>${champHtml}`;
@@ -1619,7 +1622,16 @@ async function doFinish() {
     let betPayout = 0;
     if (playerRank === 1) { 
       if(z) z.wins++; 
-      prize = (currentGameMode === 'free') ? (currentCity.freeBasePrize || 80) : 200;
+      
+      // ✅ 報酬計算（ストーリー一律200Z$、フリーは都市別）
+      if (currentGameMode === 'story' && !isPvpMode) {
+        prize = 200;
+        // ✅ ボス特製ワクチンによる気性+1効果！
+        z.mentality += 1;
+        alert(`💉 【ボス検体からの抽出成功】\n倒したボスから特製ワクチンを抽出し、${z.name}に投与した！\n\n✨ 気性が 1 アップした！`);
+      } else {
+        prize = currentCity.freeBasePrize || 150;
+      }
       
       if (isPvpMode && currentBetAmount > 0) {
         betPayout = Math.floor(currentBetAmount * currentOdds);
@@ -1642,9 +1654,9 @@ async function doFinish() {
         isStoryAllClear = true;
       }
     } 
-    else if (playerRank === 2) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 80) * 0.4) : 80; 
-    else if (playerRank === 3) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 80) * 0.1) : 20; 
-    else prize = 10;
+    else if (playerRank === 2) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 150) * 0.4) : 80; 
+    else if (playerRank === 3) prize = (currentGameMode === 'free') ? Math.floor((currentCity.freeBasePrize || 150) * 0.1) : 20; 
+    else prize = 10; // 完走賞
     
     zombieMoney += prize; saveGame(); 
     
