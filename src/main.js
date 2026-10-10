@@ -176,7 +176,7 @@ const AudioManager = {
     opening: 'opening.m4a',
     tokyo: 'tokyo.m4a',
     osaka: 'oosaka.m4a',
-    nagoya: 'nagoya.mp4',
+    nagoya: 'nagoya.m4a',
     fukuoka: 'fukuoka.mp4',
     sapporo: 'sapporo.m4a',
     ending: 'ending.mp4'
@@ -1531,6 +1531,9 @@ function setupRaceState() {
 
   AudioManager.playBGM(currentCity.id);
 
+  // 👇 ここに1行追加！（早めに1回だけ鳴らす） 👇
+  AudioManager.playSE('countdown');
+
   document.getElementById('countdown-overlay').classList.remove('hidden'); document.getElementById('finish-overlay').classList.add('hidden'); document.getElementById('slime-overlay').classList.remove('active');
   particles.length = 0; effects.length = 0; syringeUsed = false;
   
@@ -1779,9 +1782,11 @@ function update() {
     startCountdown -= 1 / 60;
     const currentCD = Math.ceil(startCountdown);
 
-    if (prevCD !== currentCD && currentCD > 0) {
-      AudioManager.playSE('countdown');
-    }
+// 👇 以下の3行を削除（またはコメントアウト）する 👇
+    // if (prevCD !== currentCD && currentCD > 0) {
+    //   AudioManager.playSE('countdown');
+    // }
+    // 👆 ここまで 👆
 
     if (startCountdown > 0) { cdEl.textContent = Math.ceil(startCountdown); } 
     else { cdEl.textContent = "START!"; if (!hasIntruder) liveCommentary = "一斉にスタート！！激しい位置取り合戦だ！"; setTimeout(() => { if (raceState === 'RACING') cdEl.classList.add('hidden'); }, 1000); raceState = 'RACING'; startTime = Date.now(); }
@@ -1889,7 +1894,15 @@ function update() {
       if (remainingDistance <= 50 && remainingDistance > 0 && startCountdown <= 0) { const countVal = Math.min(5, Math.max(1, Math.ceil(remainingDistance / 10))); cdEl.textContent = countVal; cdEl.classList.remove('hidden'); }
       if (remainingDistance <= 0) { doFinish(); }
     }
-    
+
+    // 👇 ここから追加 👇
+    if (raceState === 'RACING' || raceState === 'FINISH_SLOW') {
+      const currentSec = ((Date.now() - startTime) / 1000).toFixed(2);
+      const timeEl = document.getElementById('hud-time');
+      if (timeEl) timeEl.textContent = `${currentSec}s`;
+    }
+    // 👆 ここまで追加 👆
+
     document.getElementById('hud-dist').textContent = `${Math.floor(remainingDistance)}m`;
     document.getElementById('hud-rank').textContent = `${sortedRunners.findIndex(r => r.id === 0) + 1}位`;
     for (let i = 0; i < 4; i++) { document.getElementById(`runner-marker-${i}`).style.left = `${Math.min(1, Math.max(0, runners[i].dist / totalDistance)) * 100}%`; }
