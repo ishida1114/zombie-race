@@ -99,9 +99,46 @@ canvas, img {
 .zc-stats { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: #94a3b8; }
 .zc-stats span { background: #0d1117; padding: 4px 6px; border-radius: 4px; }
 .zc-record { font-size: 12px; color: #4ade80; }
-.zc-actions { display: flex; gap: 8px; margin-top: 4px; }
-.zc-btn { flex: 1; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; color: white; }
-.btn-race { background: #0284c7; } .btn-shop { background: #16a34a; } .btn-del { background: #dc2626; }
+
+/* 🧟 牧場カード内ボタン（2段構成スタイル） */
+.zc-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.zc-actions-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.zc-actions-row.top-row .zc-btn {
+  padding: 10px 8px;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.zc-actions-row.bottom-row .zc-btn {
+  padding: 8px 4px;
+  font-size: 12px;
+}
+.zc-btn {
+  flex: 1;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: center;
+  white-space: nowrap;
+  transition: transform 0.1s, opacity 0.1s;
+}
+.zc-btn:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+.btn-race { background: #0284c7; }
+.btn-shop { background: #16a34a; }
+.btn-del  { background: #dc2626; }
 
 .shop-list { display: flex; flex-direction: column; gap: 10px; }
 .shop-btn { display: flex; align-items: center; background: #161b22; border: 1px solid #475569; padding: 12px; border-radius: 8px; color: #f1f5f9; text-align: left; cursor: pointer; }

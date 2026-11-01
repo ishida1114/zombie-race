@@ -759,12 +759,18 @@ function renderGarage() {
       <div class="zc-stats"><span>速:${z.speed}</span><span>力:${z.power}</span><span>体:${z.stamina}</span><span>気性:${z.mentality}</span><span>異能:${z.magic}</span></div>
       ${recordHtml}
       <div class="zc-actions">
-        <button class="zc-btn btn-race" onclick="openCitySelect(${idx}, 'story')">ストーリー</button>
-        <button class="zc-btn btn-race" style="background:#ca8a04;" onclick="openCitySelect(${idx}, 'free')">フリーレース</button>
-        <button class="zc-btn btn-shop" onclick="openShop(${idx})">強化</button>
-        <button class="zc-btn btn-del" style="background:#8b5cf6;" onclick="openPredatorMenu(${idx})">捕食</button>
-        <button class="zc-btn btn-del" style="background:#64748b;" onclick="renameZombie(${idx})">名前</button>
-        <button class="zc-btn btn-del" onclick="deleteZombie(${idx})">逃がす</button>
+        <!-- 🏁 上段：レース出走系（2分割） -->
+        <div class="zc-actions-row top-row">
+          <button class="zc-btn btn-race" onclick="openCitySelect(${idx}, 'story')">ストーリー</button>
+          <button class="zc-btn btn-race" style="background:#ca8a04;" onclick="openCitySelect(${idx}, 'free')">フリーレース</button>
+        </div>
+        <!-- ⚙️ 下段：育成・管理系（4分割） -->
+        <div class="zc-actions-row bottom-row">
+          <button class="zc-btn btn-shop" onclick="openShop(${idx})">強化</button>
+          <button class="zc-btn btn-del" style="background:#8b5cf6;" onclick="openPredatorMenu(${idx})">捕食</button>
+          <button class="zc-btn btn-del" style="background:#64748b;" onclick="renameZombie(${idx})">名前</button>
+          <button class="zc-btn btn-del" onclick="deleteZombie(${idx})">逃がす</button>
+        </div>
       </div>
     `;
     list.appendChild(card);
@@ -1782,12 +1788,6 @@ function update() {
     startCountdown -= 1 / 60;
     const currentCD = Math.ceil(startCountdown);
 
-// 👇 以下の3行を削除（またはコメントアウト）する 👇
-    // if (prevCD !== currentCD && currentCD > 0) {
-    //   AudioManager.playSE('countdown');
-    // }
-    // 👆 ここまで 👆
-
     if (startCountdown > 0) { cdEl.textContent = Math.ceil(startCountdown); } 
     else { cdEl.textContent = "START!"; if (!hasIntruder) liveCommentary = "一斉にスタート！！激しい位置取り合戦だ！"; setTimeout(() => { if (raceState === 'RACING') cdEl.classList.add('hidden'); }, 1000); raceState = 'RACING'; startTime = Date.now(); }
   }
@@ -1895,13 +1895,11 @@ function update() {
       if (remainingDistance <= 0) { doFinish(); }
     }
 
-    // 👇 ここから追加 👇
     if (raceState === 'RACING' || raceState === 'FINISH_SLOW') {
       const currentSec = ((Date.now() - startTime) / 1000).toFixed(2);
       const timeEl = document.getElementById('hud-time');
       if (timeEl) timeEl.textContent = `${currentSec}s`;
     }
-    // 👆 ここまで追加 👆
 
     document.getElementById('hud-dist').textContent = `${Math.floor(remainingDistance)}m`;
     document.getElementById('hud-rank').textContent = `${sortedRunners.findIndex(r => r.id === 0) + 1}位`;
